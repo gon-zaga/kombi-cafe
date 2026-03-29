@@ -2,7 +2,7 @@ import Image from "next/image";
 
 function Promotions() { 
   const text = "What's New!";
-  const cardDesign = "flex w-full h-32 bg-[#F4EBD0] rounded-2xl px-4 sm:h-28 sm:rounded-[2vw] justify-between overflow-visible";
+  const cardDesign = "flex w-full h-32 bg-[#F4EBD0] rounded-2xl px-4 sm:h-28 sm:rounded-[2vw] justify-between overflow-visible drop-shadow-xl";
   const infoDesign = "flex flex-col";
   const imageLayoutDesign = "flex items-end";
   

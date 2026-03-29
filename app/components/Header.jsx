@@ -9,7 +9,6 @@ function Header() {
         width={32}
         height={32}
         priority                  // Critical for header logo (loads immediately)
-        className="object-contain"
       />
       <span className="text-lg font-bold tracking-wider">KOMBI COFFEE</span>
     </div>
