@@ -1,15 +1,46 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import {
+  Roboto,
+  Roboto_Condensed,
+  Roboto_Slab,
+  Roboto_Mono,
+  Monoton,
+} from "next/font/google";
 import "./globals.css";
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
+const roboto = Roboto({
+  variable: "--font-roboto",
   subsets: ["latin"],
+  weight: ["400", "500", "700"],
+  display: "swap",
 });
 
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
+const robotoCondensed = Roboto_Condensed({
+  variable: "--font-roboto-condensed",
   subsets: ["latin"],
+  weight: ["400", "700"],
+  display: "swap",
+});
+
+const robotoSlab = Roboto_Slab({
+  variable: "--font-roboto-slab",
+  subsets: ["latin"],
+  weight: ["400", "500", "700"],
+  display: "swap",
+});
+
+const robotoMono = Roboto_Mono({
+  variable: "--font-roboto-mono",
+  subsets: ["latin"],
+  weight: ["400", "500", "700"],
+  display: "swap",
+});
+
+const monoton = Monoton({
+  variable: "--font-monoton",
+  subsets: ["latin"],
+  weight: "400",
+  display: "swap",
 });
 
 export const metadata: Metadata = {
@@ -25,7 +56,14 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
+      className={[
+        roboto.variable,
+        robotoCondensed.variable,
+        robotoSlab.variable,
+        robotoMono.variable,
+        monoton.variable,
+        "h-full antialiased",
+      ].join(" ")}
     >
       <body className="min-h-full flex flex-col">{children}</body>
     </html>
