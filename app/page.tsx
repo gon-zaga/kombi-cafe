@@ -3,9 +3,10 @@ import './globals.css'
 import Header from '@/app/ui/Header';
 import Promotions from '@/app/ui/Promotions';
 import CategoryBar from './ui/CategoryBar';
-import ItemCard from './ui/ItemCard';
+import MenuItem from './ui/MenuItem';
 import React, {useState} from 'react';
 import ViewOrderBar from './ui/ViewOrderBar';
+import ProductCard from './ui/ProductCard';
 
 
 export default function Home() {
@@ -21,7 +22,7 @@ export default function Home() {
         {active}
       </div>
       <hr className='mb-3'/>
-      <ItemCard />
+      <MenuItem />
       <ViewOrderBar totalItems={totalItems} setTotalItems={setTotalItems} />
     </div>
     );

@@ -1,5 +1,4 @@
 
-
 function ViewOrderBar ({totalItems, setTotalItems}: {totalItems: number, setTotalItems: (item: number) => void}) {
   return(
       <div className="flex flex-row items justify-center sticky bottom-0 my-2.5">
