@@ -1,7 +1,7 @@
 'use client'
 import Image from "next/image";
 
-function CategoryBar({active, setActive}: {active: string, setActive: (category: string) => void}) {
+function CategoryBar({active,   setActive}: {active: string, setActive: (category: string) => void}) {
   const categories = [
     "Kaffee",
     "Klassik Kaffee",

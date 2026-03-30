@@ -5,7 +5,7 @@ function ItemCard() {
   return (
     <section className="px-5 text-dark-brown grid grid-cols-2 gap-4">
 
-      {[1, 2, 3, 4, 5, 6].map((item) => (
+      {[1, 2, 3, 4, 5, 6, 7, 8].map((item) => (
         <div key={item} className="bg-[#F4EBD0] rounded-2xl drop-shadow-lg flex flex-col p-3 gap-2">
 
           {/* Image + Add button */}

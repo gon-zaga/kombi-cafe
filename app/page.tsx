@@ -4,10 +4,13 @@ import Header from '@/app/ui/Header';
 import Promotions from '@/app/ui/Promotions';
 import CategoryBar from './ui/CategoryBar';
 import ItemCard from './ui/ItemCard';
-
 import React, {useState} from 'react';
+import ViewOrderBar from './ui/ViewOrderBar';
+
+
 export default function Home() {
   const [active, setActive] = useState("Kaffee");
+  const [totalItems, setTotalItems] = useState(0);
   return (
     <div className='bg-cream min-h-screen'>
       <Header />
@@ -19,6 +22,7 @@ export default function Home() {
       </div>
       <hr className='mb-3'/>
       <ItemCard />
+      <ViewOrderBar totalItems={totalItems} setTotalItems={setTotalItems} />
     </div>
     );
 }
