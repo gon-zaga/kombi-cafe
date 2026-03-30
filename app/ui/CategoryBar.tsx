@@ -10,7 +10,8 @@ function CategoryBar({active, setActive}: {active: string, setActive: (category:
     "Non-Kaffe Latte",
     "Fruitte Latte",
     "The Beetles Juice", 
-    "Non-Kaffee Frappe"
+    "Non-Kaffee Frappe",
+    "Snacks"
   ];
 
   return(

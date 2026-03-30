@@ -2,7 +2,7 @@ import Image from "next/image";
 
 function Header() {
   return (
-    <div className="flex flex-row items-center gap-3 text-white h-10 w-full bg-[#3D2B1F] font-roboto-slab px-4">
+    <div className="flex flex-row items-center gap-3 text-white h-10 w-full bg-dark-brown font-roboto-slab px-4">
       <Image
         src="/kombi-logo.png"
         alt="KOMBI COFFEE"

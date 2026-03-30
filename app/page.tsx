@@ -3,6 +3,8 @@ import './globals.css'
 import Header from '@/app/ui/Header';
 import Promotions from '@/app/ui/Promotions';
 import CategoryBar from './ui/CategoryBar';
+import ItemCard from './ui/ItemCard';
+
 import React, {useState} from 'react';
 export default function Home() {
   const [active, setActive] = useState("Kaffee");
@@ -12,10 +14,11 @@ export default function Home() {
       <h2 className='font-roboto-slab text-2xl text-center mb-1 flex items-center justify-center'> MENU</h2>
       <Promotions />
       <CategoryBar active={active} setActive={setActive} />
-      <div className="h-12 flex justify-center items-center">
+      <div className="h-12 flex justify-center items-center font-bold text-dark-brown">
         {active}
       </div>
-      <hr />
+      <hr className='mb-3'/>
+      <ItemCard />
     </div>
     );
 }
