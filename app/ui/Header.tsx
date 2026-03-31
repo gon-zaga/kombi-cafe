@@ -2,15 +2,15 @@ import Image from "next/image";
 
 function Header() {
   return (
-    <div className="flex flex-row items-center gap-3 text-white h-10 w-full bg-dark-brown font-roboto-slab px-4">
+    <div className="flex flex-row items-center gap-3 text-white h-18 w-full bg-[#F4EBD0] font-roboto-slab px-4">
       <Image
-        src="/kombi-logo.png"
+        src="/transparent-kombi-logo.svg"
         alt="KOMBI COFFEE"
-        width={32}
-        height={32}
+        width={60}
+        height={60}
         priority                  // Critical for header logo (loads immediately)
       />
-      <span className="text-lg font-bold tracking-wider">KOMBI COFFEE</span>
+      <span className=" shrink-0 text-4xl text-dark-brown font-bold tracking-wider">KOMBI COFFEE</span>
     </div>
   );
 }
