@@ -1,6 +1,7 @@
 'use client'
 import React, { useState } from "react";
 import Image from "next/image";
+import Link from "next/link";
 
 function ProductCard({item}: {item:{itemId: number, category: string, itemImg: string, itemName:string, ingredients: string[], sizes: {size: string, price: number}[], quantity: number}}) {
   const [quantity, setQuantity] = useState(0);
@@ -15,18 +16,30 @@ function ProductCard({item}: {item:{itemId: number, category: string, itemImg: s
 
   return (
     <div className="bg-[#F4EBD0] rounded-2xl drop-shadow-lg flex flex-col p-3 gap-2 text-dark-brown">
+      
+      {/* Clickable zone */}
+      <Link href={`/orders/${item.itemId}`} className="flex flex-col gap-2">
+        {/* Image */}
+        <div className="flex justify-center items-center bg-white rounded-xl p-2">
+          <Image
+            src={`${item.itemImg}`}
+            alt={item.itemName}
+            width={110}
+            height={110}
+          />
+        </div>
 
-      {/* Image + Add button */}
-      <div className="relative flex justify-center items-center bg-white rounded-xl p-2">
-        <Image
-          src="/drinks/kaff-latte.png"
-          alt="Kaffee latte"
-          width={110}
-          height={110}
-        />
+        {/* Price + Name */}
+        <div className="flex flex-col items-start">
+          <span className="font-bold text-lg">P{item.sizes[0].price}</span>
+          <span className="font-medium text-sm">{item.itemName}</span>
+        </div>
+      </Link>
 
+      {/* Non-clickable zone — quantity controls */}
+      <div className="flex justify-end">
         {quantity === 0 ? (
-          <button className="absolute bottom-2 right-2" onClick={handleAddQuantity}>
+          <button onClick={handleAddQuantity}>
             <Image
               src="/add-icon.svg"
               alt="add-btn"
@@ -35,7 +48,7 @@ function ProductCard({item}: {item:{itemId: number, category: string, itemImg: s
             />
           </button>
         ) : (
-          <div className="absolute bottom-2 right-2 flex flex-row items-center gap-1 bg-white rounded-full px-2 py-1">
+          <div className="flex flex-row items-center gap-1 bg-white rounded-full px-2 py-1">
             <button onClick={handleRemoveQuantity}>
               <Image
                 src="/trash-icon.svg"
@@ -55,12 +68,6 @@ function ProductCard({item}: {item:{itemId: number, category: string, itemImg: s
             </button>
           </div>
         )}
-      </div>
-
-      {/* Price + Name */}
-      <div className="flex flex-col items-start">
-        <span className="font-bold text-lg">P60.00</span>
-        <span className="font-medium text-sm">Kaffee Latte</span>
       </div>
 
     </div>

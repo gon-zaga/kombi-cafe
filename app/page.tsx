@@ -6,11 +6,10 @@ import CategoryBar from './ui/CategoryBar';
 import MenuItem from './ui/MenuItem';
 import React, {useState} from 'react';
 import ViewOrderBar from './ui/ViewOrderBar';
-import ProductCard from './ui/ProductCard';
 
 
 export default function Home() {
-  const [active, setActive] = useState("Kaffee");
+  const [active, setActive] = useState("All");
   const [totalItems, setTotalItems] = useState(0);
   return (
     <div className='bg-cream min-h-screen'>
@@ -22,7 +21,7 @@ export default function Home() {
         {active}
       </div>
       <hr className='mb-3'/>
-      <MenuItem />
+      <MenuItem active={active}/>
       <ViewOrderBar totalItems={totalItems} setTotalItems={setTotalItems} />
     </div>
     );

@@ -8,8 +8,8 @@ function CategoryBar({active,   setActive}: {active: string, setActive: (categor
     "Klassik Kaffee",
     "Specialty Kaffee",
     "Kaffee Frappe",
-    "Non-Kaffe Latte",
-    "Fruitte Latte",
+    "Non-Kaffee Latte",
+    "Fruitee Latte",
     "The Beetles Juice", 
     "Non-Kaffee Frappe",
     "Snacks"
@@ -39,10 +39,12 @@ function CategoryBar({active,   setActive}: {active: string, setActive: (categor
           <section className="flex overflow-x-auto scrollbar-hide">
             <ul className="flex flex-row gap-3"> 
               {categories.map((category) => (
+                // Show each category in list item
                 <li key={category}>
                   <button
                     onClick={() => setActive(category)}
                     className={`whitespace-nowrap pb-1 border-b-2 transition-all
+                      // If that category is selected make it bolder 
                       ${active === category
                         ? "border-dark-brown font-bold"
                         : "border-transparent"
