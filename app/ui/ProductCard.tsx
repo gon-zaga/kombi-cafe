@@ -2,7 +2,7 @@
 import React, { useState } from "react";
 import Image from "next/image";
 
-function ProductCard() {
+function ProductCard({item}: {item:{itemId: number, category: string, itemImg: string, itemName:string, ingredients: string[], sizes: {size: string, price: number}[], quantity: number}}) {
   const [quantity, setQuantity] = useState(0);
 
   const handleAddQuantity = () => {
