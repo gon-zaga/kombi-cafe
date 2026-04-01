@@ -50,6 +50,7 @@ function CategoryBar({active,   setActive}: {active: string, setActive: (categor
                         : "border-transparent"
                       }`}
                   >
+                    {/*The Categories*/}
                     {category}
                   </button>
                 </li>
