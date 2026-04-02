@@ -570,9 +570,11 @@ export const menuItems = [
 
 export const addOns = [
   {addOnsId: 1,name: "Espresso[1 shot]",price: 10, addOnImg: "/addons/espresso.svg"},
-  {addOnsId: 2,name: "Whip Cream/ Milk",price: 25},
-  {addOnsId: 3,name: "Espresso[1 shot]",price: 10},
-  {addOnsId: 4,name: "Espresso[1 shot]",price: 10},
-
-
+  {addOnsId: 2,name: "Whip Cream/Milk",price: 25, addOnImg: "/addons/whip-cream-milk.svg"},
+  {addOnsId: 3,name: "Java Chips",price: 20, addOnImg: "/addons/javachips.svg"},
+  {addOnsId: 4,name: "Crushed Oreo",price: 10, addOnImg: "addons/crushed-oreo.svg"},
+  {addOnsId: 5,name: "Tea Flavor[O/WM]",price: 10, addOnImg:"addons/tea-flavor.svg"},
+  {addOnsId: 6,name: "Nata de Coco",price: 20, addOnImg: "addons/nata-de-coco.svg"},
+  {addOnsId: 7,name: "Irish Coffee[20ml]",price: 20, addOnImg: "addons/irishh-coffee.svg"},
+  {addOnsId: 8,name: "Cookie Cup",price: 100, addOnImg: "addons/cookie-cup.svg"},
 ]

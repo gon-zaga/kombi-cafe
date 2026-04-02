@@ -5,6 +5,7 @@ import { menuItems } from "@/app/lib/data";
 import ItemHeader from "./_ui/ItemHeader";
 import ItemInfo from "./_ui/ItemInfo";
 import SizeSelector from "./_ui/SizeSelector";
+import AddOns from "./_ui/AddOns";
 
 export default function OrderPage({params}: {params: Promise<{itemId: string}>})  {
   
@@ -16,13 +17,9 @@ export default function OrderPage({params}: {params: Promise<{itemId: string}>})
   if(!item) return null;
   return (
     <section className="text-dark-brown">
-    {/* The part with a black background */}
-    <div className="fixed inset-0 bg-black/40">
-    </div>
-    {/*End of the Upper Part*/}
 
 
-    <div className="h-[75vh] fixed bottom-0 right-0 left-0 overflow-y-auto
+    <div className="h-full fixed bottom-0 right-0 left-0 overflow-y-auto
       bg-cream
     "> 
       <ItemHeader 
@@ -43,6 +40,7 @@ export default function OrderPage({params}: {params: Promise<{itemId: string}>})
         onSelect={setSelectedSize}
       />
 
+      <AddOns/>
       
     </div>
     {/**END OF DIV*/}

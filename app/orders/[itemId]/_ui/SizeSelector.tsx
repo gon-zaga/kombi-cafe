@@ -11,7 +11,7 @@ type SizeSelectorProps = {
 
 export default function SizeSelector({ sizes, selectedSize, onSelect }: SizeSelectorProps) {
   return (
-    <div className="flex justify-center">
+    <div className="flex justify-center mb-10">
       <section className="flex flex-col h-auto p-4 w-4/5 shrink-0 bg-[#F4EBD0] rounded-2xl shadow-lg cursor-pointer">
         {sizes.map((s) => (
           <div
