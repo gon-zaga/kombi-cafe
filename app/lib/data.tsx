@@ -567,3 +567,12 @@ export const menuItems = [
     quantity: 0,
   },
 ];
+
+export const addOns = [
+  {addOnsId: 1,name: "Espresso[1 shot]",price: 10, addOnImg: "/addons/espresso.svg"},
+  {addOnsId: 2,name: "Whip Cream/ Milk",price: 25},
+  {addOnsId: 3,name: "Espresso[1 shot]",price: 10},
+  {addOnsId: 4,name: "Espresso[1 shot]",price: 10},
+
+
+]
