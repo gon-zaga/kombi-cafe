@@ -6,6 +6,7 @@ import ItemHeader from "./_ui/ItemHeader";
 import ItemInfo from "./_ui/ItemInfo";
 import SizeSelector from "./_ui/SizeSelector";
 import AddOns from "./_ui/AddOns";
+import AddToOrderButton from "./_ui/AddToOrderButton";
 
 export default function OrderPage({params}: {params: Promise<{itemId: string}>})  {
   
@@ -41,6 +42,8 @@ export default function OrderPage({params}: {params: Promise<{itemId: string}>})
       />
 
       <AddOns/>
+
+      <AddToOrderButton />
       
     </div>
     {/**END OF DIV*/}
