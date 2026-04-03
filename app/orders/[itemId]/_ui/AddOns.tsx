@@ -3,10 +3,15 @@
   import Image from "next/image";
   import { useState } from "react";
 
-  function AddOns() {
-    const [selectedAddOn, setSelectedAddOn] = useState<number[]>([]);
+  type selectedAddOnProp = {
+    selectedAddOn: number[],
+    setSelectedAddOn:React.Dispatch<React.SetStateAction<number[]>>
+  }
+  
+  function AddOns({selectedAddOn, setSelectedAddOn}: selectedAddOnProp) {
     const [showAll, setShowAll] = useState(false);
     const sliceLimit = 4;
+
     // Derivative Variable
     const visibleAddons = showAll ? addOns.slice(0, sliceLimit) : addOns
 

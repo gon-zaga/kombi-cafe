@@ -1,4 +1,4 @@
-type Size = {
+export type Size = {
   size: string;
   price: number;
 };
