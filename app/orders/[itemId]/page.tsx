@@ -10,7 +10,6 @@
  * component displays information about a selected item from the menu, allows the user to select a
  * size, add-ons, and quantity, and calculates the total order price based on the selected
  */
-
 'use client'
 import React, { useState } from "react";
 import { menuItems, addOns } from "@/app/lib/data";
@@ -20,6 +19,7 @@ import ItemInfo from "./_ui/ItemInfo";
 import SizeSelector from "./_ui/SizeSelector";
 import AddOns from "./_ui/AddOns";
 import AddToOrderButton from "./_ui/AddToOrderButton";
+import SpecialInstructions from "./_ui/SpecialInstructions";
 
 export default function OrderPage({ params }: { params: Promise<{ itemId: string }> }) {
 
@@ -29,6 +29,7 @@ export default function OrderPage({ params }: { params: Promise<{ itemId: string
   const [selectedAddOn, setSelectedAddOn] = useState<number[]>([]);
   const [quantity, setQuantity] = useState(1);
   const [selectedSize, setSelectedSize] = useState(item!.sizes[0]);
+  const [instructions, setInstructions] = useState("");
 
   const filteredAddOns = addOns.filter(addOn => selectedAddOn.includes(addOn.addOnsId));
   const addOnsTotal = filteredAddOns.reduce((acc, addOn) => acc + addOn.price, 0);
@@ -58,6 +59,8 @@ export default function OrderPage({ params }: { params: Promise<{ itemId: string
         />
 
         <AddOns selectedAddOn={selectedAddOn} setSelectedAddOn={setSelectedAddOn} />
+
+        <SpecialInstructions instructions={instructions} setInstructions={setInstructions}/>
 
         <AddToOrderButton totalPrice={orderTotal} />
       </div>

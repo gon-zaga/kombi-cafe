@@ -26,6 +26,7 @@ function ProductCard({item}: {item:{itemId: number, category: string, itemImg: s
             alt={item.itemName}
             width={110}
             height={110}
+            loading="eager"
           />
         </div>
 
