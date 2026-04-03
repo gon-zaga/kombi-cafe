@@ -18,7 +18,7 @@ interface OrderState {
 
 }
 
-const useOrderStore = create<OrderState>((set) => ({
+export const useOrderStore = create<OrderState>((set) => ({
   orders: [],
   addToOrder: (order) => set((state) => ({
     orders: [...state.orders, order],
