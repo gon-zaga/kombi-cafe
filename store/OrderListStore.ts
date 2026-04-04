@@ -1,7 +1,8 @@
 import { Size } from "@/app/orders/[itemId]/_ui/SizeSelector";
 import {create} from 'zustand'
 
-interface OrderItem {
+
+export interface OrderItem {
   itemId: number, 
   itemName: string, 
   itemImg: string,
@@ -12,6 +13,8 @@ interface OrderItem {
 }
 
 
+/* The `interface OrderState` is defining the structure of the state object that will be managed by the
+`useOrderStore` hook. It includes two properties: */
 interface OrderState {
   orders: OrderItem[],
   addToOrder: (order: OrderItem) => void;
