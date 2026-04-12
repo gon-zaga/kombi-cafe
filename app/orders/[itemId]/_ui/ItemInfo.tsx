@@ -10,7 +10,7 @@ function ItemInfo({itemName, price, ingredients}: ItemInfoProps) {
       <div className="flex flex-col gap-4 p-4"> 
       <div className="text-md font-bold">{itemName}</div>
       <div className="text-md font-bold">₱{price}</div>
-      <div className="text-sm">{ingredients}[ingredients]</div>
+      <div className="text-sm">{ingredients.join(". ")}</div>
       </div>
   );
 }

@@ -56,6 +56,7 @@ export default function RootLayout({
   return (
     <html
       lang="en"
+      suppressHydrationWarning 
       className={[
         roboto.variable,
         robotoCondensed.variable,

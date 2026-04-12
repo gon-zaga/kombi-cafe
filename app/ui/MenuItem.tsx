@@ -14,12 +14,12 @@ function MenuItem({active}: {active: string}) {
         ))
         
         // if the categories are selected
-        :filtered.map((item) =>(
+        :filtered.map((item) =>(  
           <ProductCard item={item} key={item.itemId}/> 
       ) )
       }
     </div>
   );
-}
+} 
 
 export default MenuItem;

@@ -15,7 +15,9 @@ function SpecialInstructions({instructions, setInstructions}: instructionsProp) 
       <h3 className="font-bold font-roboto-mono m-4 "> Special Instructions </h3> 
       </div>
       <div className="flex justify-center">
-        <textarea maxLength={200} className="resize-none flex flex-col border p-3 w-4/5 rounded-2xl" placeholder="e.g. Less Sugar"></textarea>
+        <textarea value={instructions} maxLength={200} className="resize-none flex flex-col border p-3 w-4/5 rounded-2xl" placeholder="e.g. Less Sugar"
+          onChange={(e) => setInstructions(e.target.value)}
+        ></textarea>
       </div>
 
     </section>

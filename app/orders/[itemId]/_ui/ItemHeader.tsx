@@ -30,7 +30,7 @@ function ItemHeader({itemImg, itemName, itemId}: ItemHeaderProp) {
                 alt="cancel-icon"
                 width={48}
                 height={48}
-                className="fixed top-0 right-0 cursor-pointer"
+                className="fixed top-3 right-4 cursor-pointer"
               />
             </button>
           </div>

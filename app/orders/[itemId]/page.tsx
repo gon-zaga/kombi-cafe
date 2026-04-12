@@ -1,15 +1,3 @@
-/**
- * The OrderPage component in TypeScript React renders a page for selecting item size, add-ons, and
- * quantity to place an order.
- * 
- * @param  The `OrderPage` component is a React functional component that displays information about a
- * specific item from a menu. Here's a breakdown of the key parts of the component:
- * 
- * @return The `OrderPage` component is being returned. It renders a section containing various UI
- * components such as `ItemHeader`, `ItemInfo`, `SizeSelector`, `AddOns`, and `AddToOrderButton`. The
- * component displays information about a selected item from the menu, allows the user to select a
- * size, add-ons, and quantity, and calculates the total order price based on the selected
- */
 'use client'
 import React, { useState } from "react";
 import { menuItems, addOns } from "@/app/lib/data";
@@ -21,7 +9,7 @@ import AddOns from "./_ui/AddOns";
 import AddToOrderButton from "./_ui/AddToOrderButton";
 import SpecialInstructions from "./_ui/SpecialInstructions";
 
-export default function OrderPage({ params }: { params: Promise<{ itemId: string }> }) {
+export default function OrderPage({ params }: { params: Promise<{ itemId: number }> }) {
 
   const { itemId } = React.use(params);
   const item = menuItems.find(i => i.itemId === Number(itemId));
@@ -38,31 +26,37 @@ export default function OrderPage({ params }: { params: Promise<{ itemId: string
   if (!item) return null;
 
   return (
-    <section className="text-dark-brown">
-      <div className="h-full fixed bottom-0 right-0 left-0 overflow-y-auto bg-cream">
+    <section className="min-h-screen bg-cream text-dark-brown">
+      <div className="pb-24">
         <ItemHeader
           itemImg={item.itemImg}
           itemName={item.itemName}
           itemId={item.itemId}
         />
-
         <ItemInfo
           itemName={item.itemName}
           price={selectedSize?.price ?? 0}
           ingredients={item.ingredients}
         />
-
         <SizeSelector
           sizes={item.sizes}
           selectedSize={selectedSize}
           onSelect={setSelectedSize}
         />
-
         <AddOns selectedAddOn={selectedAddOn} setSelectedAddOn={setSelectedAddOn} />
-
         <SpecialInstructions instructions={instructions} setInstructions={setInstructions}/>
+      </div>
 
-        <AddToOrderButton totalPrice={orderTotal} />
+      <div className="fixed bottom-0 left-0 right-0 bg-cream">
+        <AddToOrderButton
+          itemId={itemId}
+          itemName={item.itemName}
+          itemImg={item.itemImg}
+          selectedSize={selectedSize}
+          selectedAddOn={selectedAddOn}
+          quantity={quantity}
+          specialInstruction={instructions}
+        />
       </div>
     </section>
   );
