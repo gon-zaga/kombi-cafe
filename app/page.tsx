@@ -22,7 +22,7 @@ export default function Home() {
       </div>
       <hr className='mb-3'/>
       <MenuItem active={active}/>
-      <ViewOrderBar totalItems={totalItems} setTotalItems={setTotalItems} />
+      <ViewOrderBar />
     </div>
     );
 }

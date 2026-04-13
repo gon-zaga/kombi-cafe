@@ -42,7 +42,7 @@ function AddToOrderButton({itemId, itemName, itemImg, selectedSize, selectedAddO
           py-3 rounded-lg"
           onClick={() => {
             addToOrder(orderItem);
-            router.push('/order-list');
+            router.push('/');
           }}>
           Confirm Order
         </button>
