@@ -24,6 +24,7 @@ interface OrderState {
   orders: OrderItem[],
   addToOrder: (order: OrderItem) => void;
   removeOrder: (order: OrderItem) => void;
+  clearOrder: () => void;
 }
 
 export const useOrderStore = create<OrderState>((set) => ({
@@ -59,7 +60,10 @@ using the `Array.prototype.find()` method to check if there is an existing order
         JSON.stringify(o.selectedAddOn) !== JSON.stringify(order.selectedAddOn)); 
   
       return {orders: deleteOrder}
-  })
+  }),
 
+  clearOrder: () => set(() => {
+    return {orders: []}
+  })
 
 }))

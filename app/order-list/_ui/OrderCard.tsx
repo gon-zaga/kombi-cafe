@@ -67,11 +67,6 @@ function OrderCard({ order, addOns, onDelete }: OrderCardProps) {
       </div>
 
       {/* Delete button */}
-      <button
-        onClick={onDelete} 
-        aria-label="Remove item"
-        className="shrink-0 w-8 h-8 flex items-center justify-center rounded-xl border border-stone-200 text-stone-400 hover:bg-red-50 hover:border-red-200 hover:text-red-500 transition-colors"
-      >
         <button
           onClick={onDelete}
           aria-label="Remove item"
@@ -84,7 +79,6 @@ function OrderCard({ order, addOns, onDelete }: OrderCardProps) {
             height={42}
           />
         </button>
-      </button>
       </div>
     );
   }
