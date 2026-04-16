@@ -1,10 +1,11 @@
 'use client'
-import { useSearchParams } from "next/navigation";
+import { useSearchParams, useRouter } from "next/navigation";
 import { Suspense } from "react";
 import Image from "next/image";
 
 function ConfirmOrder() {
   const confirmParam = useSearchParams();
+  const router = useRouter();
   const ref = confirmParam.get('ref');
   const total = confirmParam.get('total');
 
@@ -31,9 +32,16 @@ function ConfirmOrder() {
         <span className="text-lg font-medium">
           Total Paid: ₱{Number(total).toFixed(2)}
         </span>
+
+        <button
+          onClick={() => router.push('/')}
+          className="w-full mt-2 bg-amber-800 text-white text-lg font-semibold py-4 rounded-2xl active:opacity-80"
+        >
+          New Order
+        </button>
       </div>
     </section>
-  );
+  );  
 }
 
 export default function ConfirmOrderPage() {

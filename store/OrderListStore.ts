@@ -22,7 +22,7 @@ export interface OrderItem {
 orders in the application. */
 interface OrderState {
   orders: OrderItem[],
-  addToOrder: (order: OrderItem) => void;
+  addToOrder: (order: OrderItem) => void; 
   removeOrder: (order: OrderItem) => void;
   clearOrder: () => void;
 }
