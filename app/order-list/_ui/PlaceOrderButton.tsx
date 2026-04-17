@@ -12,8 +12,8 @@ function PlaceOrderButton({ grandtotal }: PlaceOrderButtonInt) {
 
   const handlePlaceOrder = () => {
     const referenceId = `KMB-${Date.now().toString(36).toUpperCase()}`
-    clearOrder()
     router.push(`/order-confirmation?ref=${referenceId}&total=${grandtotal}`)
+    clearOrder()
   };
 
   return (

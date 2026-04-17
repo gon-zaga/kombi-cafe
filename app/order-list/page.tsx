@@ -6,10 +6,25 @@ import { addOns } from '../lib/data';
 import { useOrderStore  } from '@/store/OrderListStore';
 import PlaceOrderButton from './_ui/PlaceOrderButton';
 import EmptyOrder from './_ui/EmptyOrder';
+import { useEffect, useState } from 'react';
 
 function OrdersLists() {
   const {orders, removeOrder} = useOrderStore();
   const grandtotal =  orders.reduce((acc, order) => acc + order.selectedSize.price * order.quantity, 0);
+  const [hydrated, setHydrated] = useState(false);
+
+  useEffect(() => {
+    const unsub = useOrderStore.persist.onFinishHydration(() => {
+      setHydrated(true);
+    });
+    if(useOrderStore.persist.hasHydrated()) {
+      setHydrated(true);
+    }
+    return () => unsub();
+  }, [])
+  
+
+  if (!hydrated) return null;
 
   return (
         

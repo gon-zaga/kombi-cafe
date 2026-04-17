@@ -10,7 +10,6 @@ import ViewOrderBar from './ui/ViewOrderBar';
 
 export default function Home() {
   const [active, setActive] = useState("All");
-  const [totalItems, setTotalItems] = useState(0);
   return (
     <div className='bg-cream min-h-screen'>
       <Header />
