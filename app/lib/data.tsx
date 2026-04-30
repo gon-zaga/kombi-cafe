@@ -335,7 +335,7 @@ export const menuItems = [
     quantity: 0,
   },
   {
-    itemId: 27,
+    itemId: 27, 
     category: "Fruitee Latte",
     itemImg: "/drinks/no-drink-image.svg",
     itemName: "Blueberry Latte",

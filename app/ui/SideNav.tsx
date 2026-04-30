@@ -1,6 +1,7 @@
 'use client'
 
 import Image from "next/image";
+import Link from "next/link";
 
 interface SideNavProps {
   isOpen: boolean;
@@ -40,7 +41,7 @@ export default function SideNav({ isOpen, onClose }: SideNavProps) {
             className="text-[#F4EBD0] hover:text-[#D4A853] transition-colors p-1 rounded"
           >
             <Image
-              src="\white-menu.svg"
+              src="/white-menu.svg"
               alt="white menu icon"
               width={28}
               height={28}  
@@ -51,6 +52,8 @@ export default function SideNav({ isOpen, onClose }: SideNavProps) {
         {/* Content (empty for now) */}
         <div className="flex-1 p-6">
           {/* Put your nav links here later */}
+          <Link href="/side-navigation" className="px-4 py-2 hover:bg-[#E8D9B5]" >Staff Access</Link>
+
         </div>
 
         {/* Footer */}
@@ -58,7 +61,7 @@ export default function SideNav({ isOpen, onClose }: SideNavProps) {
           <p className="text-[10px] text-[#A0845A] text-center uppercase tracking-wider">
             Kombi Cafe © 2025
           </p>
-        </div>
+        </div>  
       </aside>
     </>
   );

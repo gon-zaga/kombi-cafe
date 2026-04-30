@@ -39,7 +39,7 @@ function Header() {
           height={74}
           priority
         />
-        <span className="shrink-0 text-4xl text-dark-brown font-bold tracking-wider">
+        <span className="shrink-0 text-2xl text-dark-brown font-bold tracking-wider">
           KOMBI COFFEE
         </span>
       </header>

@@ -1,6 +1,7 @@
 'use client'
 import { useRouter } from "next/navigation";
 import { useOrderStore } from "@/store/OrderListStore";
+import { useBaristaStore } from "@/store/BaristaStore";
 
 interface PlaceOrderButtonInt {
   grandtotal: number
@@ -9,10 +10,11 @@ interface PlaceOrderButtonInt {
 function PlaceOrderButton({ grandtotal }: PlaceOrderButtonInt) {
   const router = useRouter();
   const { clearOrder } = useOrderStore();
+  const currentId = 0;
 
   const handlePlaceOrder = () => {
-    const referenceId = `KMB-${Date.now().toString(36).toUpperCase()}`
-    router.push(`/order-confirmation?ref=${referenceId}&total=${grandtotal}`)
+    const referenceId = String(currentId).padStart(4,'0');
+    router.push(`/order-confirmation?ref=${referenceId}&total=${grandtotal}`);
     clearOrder()
   };
 
