@@ -81,7 +81,7 @@ function OrderDetailModal({order, onClose, onUpdateStatus, onDelete}: OrderDetai
                   <p className="font-semibold text-gray-900">₱{item.price.toFixed(2)}</p>
                 </div>
                 <p className="text-sm text-gray-600">
-                  {item.size.size} ({item.size.oz}oz) · Qty: {item.quantity}
+                  {item.size.size} ({item.}oz) · Qty: {item.quantity}
                 </p>
                 {item.addOns.length > 0 && (
                   <div className="mt-2">
