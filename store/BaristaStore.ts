@@ -10,7 +10,7 @@ interface OrderItem  {
   price: number
 }
 
-interface Order {
+export interface Order {
   id: number,
   orderReference: string,
   items: OrderItem[]

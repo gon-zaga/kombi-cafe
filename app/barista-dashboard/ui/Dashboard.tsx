@@ -1,7 +1,10 @@
 'use client';
 
-import { useBaristaStore  } from '@/store/BaristaStore';
+import { useBaristaStore, Order  } from '@/store/BaristaStore';
 import { useState } from 'react';
+import { getRelativeTime } from '@/app/lib/utils';
+import { OrderItem } from '@/store/OrderListStore';
+
 
   export default function BaristaPage() {
     const orders = useBaristaStore(state => state.orders);
@@ -9,7 +12,9 @@ import { useState } from 'react';
     const pending   = orders.filter((o) => o.orderStatus === 'pending').length;
     const preparing = orders.filter((o) => o.orderStatus === 'preparing').length;
     const ready     = orders.filter((o) => o.orderStatus === 'ready').length;
-    const [date ] = useState(() => Date.now());
+    const [selectedOrder, setSelectedOrder] = useState< Order | null >(null)
+
+
   return (
     <div className="min-h-screen bg-cream">
 
@@ -48,7 +53,9 @@ import { useState } from 'react';
       {/* Order Cards */}
       <div className="px-4 pb-6 flex flex-col gap-2">
         {orders.map((order) => (
-          <div key={order.id} className="bg-white rounded-xl border border-gray-200 p-3.5">
+          <div key={order.id} 
+               onClick={() => setSelectedOrder(order)}
+          className="bg-white rounded-xl border border-gray-200 p-3.5">
 
             {/* Order info row */}
             <div className="flex items-start justify-between gap-2">
@@ -58,7 +65,7 @@ import { useState } from 'react';
 }</p>
               </div>
               <div className="flex flex-col items-end gap-1.5 shrink-0">
-                <p className="text-xs text-gray-400">{date}</p>
+                <p className="text-xs text-gray-400">{getRelativeTime(order.timestamp)}</p>
 
                 {order.orderStatus === 'pending' && (
                   <span className="text-xs font-medium bg-amber-50 text-amber-800 border border-amber-200 rounded-full px-2.5 py-0.5">
@@ -79,27 +86,10 @@ import { useState } from 'react';
             </div>  
 
             {/* Action buttons */}
-            {order.orderStatus === 'pending' && (
-              <button
-                onClick={() => updateStatus(order.id, 'preparing')}
-                className="mt-3 w-full text-xs font-medium bg-blue-50 border border-blue-200 text-blue-800 rounded-lg py-2 hover:bg-blue-100 active:scale-95 transition-transform"
-              >
-                Mark as Preparing
-              </button>
-            )}
-
-            {order.orderStatus === 'preparing' && (
-              <button
-                onClick={() => updateStatus(order.id, 'ready')}
-                className="mt-3 w-full text-xs font-medium bg-green-50 border border-green-200 text-green-800 rounded-lg py-2 hover:bg-green-100 active:scale-95 transition-transform"
-              >
-                Mark as Ready
-              </button>
-            )}
-
           </div>
         ))}
       </div>
+      {/**End of Cards */}
 
     </div>
   );
