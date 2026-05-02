@@ -1,9 +1,9 @@
 'use client';
 
-import { useBaristaStore, Order  } from '@/store/BaristaStore';
+import { useBaristaStore, Order } from '@/store/BaristaStore';
 import { useState } from 'react';
 import { getRelativeTime } from '@/app/lib/utils';
-import { OrderItem } from '@/store/OrderListStore';
+import OrderDetailModal from './OrderDetailModal';
 
 
   export default function BaristaPage() {
@@ -13,7 +13,7 @@ import { OrderItem } from '@/store/OrderListStore';
     const preparing = orders.filter((o) => o.orderStatus === 'preparing').length;
     const ready     = orders.filter((o) => o.orderStatus === 'ready').length;
     const [selectedOrder, setSelectedOrder] = useState< Order | null >(null)
-
+    const removeOrder = useBaristaStore(state => state.removeOrder);
 
   return (
     <div className="min-h-screen bg-cream">
@@ -88,9 +88,15 @@ import { OrderItem } from '@/store/OrderListStore';
             {/* Action buttons */}
           </div>
         ))}
+        <OrderDetailModal 
+          order={selectedOrder}
+          onClose={() => setSelectedOrder(null)}
+          onUpdateStatus={updateStatus}
+          onDelete={removeOrder}
+        />
       </div>
       {/**End of Cards */}
-
+      
     </div>
   );
 }

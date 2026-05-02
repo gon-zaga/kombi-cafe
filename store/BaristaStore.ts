@@ -23,7 +23,7 @@ interface OrderState {
   orders: Order[]
   addOrder: (order: Order) => void
   updateStatus:  (id: number, status: 'pending' | 'preparing'| 'ready') => void
-  removeOrder?: (id: number) => void
+  removeOrder: (id: number) => void
 }
 
 export const useBaristaStore = create<OrderState>()(
