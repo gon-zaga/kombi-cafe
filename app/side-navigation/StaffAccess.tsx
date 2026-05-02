@@ -20,7 +20,7 @@ function StaffAccess() {
     <div className="flex flex-col items-center justify-center min-h-screen bg-cream px-4">
 
       {/* Card */}
-      <div className="flex flex-col w-full max-w-sm bg-[#F4EBD0] rounded-2xl p-8 shadow-md">
+      <div className="flex flex-col w-full max-w-sm bg-card-cream rounded-2xl p-8 shadow-md">
 
         {/* Title */}
         <span className="text-3xl font-semibold text-center mb-6">Staff Access</span>

@@ -17,10 +17,10 @@ function OrdersLists() {
     const unsub = useOrderStore.persist.onFinishHydration(() => {
       setHydrated(true);
     });
-    /*if(useOrderStore.persist.hasHydrated()) {
+    if(useOrderStore.persist.hasHydrated()) {
       setHydrated(true);
     }
-      */
+    
     return () => unsub();
   }, [])
   

@@ -1,7 +1,9 @@
 'use client'
-import Image from "next/image";
+import { useRouter } from "next/navigation";
+
 
 function CategoryBar({active,   setActive}: {active: string, setActive: (category: string) => void}) {
+  const router = useRouter();
   const categories = [
     "All",
     "Kaffee",
@@ -20,20 +22,11 @@ function CategoryBar({active,   setActive}: {active: string, setActive: (categor
       <section className="text-dark-brown">
         <hr className="border-dark-brown"/>
         <div className="w-full flex items-center">
-          <section className="flex flex-row p-1 gap-0.5 shrink-0">
-            <Image 
-              src="/search-icon.svg"
-              alt="search-bar"
-              width={32}
-              height={32}
-            />
-            <Image
-              src="/bullet-list.svg"
-              alt="bullet-list-icon"
-              width={32}
-              height={32}
-            />
-          </section>
+          <button onClick={() => router.push('/order-queue')}>
+            <section className="flex flex-col justify-center items-center p-1 gap-0.5 shrink-0">
+            <span className="text-xs">Queue Display</span>
+           </section>
+          </button>
           {/*VERTICAL DIVIDER*/}
           <div className="h-10 flex border-l border-dark-brown mx-2.5 shrink-0"></div>
           <section className="flex overflow-x-auto scrollbar-hide">

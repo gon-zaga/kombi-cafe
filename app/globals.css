@@ -3,7 +3,7 @@
 @theme {
   --color-dark-brown: #3D2B1F;
   --color-cream: #FAF3E0;
-  --color-card-cream: $F4EBD0;
+  --color-card-cream: #F4EBD0;
   --font-roboto: var(--font-roboto), ui-sans-serif, system-ui, sans-serif;
   --font-roboto-condensed: var(--font-roboto-condensed), ui-sans-serif, system-ui, sans-serif;
   --font-roboto-slab: var(--font-roboto-slab), ui-serif, Georgia, serif;
