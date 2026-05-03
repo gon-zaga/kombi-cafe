@@ -2,7 +2,9 @@
 import { useState } from "react";
 import OwnerHeader from "../ui/OwnerHeader";
 import AddItemModal from "./ui/AddItemModal";
-import AddItemButton from "./AddItemButton";
+import AddItemButton from "./ui/AddItemButton";
+import MenuItemCard from "./ui/MenuItemCard";
+import { menuItems } from "@/app/lib/data";
 export default function MenuManagement() {
 
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -14,7 +16,16 @@ export default function MenuManagement() {
 
             <AddItemModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)}/>
         </section>
+
         <hr />
+
+        <section>
+          {menuItems.map(item => (
+            <MenuItemCard key={item.itemId} item={item} name={item.itemName} category={item.category}
+            img={item.itemImg}
+            />
+          ))}
+        </section>
       </section>
   );
 }

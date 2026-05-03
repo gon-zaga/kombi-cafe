@@ -5,37 +5,37 @@ import Image from "next/image";
 import OwnerSideNav from "./OwnerSideNav";
 
 interface OwnerHeaderProps {
-  title: string 
+  title: string
 }
-function OwnerHeader({title}: OwnerHeaderProps){
-  const [currentTime, setCurrentTime] = useState(new Date());
-  const  [navOpen, setNavOpen] = useState(false);
 
-  // update every second with useEffect
+function OwnerHeader({ title }: OwnerHeaderProps) {
+  const [navOpen, setNavOpen] = useState(false);
+  const [timeString, setTimeString] = useState('');
+  const [dateString, setDateString] = useState('');
 
   useEffect(() => {
-    const interval = setInterval(() => {
-      setCurrentTime(new Date())
-    }, 1000)  // Update every second
+    const update = () => {
+      const now = new Date();
+      setTimeString(now.toLocaleTimeString('en-PH', {
+        hour: 'numeric',
+        minute: '2-digit',
+        second: '2-digit',
+        hour12: true,
+      }));
+      setDateString(now.toLocaleDateString('en-PH', {
+        month: 'short',
+        day: 'numeric',
+        year: 'numeric',
+      }));
+    };
+
+    update();
+    const interval = setInterval(update, 1000);
     return () => clearInterval(interval);
-  }, [])
+  }, []);
 
-  // format time and date then display
-  const timeString = currentTime.toLocaleTimeString('en-PH', {
-    hour: 'numeric',
-    minute: '2-digit',
-    second: '2-digit',
-    hour12:true 
-  })
-
-  const dateString = currentTime.toLocaleDateString('en-PH', {
-    month: 'short',
-    day: 'numeric',
-    year: 'numeric'
-  })
-
-  return( 
-    <section className="flex flex-col ">
+  return (
+    <section className="flex flex-col">
       <header className="flex bg-dark-brown text-white p-3 mb-8">
         <button
           onClick={() => setNavOpen(true)}
@@ -46,22 +46,21 @@ function OwnerHeader({title}: OwnerHeaderProps){
             text-[#3B1F0E] hover:bg-[#E8D9B5]
             transition-colors duration-200"
         >
-            <Image 
-              src="/white-menu.svg"
-              alt="white-menu"
-              width={32}
-              height={32}
-            
-            />
-            </button>
+          <Image
+            src="/white-menu.svg"
+            alt="white-menu"
+            width={32}
+            height={32}
+          />
+        </button>
         <div className="flex flex-col">
           <span className="font-roboto-condensed font-bold">{title}</span>
           <span>{timeString} - {dateString}</span>
         </div>
       </header>
-        <OwnerSideNav isOpen={navOpen} onClose={() => setNavOpen(false)}/>
+      <OwnerSideNav isOpen={navOpen} onClose={() => setNavOpen(false)} />
     </section>
   );
 }
 
-export default OwnerHeader
+export default OwnerHeader;
