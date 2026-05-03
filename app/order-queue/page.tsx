@@ -1,9 +1,13 @@
 'use client'
 
 import { useBaristaStore } from "@/store/BaristaStore";
+import { useEffect } from "react";
+import Image from "next/image";
+import { useRouter } from "next/navigation";
 
 export default function OrderQueue() {
   const orders = useBaristaStore(state => state.orders);
+  const router = useRouter();
 
   const preparing = orders.filter(
     (order) => order.orderStatus === 'preparing'
@@ -13,10 +17,27 @@ export default function OrderQueue() {
     (order) => order.orderStatus === 'ready'
   );
 
+  useEffect(() => {
+    // Fetch/ refresh every 3 seconds
+    const interval = setInterval(() => {
+
+    }, 3000);
+    
+    return () => clearInterval(interval);
+  }, [])
+
   return (
     <div className="min-h-screen bg-card-cream flex flex-col">
-      <header className="flex flex-row bg-dark-brown text-white font-roboto-mono p-2 justify-center mb-7">
-        ORDERS
+      <header className="flex flex-row bg-dark-brown text-white font-roboto-mono justify-between items-center p-2 mb-7">
+        <span>ORDERS</span>
+        <button className="cursor-pointer" onClick={() => router.push('/')}>
+          <Image 
+          src="/cream-close.svg"
+          alt="exit-button"
+          width={32}
+          height={32}
+          />
+        </button>
       </header>
 
       {/* Preparing Orders */}

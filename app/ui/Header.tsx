@@ -9,7 +9,7 @@ function Header() {
 
   return (
     <>
-      <header className="shrink-0 flex flex-row items-center gap-3 text-white h-18 w-full bg-[#F4EBD0] font-roboto-slab px-4 relative">
+      <header className="shrink-0 flex flex-row items-center gap-3 text-white h-18 w-full bg-card-cream font-roboto-slab px-4 relative">
 
         {/* ── Hamburger ───────────────────────────────────────────────────── */}
         <button

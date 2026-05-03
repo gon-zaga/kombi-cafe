@@ -1,16 +1,16 @@
 'use client'
 
-import Image from "next/image";
-import Link from "next/link";
-
-interface SideNavProps {
-  isOpen: boolean;
-  onClose: () => void;
+import Image from "next/image"
+import Link from "next/link"
+interface OwnerSideNavProps {
+  isOpen: boolean, 
+  onClose: () => void
 }
 
-export default function SideNav({ isOpen, onClose }: SideNavProps) {
+function OwnerSideNav({isOpen, onClose}: OwnerSideNavProps) {
   return (
-    <>
+    <section>
+      
       {/* Backdrop */}
       <div
         onClick={onClose}
@@ -52,18 +52,22 @@ export default function SideNav({ isOpen, onClose }: SideNavProps) {
         {/* Content (empty for now) */}
         <div className="flex flex-col p-6">
           {/* Put your nav links here later */}
-          <Link href="/side-navigation" className="px-4 py-2 hover:bg-[#E8D9B5]" >Staff Access</Link>
-          <Link href="/order-queue" className="px-4 py-2 hover:bg-[#E8D9B5]" >Order Queue</Link>
+          <Link href="/owner-dashboard/" className="px-4 py-2 hover:bg-[#E8D9B5]" >Dashboard</Link>
+          <Link href="/owner-dashboard/menu" className="px-4 py-2 hover:bg-[#E8D9B5]" >Menu Management</Link>
+          <Link href="/owner-dashboard/inventory" className="px-4 py-2 hover:bg-[#E8D9B5]" >Inventory</Link>
+          <Link href="/owner-dashboard/reports" className="px-4 py-2 hover:bg-[#E8D9B5]" >Sales Report</Link>
           
         </div>
 
         {/* Footer */}
         <div className="px-6 py-4 border-t border-[#C8A96E]">
           <p className="text-[10px] text-[#A0845A] text-center uppercase tracking-wider">
-            Kombi Cafe © 2025
+            Kombi Cafe © 2026
           </p>
         </div>  
       </aside>
-    </>
+    </section>
   );
 }
+
+export default OwnerSideNav

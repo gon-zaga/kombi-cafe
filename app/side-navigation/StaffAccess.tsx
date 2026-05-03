@@ -12,7 +12,7 @@ function StaffAccess() {
     if (role === "barista") {
       router.push("/barista-dashboard");
     } else if (role === "admin") {
-      router.push("/admin/dashboard");
+      router.push("/owner-dashboard");
     }
   };
 
