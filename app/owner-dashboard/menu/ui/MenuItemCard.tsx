@@ -33,7 +33,7 @@ function MenuItemCard({ item }: MenuItemCardProps) {
         </div>
 
         {/* Available Toggle */}
-        <div className="flex-shrink-0">
+        <div className="shrink-0">
           <label className="relative inline-flex items-center cursor-pointer">
             <input type="checkbox" defaultChecked className="sr-only peer" />
             {/* Track */}
