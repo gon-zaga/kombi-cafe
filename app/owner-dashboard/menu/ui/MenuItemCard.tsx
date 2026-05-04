@@ -7,9 +7,12 @@ interface MenuItemCardProps {
     category: string
     itemImg: string
   }
+
+  isAvailable: boolean
+  onToggle: (checked: boolean) => void
 }
 
-function MenuItemCard({ item }: MenuItemCardProps) {
+function MenuItemCard({ item, isAvailable, onToggle }: MenuItemCardProps) {
   return (
     <div className="bg-white rounded-lg shadow p-4 flex flex-col gap-3 hover:shadow-md transition-shadow">
       
@@ -35,7 +38,12 @@ function MenuItemCard({ item }: MenuItemCardProps) {
         {/* Available Toggle */}
         <div className="shrink-0">
           <label className="relative inline-flex items-center cursor-pointer">
-            <input type="checkbox" defaultChecked className="sr-only peer" />
+            <input 
+              type="checkbox" 
+              checked={isAvailable} 
+              onChange={(e) => onToggle(e.target.checked)}
+              className="sr-only peer" 
+            />
             {/* Track */}
             <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer-checked:bg-green-500 transition-colors">
               {/* Thumb — must be INSIDE the track div to inherit peer state */}
