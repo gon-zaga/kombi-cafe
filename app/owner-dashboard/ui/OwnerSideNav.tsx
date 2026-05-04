@@ -56,6 +56,7 @@ function OwnerSideNav({isOpen, onClose}: OwnerSideNavProps) {
           <Link href="/owner-dashboard/menu" className="px-4 py-2 hover:bg-[#E8D9B5]" >Menu Management</Link>
           <Link href="/owner-dashboard/inventory" className="px-4 py-2 hover:bg-[#E8D9B5]" >Inventory</Link>
           <Link href="/owner-dashboard/sales-report" className="px-4 py-2 hover:bg-[#E8D9B5]" >Sales Report</Link>
+          <Link href="/owner-dashboard/profile" className="px-4 py-2 hover:bg-[#E8D9B5]" >Worker Profile</Link>
           
         </div>
 

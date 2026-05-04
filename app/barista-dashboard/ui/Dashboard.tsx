@@ -3,6 +3,7 @@
 import { useBaristaStore, Order } from '@/store/BaristaStore';
 import { useState } from 'react';
 import { getRelativeTime } from '@/app/lib/utils';
+import { useRouter } from 'next/navigation';
 import OrderDetailModal from './OrderDetailModal';
 
 
@@ -14,6 +15,7 @@ import OrderDetailModal from './OrderDetailModal';
     const ready     = orders.filter((o) => o.orderStatus === 'ready').length;
     const [selectedOrder, setSelectedOrder] = useState< Order | null >(null)
     const removeOrder = useBaristaStore(state => state.removeOrder);
+    const router = useRouter();
 
   return (
     <div className="min-h-screen bg-cream">
@@ -21,7 +23,10 @@ import OrderDetailModal from './OrderDetailModal';
       {/* Header */}
       <header className="sticky top-0 z-10 bg-dark-brown border-b border-gray-200 px-4 py-3 flex items-center justify-between">
         <p className="text-sm text-white font-medium">Barista Dashboard</p>
-        <button className="text-xs text-white border border-gray-300 rounded-md px-3 py-1.5 hover:bg-gray-50">
+        <button 
+          onClick={() => router.push('/')}
+          className="text-xs text-white border border-gray-300 rounded-md px-3 py-1.5 hover:bg-white/10 transition-colors"
+        >
           Logout
         </button>
       </header>
