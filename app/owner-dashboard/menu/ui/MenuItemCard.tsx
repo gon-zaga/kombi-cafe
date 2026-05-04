@@ -10,9 +10,10 @@ interface MenuItemCardProps {
 
   isAvailable: boolean
   onToggle: (checked: boolean) => void
+  onEdit: () => void
 }
 
-function MenuItemCard({ item, isAvailable, onToggle }: MenuItemCardProps) {
+function MenuItemCard({ item, isAvailable, onToggle, onEdit }: MenuItemCardProps) {
   return (
     <div className="bg-white rounded-lg shadow p-4 flex flex-col gap-3 hover:shadow-md transition-shadow">
       
@@ -55,7 +56,10 @@ function MenuItemCard({ item, isAvailable, onToggle }: MenuItemCardProps) {
 
       {/* Bottom row: Action Buttons */}
       <div className="flex flex-row gap-2 justify-end">
-        <button className="px-3 py-1.5 text-sm font-medium text-blue-700 bg-blue-50 rounded-lg hover:bg-blue-100 transition-colors">
+        <button 
+          onClick={onEdit}
+          className="px-3 py-1.5 text-sm font-medium text-blue-700 bg-blue-50 rounded-lg hover:bg-blue-100 transition-colors"
+        >
           Edit
         </button>
         <button className="px-3 py-1.5 text-sm font-medium text-red-700 bg-red-50 rounded-lg hover:bg-red-100 transition-colors">

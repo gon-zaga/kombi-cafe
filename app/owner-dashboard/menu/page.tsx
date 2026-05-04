@@ -2,6 +2,7 @@
 import { useState } from "react";
 import OwnerHeader from "../ui/OwnerHeader";
 import AddItemModal from "./ui/AddItemModal";
+import EditItemModal from "./ui/EditItemModal";
 import AddItemButton from "./ui/AddItemButton";
 import MenuItemCard from "./ui/MenuItemCard";
 import { menuItems } from "@/app/lib/data";
@@ -9,6 +10,8 @@ import FilterBar from "./ui/FilterBar";
 export default function MenuManagement() {
 
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [editingItem, setEditingItem] = useState<typeof menuItems[0] | null>(null);
   const [selectedCategory, setSelectedCategory] = useState("All");
   const [availability, setAvailability] = useState("All");
   const [itemAvailability, setItemAvailability] = useState<Record<number, boolean>>({})
@@ -56,9 +59,23 @@ export default function MenuManagement() {
               item={item} 
               isAvailable={itemAvailability[item.itemId] ?? true}
               onToggle={(checked) => setItemAvailability(prev => ({...prev, [item.itemId]: checked}))}
+              onEdit={() => {
+                setEditingItem(item);
+                setIsEditModalOpen(true);
+              }}
             />
           ))}
         </section>
+
+        {editingItem && (
+          <EditItemModal 
+            isOpen={isEditModalOpen} 
+            onClose={() => {
+              setIsEditModalOpen(false);
+              setEditingItem(null);
+            }}
+          />
+        )}
       </section>
   );
 }
