@@ -20,7 +20,10 @@ function ConfirmOrder() {
           height={48}
         />
         <span className="font-mono text-sm tracking-widest text-dark-brown">ORDER PLACED</span>
-        <span className="text-2xl font-semibold">You&#39;re all set!</span>
+        <span className="text-2xl font-semibold">You're all set!</span>
+        <p className="text-sm text-gray-600 text-center mt-1">
+          Please verify your reference number at the counter to prepare your order
+        </p>
 
         <div className="mt-3 bg-dark-brown text-white py-4 px-8 rounded-2xl text-center w-full">
           <span className="text-sm tracking-widest font-mono">REFERENCE NUMBER</span>

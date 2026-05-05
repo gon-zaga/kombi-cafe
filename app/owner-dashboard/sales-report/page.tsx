@@ -6,8 +6,8 @@ export default function SalesReport() {
   const [dateFilter, setDateFilter] = useState("today");
 
   const salesData = {
-    totalSales: 15420.50,
-    totalOrders: 87,
+    totalSales: 10067.50,
+    totalOrders: 67,
     averageOrder: 177.25,
     topSellingItem: "Kombi Latte"
   };

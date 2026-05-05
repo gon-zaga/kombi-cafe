@@ -6,9 +6,18 @@ function StaffAccess() {
   const [role, setRole] = useState<"barista" | "admin" | null>(null);
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
+  const [error, setError] = useState("");
   const router = useRouter();
 
   const handleLogin = () => {
+    // Check credentials
+    if (username !== "user" || password !== "root") {
+      setError("Invalid username or password");
+      return;
+    }
+
+    // Clear error and proceed
+    setError("");
     if (role === "barista") {
       router.push("/barista-dashboard");
     } else if (role === "admin") {
@@ -48,6 +57,11 @@ function StaffAccess() {
         {/* Login Form */}
         {role !== null && (
           <div className="flex flex-col gap-4">
+            {error && (
+              <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-2 rounded-lg text-sm">
+                {error}
+              </div>
+            )}
             <input
               type="text"
               placeholder="Username"
@@ -64,7 +78,7 @@ function StaffAccess() {
             />
             <button
               onClick={handleLogin}
-              className="w-full py-2 mt-2 bg-dark-brown text-white font-semibold rounded-lg transition-colors"
+              className="w-full py-2 mt-2 bg-dark-brown text-white font-semibold rounded-lg transition-colors hover:bg-dark-brown/90"
             >
               Login as {role === "barista" ? "Barista" : "Admin"}
             </button>

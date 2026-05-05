@@ -44,7 +44,7 @@ function AddToOrderButton({itemId, itemName, itemImg, selectedSize, selectedAddO
             addToOrder(orderItem);
             router.push('/');
           }}>
-          Confirm Order
+          Add to Cart
         </button>
 
       </div>

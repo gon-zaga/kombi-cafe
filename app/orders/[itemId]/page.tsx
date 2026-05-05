@@ -7,7 +7,6 @@ import ItemInfo from "./_ui/ItemInfo";
 import SizeSelector from "./_ui/SizeSelector";
 import AddOns from "./_ui/AddOns";
 import AddToOrderButton from "./_ui/AddToOrderButton";
-import SpecialInstructions from "./_ui/SpecialInstructions";
 
 export default function OrderPage({ params }: { params: Promise<{ itemId: number }> }) {
 
@@ -17,11 +16,9 @@ export default function OrderPage({ params }: { params: Promise<{ itemId: number
   const [selectedAddOn, setSelectedAddOn] = useState<number[]>([]);
   const [quantity, setQuantity] = useState(1);
   const [selectedSize, setSelectedSize] = useState(item!.sizes[0]);
-  const [instructions, setInstructions] = useState("");
 
   const filteredAddOns = addOns.filter(addOn => selectedAddOn.includes(addOn.addOnsId));
   const addOnsTotal = filteredAddOns.reduce((acc, addOn) => acc + addOn.price, 0);
-  const orderTotal = ((selectedSize?.price ?? 0) + addOnsTotal) * quantity;
 
   if (!item) return null;
 
@@ -44,7 +41,6 @@ export default function OrderPage({ params }: { params: Promise<{ itemId: number
           onSelect={setSelectedSize}
         />
         <AddOns selectedAddOn={selectedAddOn} setSelectedAddOn={setSelectedAddOn} />
-        <SpecialInstructions instructions={instructions} setInstructions={setInstructions}/>
       </div>
 
       <div className="fixed bottom-0 left-0 right-0 bg-cream">
@@ -55,7 +51,7 @@ export default function OrderPage({ params }: { params: Promise<{ itemId: number
           selectedSize={selectedSize}
           selectedAddOn={selectedAddOn}
           quantity={quantity}
-          specialInstruction={instructions}
+          specialInstruction=""
         />
       </div>
     </section>
