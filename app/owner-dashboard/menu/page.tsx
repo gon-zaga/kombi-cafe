@@ -5,7 +5,7 @@ import AddItemModal from "./ui/AddItemModal";
 import EditItemModal from "./ui/EditItemModal";
 import AddItemButton from "./ui/AddItemButton";
 import MenuItemCard from "./ui/MenuItemCard";
-import { menuItems } from "@/app/lib/data";
+import { menuItems } from "@/app/lib/data"; 
 import FilterBar from "./ui/FilterBar";
 export default function MenuManagement() {
 
@@ -25,7 +25,7 @@ export default function MenuManagement() {
     
     if(availability === "Available" && !isAvailable) {
       return false;
-    }
+    } 
 
     if (availability === "Unavailable" && isAvailable) {
       return false;
