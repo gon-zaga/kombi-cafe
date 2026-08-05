@@ -27,7 +27,7 @@
           <div 
     key={addon.addOnsId}  
     onClick={() => toggleAddOn(addon.addOnsId)}
-    className={`flex items-center justify-between p-2 rounded-lg cursor-pointer bg-[#F4EBD0]
+    className={`flex items-center justify-between p-2 rounded-lg cursor-pointer bg-card-cream
     ${selectedAddOn.includes(addon.addOnsId) ? "bg-dark-brown text-white" : ""}`}>
     {/* LEFT: Image */}
     <div className="w-14 shrink-0">
