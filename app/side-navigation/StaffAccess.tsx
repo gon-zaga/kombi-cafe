@@ -9,7 +9,7 @@ function StaffAccess() {
   const [error, setError] = useState("");
   const router = useRouter();
 
-  const handleLogin = () => {
+  const handleLogin = () => { 
     // Check credentials
     if (username !== "user" || password !== "root") {
       setError("Invalid username or password");
@@ -73,7 +73,7 @@ function StaffAccess() {
               type="password"
               placeholder="Password"
               value={password}
-              onChange={(e) => setPassword(e.target.value)}
+              onChange={(e) => setPassword(e.target.value)}                     
               className="w-full px-4 py-2 rounded-lg border border-dark-brown bg-white outline-none focus:ring-2 focus:ring-amber-400"
             />
             <button
