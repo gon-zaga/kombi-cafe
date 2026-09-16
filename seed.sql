@@ -93,6 +93,10 @@ FROM (
 -- Matches on item name + category name together, so duplicate
 -- item names across categories (Hazelnut Mocha, Salted Caramel,
 -- Mixed Berries) resolve to the correct menu_items row.
+-- ==================== MENU ITEM SIZES ====================
+-- Matches on item name + category name together, so duplicate
+-- item names across categories (Hazelnut Mocha, Salted Caramel,
+-- Mixed Berries) resolve to the correct menu_items row.
 INSERT INTO menu_item_sizes (menu_item_id, size_id, price)
 SELECT menu_items.id,
   sizes.id,
@@ -206,125 +210,165 @@ FROM (
         'Dark Mocha (Java Chips)',
         'Kaffee Frappe',
         'Bulli',
-        160
+        140
       ),
-      ('Hazelnut', 'Kaffee Frappe', 'Bulli', 160),
-      ('Hazelnut Mocha', 'Kaffee Frappe', 'Bulli', 160),
-      ('Salted Caramel', 'Kaffee Frappe', 'Bulli', 160),
-      ('Oreo Coffee', 'Kaffee Frappe', 'Bulli', 160),
-      ('Dirty Matcha', 'Kaffee Frappe', 'Bulli', 160),
-      ('Kombiccino', 'Kaffee Frappe', 'Bulli', 170),
-      ('Black Tea', 'Non-Kaffee Latte', 'Kafer', 0),
-      ('Black Tea', 'Non-Kaffee Latte', 'Hippie', 0),
-      ('Black Tea', 'Non-Kaffee Latte', 'Bulli', 0),
+      ('Hazelnut', 'Kaffee Frappe', 'Bulli', 140),
+      ('Hazelnut Mocha', 'Kaffee Frappe', 'Bulli', 140),
+      ('Salted Caramel', 'Kaffee Frappe', 'Bulli', 140),
+      ('Oreo Coffee', 'Kaffee Frappe', 'Bulli', 140),
+      ('Dirty Matcha', 'Kaffee Frappe', 'Bulli', 140),
+      ('Kombiccino', 'Kaffee Frappe', 'Bulli', 140),
+      ('Black Tea', 'Non-Kaffee Latte', 'Kafer', 90),
+      ('Black Tea', 'Non-Kaffee Latte', 'Hippie', 80),
+      ('Black Tea', 'Non-Kaffee Latte', 'Bulli', 90),
       (
         'Black Tea Latte',
         'Non-Kaffee Latte',
         'Kafer',
-        0
+        90
       ),
       (
         'Black Tea Latte',
         'Non-Kaffee Latte',
         'Hippie',
-        0
+        80
       ),
       (
         'Black Tea Latte',
         'Non-Kaffee Latte',
         'Bulli',
-        0
+        90
       ),
-      ('Matcha Latte', 'Non-Kaffee Latte', 'Kafer', 0),
-      ('Matcha Latte', 'Non-Kaffee Latte', 'Hippie', 0),
-      ('Matcha Latte', 'Non-Kaffee Latte', 'Bulli', 0),
-      ('Babyccino', 'Non-Kaffee Latte', 'Kafer', 0),
-      ('Babyccino', 'Non-Kaffee Latte', 'Hippie', 0),
-      ('Babyccino', 'Non-Kaffee Latte', 'Bulli', 0),
-      ('Dark Babyccino', 'Non-Kaffee Latte', 'Kafer', 0),
+      ('Matcha Latte', 'Non-Kaffee Latte', 'Kafer', 90),
+      ('Matcha Latte', 'Non-Kaffee Latte', 'Hippie', 80),
+      ('Matcha Latte', 'Non-Kaffee Latte', 'Bulli', 90),
+      ('Babyccino', 'Non-Kaffee Latte', 'Kafer', 130),
+      ('Babyccino', 'Non-Kaffee Latte', 'Hippie', 120),
+      ('Babyccino', 'Non-Kaffee Latte', 'Bulli', 130),
+      (
+        'Dark Babyccino',
+        'Non-Kaffee Latte',
+        'Kafer',
+        130
+      ),
       (
         'Dark Babyccino',
         'Non-Kaffee Latte',
         'Hippie',
-        0
+        130
       ),
-      ('Dark Babyccino', 'Non-Kaffee Latte', 'Bulli', 0),
-      ('Strawberry Latte', 'Fruitee Latte', 'Kafer', 0),
-      ('Strawberry Latte', 'Fruitee Latte', 'Hippie', 0),
-      ('Strawberry Latte', 'Fruitee Latte', 'Bulli', 0),
-      ('Blueberry Latte', 'Fruitee Latte', 'Kafer', 0),
-      ('Blueberry Latte', 'Fruitee Latte', 'Hippie', 0),
-      ('Blueberry Latte', 'Fruitee Latte', 'Bulli', 0),
-      ('Mango Latte', 'Fruitee Latte', 'Kafer', 0),
-      ('Mango Latte', 'Fruitee Latte', 'Hippie', 0),
-      ('Mango Latte', 'Fruitee Latte', 'Bulli', 0),
-      ('Mixed Berries', 'Fruitee Latte', 'Kafer', 0),
-      ('Mixed Berries', 'Fruitee Latte', 'Hippie', 0),
-      ('Mixed Berries', 'Fruitee Latte', 'Bulli', 0),
+      (
+        'Dark Babyccino',
+        'Non-Kaffee Latte',
+        'Bulli',
+        140
+      ),
+      (
+        'Strawberry Latte',
+        'Fruitee Latte',
+        'Kafer',
+        120
+      ),
+      (
+        'Strawberry Latte',
+        'Fruitee Latte',
+        'Hippie',
+        110
+      ),
+      (
+        'Strawberry Latte',
+        'Fruitee Latte',
+        'Bulli',
+        120
+      ),
+      ('Blueberry Latte', 'Fruitee Latte', 'Kafer', 120),
+      (
+        'Blueberry Latte',
+        'Fruitee Latte',
+        'Hippie',
+        110
+      ),
+      ('Blueberry Latte', 'Fruitee Latte', 'Bulli', 120),
+      ('Mango Latte', 'Fruitee Latte', 'Kafer', 120),
+      ('Mango Latte', 'Fruitee Latte', 'Hippie', 110),
+      ('Mango Latte', 'Fruitee Latte', 'Bulli', 120),
+      ('Mixed Berries', 'Fruitee Latte', 'Kafer', 120),
+      ('Mixed Berries', 'Fruitee Latte', 'Hippie', 110),
+      ('Mixed Berries', 'Fruitee Latte', 'Bulli', 120),
       (
         'John Lemon Ginger',
         'The Beetles Juice',
         'Kafer',
-        0
+        120
       ),
       (
         'John Lemon Ginger',
         'The Beetles Juice',
         'Hippie',
-        0
+        110
       ),
       (
         'John Lemon Ginger',
         'The Beetles Juice',
         'Bulli',
-        0
+        120
       ),
       (
         'Paul Strawberry',
         'The Beetles Juice',
         'Kafer',
-        0
+        120
       ),
       (
         'Paul Strawberry',
         'The Beetles Juice',
         'Hippie',
-        0
+        110
       ),
       (
         'Paul Strawberry',
         'The Beetles Juice',
         'Bulli',
-        0
+        120
       ),
-      ('Ringo Mango', 'The Beetles Juice', 'Kafer', 0),
-      ('Ringo Mango', 'The Beetles Juice', 'Hippie', 0),
-      ('Ringo Mango', 'The Beetles Juice', 'Bulli', 0),
+      ('Ringo Mango', 'The Beetles Juice', 'Kafer', 120),
+      (
+        'Ringo Mango',
+        'The Beetles Juice',
+        'Hippie',
+        110
+      ),
+      ('Ringo Mango', 'The Beetles Juice', 'Bulli', 120),
       (
         'George Blueberry',
         'The Beetles Juice',
         'Kafer',
-        0
+        120
       ),
       (
         'George Blueberry',
         'The Beetles Juice',
         'Hippie',
-        0
+        110
       ),
       (
         'George Blueberry',
         'The Beetles Juice',
         'Bulli',
-        0
+        120
       ),
-      ('Strawberry', 'Non-Kaffee Frappe', 'Bulli', 0),
-      ('Blueberry', 'Non-Kaffee Frappe', 'Bulli', 0),
-      ('Mango', 'Non-Kaffee Frappe', 'Bulli', 0),
-      ('Mixed Berries', 'Non-Kaffee Frappe', 'Bulli', 0),
-      ('Oreo', 'Non-Kaffee Frappe', 'Bulli', 0),
-      ('Matcha', 'Non-Kaffee Frappe', 'Bulli', 0),
-      ('Java Chips', 'Non-Kaffee Frappe', 'Bulli', 0),
+      ('Strawberry', 'Non-Kaffee Frappe', 'Bulli', 120),
+      ('Blueberry', 'Non-Kaffee Frappe', 'Bulli', 120),
+      ('Mango', 'Non-Kaffee Frappe', 'Bulli', 120),
+      (
+        'Mixed Berries',
+        'Non-Kaffee Frappe',
+        'Bulli',
+        120
+      ),
+      ('Oreo', 'Non-Kaffee Frappe', 'Bulli', 120),
+      ('Matcha', 'Non-Kaffee Frappe', 'Bulli', 120),
+      ('Java Chips', 'Non-Kaffee Frappe', 'Bulli', 120),
       ('Pizza 2Pi Burger', 'Snacks', 'Regular', 190),
       ('Pizza Pi Burger', 'Snacks', 'Regular', 100),
       ('Double Grilled Cheese', 'Snacks', 'Regular', 90),
