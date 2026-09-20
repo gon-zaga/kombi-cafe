@@ -6,13 +6,15 @@ export type AddOn = {
   addOnsId: number;
   name: string;
   price: number;
+  imgUrl: string;
 };
 
 export async function GET() {
   try {
     const result = await pool.query(`
-      SELECT id AS "addOnsId", name, price
-      FROM add_ons
+      SELECT id AS "addOnsId", name, price, image_url
+      FROM add_ons 
+      WHERE is_available = true
       ORDER BY name
     `);
 
@@ -20,6 +22,7 @@ export async function GET() {
       addOnsId: row.addOnsId,
       name: row.name,
       price: Number(row.price),
+      imgUrl: row.image_url
     }));
 
     return NextResponse.json(addOns);

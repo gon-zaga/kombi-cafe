@@ -1,11 +1,11 @@
 'use client'
 import { OrderItem } from "@/store/OrderListStore";
-import { addOns } from "@/app/lib/data";
+import type { AddOn } from "@/app/api/add-ons/route"
 import Image from "next/image";
 
 interface OrderCardProps {
   order: OrderItem;
-  addOns: typeof addOns;
+  addOns: AddOn[];
   onDelete: () => void;
 }
 
