@@ -48,8 +48,9 @@ export async function GET(
       itemName: first.item_name,
       itemImg: first.item_img,
       category: first.category,
-      ingredients: [], // not joined here — matches how the list route leaves it empty
+      ingredients: [],
       sizes: rows.map((row) => ({
+        sizeId: row.size_id,
         size: row.size,
         oz: row.oz === null ? null : Number(row.oz),
         temperature: row.temperature,

@@ -38,6 +38,7 @@ export async function GET() {
     }
 
     grouped[row.item_id].sizes.push({
+      sizeId: row.size_id,
       size: row.size,
       oz: row.oz === null ? null : Number(row.oz),
       temperature: row.temperature,

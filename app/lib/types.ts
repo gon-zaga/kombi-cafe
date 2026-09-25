@@ -17,6 +17,7 @@ export type MenuItem = {
   category: string | null;
   ingredients: string[];
   sizes: {
+    sizeId: number;
     size: string;
     oz: number | null;
     temperature: string | null;

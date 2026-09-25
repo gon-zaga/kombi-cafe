@@ -1,4 +1,5 @@
 export type Size = {
+  sizeId: number;
   size: string;
   price: number;
 };
@@ -15,7 +16,7 @@ export default function SizeSelector({ sizes, selectedSize, onSelect }: SizeSele
       <section className="flex flex-col h-auto p-4 w-4/5 shrink-0 bg-[#F4EBD0] rounded-2xl shadow-lg cursor-pointer">
         {sizes.map((s) => (
           <div
-            key={s.size}
+            key={s.sizeId}
             onClick={() => onSelect(s)}
             className={`flex flex-row justify-between items-center px-3 py-2 rounded-lg
               ${selectedSize.size === s.size ? "text-white bg-dark-brown" : ""}`}
