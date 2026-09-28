@@ -4,10 +4,9 @@ interface MenuItemCardProps {
   item: {
     itemId: number
     itemName: string
-    category: string
-    itemImg: string
+    category: string | null
+    itemImg: string | null
   }
-
   isAvailable: boolean
   onToggle: (checked: boolean) => void
   onEdit: () => void
@@ -22,7 +21,7 @@ function MenuItemCard({ item, isAvailable, onToggle, onEdit }: MenuItemCardProps
         {/* Image */}
         <div className="shrink-0">
           <Image
-            src={item.itemImg}
+            src={item.itemImg ?? '/drinks/no-drink-image.svg'}
             alt={item.itemName}
             width={80}
             height={80}

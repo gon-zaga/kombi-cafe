@@ -1,82 +1,387 @@
+
 'use client'
-import { useState } from "react";
+
+// React hooks used in this component
+// useState = stores changing data
+// useEffect = runs code when something changes / when page loads
+// useCallback = keeps the fetchMenu function from being recreated unnecessarily
+import { useCallback, useEffect, useState } from "react";
+
+// Components used by this page
 import OwnerHeader from "../ui/OwnerHeader";
 import AddItemModal from "./ui/AddItemModal";
 import EditItemModal from "./ui/EditItemModal";
 import AddItemButton from "./ui/AddItemButton";
 import MenuItemCard from "./ui/MenuItemCard";
-import { menuItems } from "@/app/lib/data"; 
 import FilterBar from "./ui/FilterBar";
+
+// MenuItem is the TypeScript type that describes a menu item
+import type { MenuItem } from "@/app/lib/types";
+
+
+// Main component for managing menu items
 export default function MenuManagement() {
 
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
-  const [editingItem, setEditingItem] = useState<typeof menuItems[0] | null>(null);
-  const [selectedCategory, setSelectedCategory] = useState("All");
-  const [availability, setAvailability] = useState("All");
-  const [itemAvailability, setItemAvailability] = useState<Record<number, boolean>>({})
+  // Stores all menu items retrieved from the database/API
+  const [menuItems, setMenuItems] = useState<MenuItem[]>([]);
 
-    const filteredItems = menuItems.filter(item => {
-    if (selectedCategory !== 'All' && item.category !== selectedCategory) {
+  // Keeps track of whether the menu is still loading
+  const [loading, setLoading] = useState(true);
+
+  // Controls whether the "Add Item" modal is open
+  const [isModalOpen, setIsModalOpen] = useState(false);
+
+  // Controls whether the "Edit Item" modal is open
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+
+  // Stores the menu item currently being edited
+  // null means no item is currently selected for editing
+  const [editingItem, setEditingItem] = useState<MenuItem | null>(null);
+
+  // Stores the currently selected category filter
+  // "All" means show every category
+  const [selectedCategory, setSelectedCategory] = useState("All");
+
+  // Stores the availability filter
+  // "All" = show all
+  // "Available" = show available items
+  // "Unavailable" = show unavailable items
+  const [availability, setAvailability] = useState("All");
+
+  // Stores whether each menu item is available
+  //
+  // Example:
+  // {
+  //   1: true,
+  //   2: false,
+  //   3: true
+  // }
+  //
+  // The number is the item ID
+  // true = available
+  // false = unavailable
+  const [itemAvailability, setItemAvailability] =
+    useState<Record<number, boolean>>({});
+
+
+  // Function used to get menu items from the API
+  const fetchMenu = useCallback(async () => {
+    try {
+
+      // Send a GET request to the menu API
+      const response = await fetch('/api/menu');
+
+      // Convert the response from JSON into JavaScript data
+      const data: MenuItem[] = await response.json();
+
+      // Store the menu items in React state
+      setMenuItems(data);
+
+
+      // Create an availability object for all menu items
+      //
+      // reduce() goes through every menu item and creates an object.
+      //
+      // Example result:
+      // {
+      //   1: true,
+      //   2: true,
+      //   3: true
+      // }
+      //
+      // This initially assumes all items are available.
+      setItemAvailability(
+        data.reduce(
+          (acc, item) => ({
+            ...acc,
+            [item.itemId]: true
+          }),
+          {} as Record<number, boolean>
+        )
+      );
+
+    } catch (error) {
+
+      // If the API request fails, show the error in the console
+      console.error("Failed to fetch menu items:", error);
+
+    } finally {
+
+      // Loading is finished whether the request succeeded or failed
+      setLoading(false);
+    }
+
+  }, []);
+
+
+  // Run fetchMenu when the component first loads
+  useEffect(() => {
+    fetchMenu();
+  }, [fetchMenu]);
+
+
+  // Create a new list containing only the menu items
+  // that match the selected filters.
+  const filteredItems = menuItems.filter(item => {
+
+    // Check the category filter
+    //
+    // If the selected category is NOT "All"
+    // and the item's category does not match,
+    // remove the item from the results.
+    if (
+      selectedCategory !== 'All' &&
+      item.category !== selectedCategory
+    ) {
       return false;
     }
-    // Availabiliy Filter
-    const isAvailable = itemAvailability[item.itemId] ?? true ;
-    
-    if(availability === "Available" && !isAvailable) {
-      return false;
-    } 
 
+
+    // Get the availability status of this item
+    //
+    // If no value exists yet, assume it is available.
+    const isAvailable =
+      itemAvailability[item.itemId] ?? true;
+
+
+    // If the user selected "Available",
+    // hide items that are unavailable.
+    if (availability === "Available" && !isAvailable) {
+      return false;
+    }
+
+
+    // If the user selected "Unavailable",
+    // hide items that are available.
     if (availability === "Unavailable" && isAvailable) {
       return false;
-    }  
+    }
+
+
+    // If none of the filters removed the item,
+    // keep it in the filtered list.
     return true;
   });
 
 
-  return(
-      <section className="min-h-screen">
-        <OwnerHeader title="MENU MANAGEMENT"/>
-        <section className="px-2 flex justify-center mb-4">
-           <AddItemButton onClick={() => setIsModalOpen(true)}/>
+  // Called when the availability switch/checkbox is changed
+  const handleToggleAvailability = async (
+    itemId: number,
+    checked: boolean
+  ) => {
 
-            <AddItemModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)}/>
-        </section>
+    // Immediately update the availability on the screen
+    //
+    // This makes the UI feel faster because the user
+    // does not have to wait for the API request.
+    setItemAvailability(prev => ({
+      ...prev,
+      [itemId]: checked
+    }));
 
-        <hr />
-        {/**Filter  */}
-        <section className="flex flex-row">
-          
-          <FilterBar currentAvailbility={availability} currentCategory={selectedCategory} onAvailabilityChange={setAvailability} onCategoryChange={setSelectedCategory}/>
-        </section>
-        <hr />
 
-        {/**Item Horizontal List */}
-        <section>
-          {filteredItems.map(item => (
-            <MenuItemCard 
-              key={item.itemId} 
-              item={item} 
-              isAvailable={itemAvailability[item.itemId] ?? true}
-              onToggle={(checked) => setItemAvailability(prev => ({...prev, [item.itemId]: checked}))}
-              onEdit={() => {
-                setEditingItem(item);
-                setIsEditModalOpen(true);
-              }}
-            />
-          ))}
-        </section>
+    try {
 
-        {editingItem && (
-          <EditItemModal 
-            isOpen={isEditModalOpen} 
-            onClose={() => {
-              setIsEditModalOpen(false);
-              setEditingItem(null);
+      // Send the new availability to the backend
+      //
+      // Example:
+      // PATCH /api/menu/5
+      //
+      // This means we are updating menu item ID 5.
+      await fetch(`/api/menu/${itemId}`, {
+        method: 'PATCH',
+
+        // Tell the API that we are sending JSON
+        headers: {
+          'Content-Type': 'application/json'
+        },
+
+        // Convert the JavaScript object into JSON
+        //
+        // Example:
+        // { isAvailable: false }
+        body: JSON.stringify({
+          isAvailable: checked
+        }),
+      });
+
+    } catch (error) {
+
+      // Show an error if the API request fails
+      console.error(
+        "Failed to update availability:",
+        error
+      );
+    }
+  };
+
+
+  // If the menu is still loading,
+  // show a loading message instead of the menu.
+  if (loading) {
+    return (
+      <p className="text-center py-10 text-dark-brown">
+        Loading menu...
+      </p>
+    );
+  }
+
+
+  // The actual page UI
+  return (
+    <section className="min-h-screen">
+
+      {/* Header at the top of the menu management page */}
+      <OwnerHeader title="MENU MANAGEMENT" />
+
+
+      {/* Section containing the Add Item button and modal */}
+      <section className="px-2 flex justify-center mb-4">
+
+        {/* 
+          When the button is clicked:
+          setIsModalOpen(true)
+          -> opens the Add Item modal
+        */}
+        <AddItemButton
+          onClick={() => setIsModalOpen(true)}
+        />
+
+
+        {/* 
+          AddItemModal is the form used to create a new menu item.
+
+          isOpen:
+          Tells the modal whether it should be visible.
+
+          onClose:
+          Closes the modal.
+
+          onCreated:
+          Runs fetchMenu after an item is successfully created,
+          so the menu list gets updated.
+        */}
+        <AddItemModal
+          isOpen={isModalOpen}
+          onClose={() => setIsModalOpen(false)}
+          onCreated={fetchMenu}
+        />
+
+      </section>
+
+
+      {/* Horizontal line separating sections */}
+      <hr />
+
+
+      {/* Filter section */}
+      <section className="flex flex-row">
+
+        {/* 
+          FilterBar allows the user to choose:
+          - Category
+          - Availability
+        */}
+        <FilterBar
+          currentAvailbility={availability}
+          currentCategory={selectedCategory}
+
+          // Update the availability filter
+          onAvailabilityChange={setAvailability}
+
+          // Update the category filter
+          onCategoryChange={setSelectedCategory}
+        />
+
+      </section>
+
+
+      {/* Another horizontal line */}
+      <hr />
+
+
+      {/* Menu item list */}
+      <section>
+
+        {/*
+          map() goes through every item that passed
+          the filters and creates a MenuItemCard for it.
+        */}
+        {filteredItems.map(item => (
+
+          <MenuItemCard
+            // React needs a unique key for every item
+            key={item.itemId}
+
+            // Give the menu item information to the card
+            item={item}
+
+            // Give the card its current availability status
+            isAvailable={
+              itemAvailability[item.itemId] ?? true
+            }
+
+
+            // Called when the availability switch is changed
+            //
+            // The card gives us the new checked value.
+            // We then call handleToggleAvailability()
+            onToggle={(checked) =>
+              handleToggleAvailability(
+                item.itemId,
+                checked
+              )
+            }
+
+
+            // Called when the Edit button is clicked
+            onEdit={() => {
+
+              // Remember which item the user wants to edit
+              setEditingItem(item);
+
+              // Open the edit modal
+              setIsEditModalOpen(true);
             }}
           />
-        )}
+
+        ))}
+
       </section>
+
+
+      {/* 
+        Edit Item Modal
+
+        This modal is used when the user wants
+        to modify an existing menu item.
+      */}
+      <EditItemModal
+
+        // Controls whether the modal is visible
+        isOpen={isEditModalOpen}
+
+        // Pass the selected menu item to the modal
+        item={editingItem}
+
+
+        // What happens when the modal is closed
+        onClose={() => {
+
+          // Close the modal
+          setIsEditModalOpen(false);
+
+          // Remove the selected item
+          setEditingItem(null);
+        }}
+
+
+        // After the item is successfully updated,
+        // fetch the latest menu data again.
+        onUpdated={fetchMenu}
+      />
+
+    </section>
   );
 }
 

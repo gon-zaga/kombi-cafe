@@ -67,3 +67,52 @@ export async function GET(
     );
   }
 }
+
+export async function PATCH(
+  request: NextRequest,
+  { params }: { params: Promise<{ itemId: string }> }
+) {
+  const { itemId } = await params;
+  const id = Number(itemId);
+  if (isNaN(id)) {
+    return NextResponse.json({ error: "Invalid itemId" }, { status: 400 });
+  }
+
+  const client = await pool.connect();
+  try {
+    const body = await request.json();
+    const { name, categoryId, imageUrl, isAvailable, sizes } = body;
+
+    await client.query("BEGIN");
+
+    await client.query(
+      `UPDATE menu_items
+       SET name = COALESCE($1, name),
+           category_id = COALESCE($2, category_id),
+           image_url = COALESCE($3, image_url),
+           is_available = COALESCE($4, is_available)
+       WHERE id = $5`,
+      [name ?? null, categoryId ?? null, imageUrl ?? null, isAvailable ?? null, id]
+    );
+
+    if (Array.isArray(sizes)) {
+      await client.query(`DELETE FROM menu_item_sizes WHERE menu_item_id = $1`, [id]);
+      for (const s of sizes) {
+        await client.query(
+          `INSERT INTO menu_item_sizes (menu_item_id, size_id, price)
+           VALUES ($1, $2, $3)`,
+          [id, s.sizeId, s.price]
+        );
+      }
+    }
+
+    await client.query("COMMIT");
+    return NextResponse.json({ success: true });
+  } catch (error) {
+    await client.query("ROLLBACK");
+    console.error("Failed to update menu item:", error);
+    return NextResponse.json({ error: "Failed to update menu item" }, { status: 500 });
+  } finally {
+    client.release();
+  }
+}

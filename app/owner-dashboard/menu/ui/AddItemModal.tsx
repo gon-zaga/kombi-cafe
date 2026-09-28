@@ -1,151 +1,518 @@
+
+// This tells Next.js that this component runs in the browser
 'use client'
 
-interface AddItemModalProps {
-  isOpen: boolean
-  onClose: () => void
+import { useEffect, useState } from "react";
+
+
+// Describes what a Category object looks like
+interface Category {
+  id: number;
+  name: string;
 }
 
-function AddItemModal({ isOpen, onClose }: AddItemModalProps) {
+
+// Describes what a SizeOption object looks like
+interface SizeOption {
+  id: number;
+  label: string;
+  oz: number | null;
+  temperature: string | null;
+}
+
+
+// Describes the props that this component receives
+interface AddItemModalProps {
+  isOpen: boolean;       // Whether the modal is visible
+  onClose: () => void;   // Function to close the modal
+  onCreated: () => void; // Function called after an item is created
+}
+
+
+// Main component for the Add Item modal
+function AddItemModal({ isOpen, onClose, onCreated }: AddItemModalProps) {
+
+  // Stores the list of categories loaded from the database
+  const [categories, setCategories] = useState<Category[]>([]);
+
+  // Stores the available sizes loaded from the database
+  const [sizeOptions, setSizeOptions] = useState<SizeOption[]>([]);
+
+
+  // Stores the value entered in the Item Name field
+  const [name, setName] = useState("");
+
+  // Stores the selected category ID
+  const [categoryId, setCategoryId] = useState("");
+
+  // Stores the image URL entered by the user
+  const [imageUrl, setImageUrl] = useState("");
+
+  // Stores whether the item is available for ordering
+  const [isAvailable, setIsAvailable] = useState(true);
+
+
+  // Stores which sizes have been selected
+  // Example: { 1: true, 2: false, 3: true }
+  const [selectedSizes, setSelectedSizes] =
+    useState<Record<number, boolean>>({});
+
+
+  // Stores the price for each selected size
+  // Example: { 1: "80", 2: "90", 3: "100" }
+  const [prices, setPrices] =
+    useState<Record<number, string>>({});
+
+
+  // Tracks whether the form is currently being submitted
+  const [submitting, setSubmitting] = useState(false);
+
+  // Stores an error message to display to the user
+  const [error, setError] = useState("");
+
+
+  // useEffect runs when the component opens
+  useEffect(() => {
+
+    // Don't load the options if the modal isn't open
+    if (!isOpen) return;
+
+
+    // Function that loads categories and sizes
+    async function loadOptions() {
+      try {
+
+        // Request categories and sizes at the same time
+        const [catRes, sizeRes] = await Promise.all([
+          fetch('/api/categories'),
+          fetch('/api/sizes'),
+        ]);
+
+
+        // Convert the responses into JSON
+        // Then store them in React state
+        setCategories(await catRes.json());
+        setSizeOptions(await sizeRes.json());
+
+
+      } catch (err) {
+
+        // Show an error in the browser console if loading fails
+        console.error("Failed to load category/size options:", err);
+      }
+    }
+
+
+    // Run the function
+    loadOptions();
+
+  // Run this effect whenever isOpen changes
+  }, [isOpen]);
+
+
+  // If the modal isn't open, don't display anything
   if (!isOpen) return null;
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    // TODO: Handle form submission
+
+  // Reset all form fields back to their default values
+  const resetForm = () => {
+    setName("");
+    setCategoryId("");
+    setImageUrl("");
+    setIsAvailable(true);
+    setSelectedSizes({});
+    setPrices({});
+    setError("");
+  };
+
+
+  // Close the modal and reset the form
+  const handleClose = () => {
+    resetForm();
     onClose();
   };
 
+
+  // Select or unselect a size
+  const toggleSize = (sizeId: number) => {
+
+    // Keep the previous selected sizes
+    // and change the selected state of this size
+    setSelectedSizes(prev => ({
+      ...prev,
+      [sizeId]: !prev[sizeId]
+    }));
+  };
+
+
+  // Runs when the Add Item form is submitted
+  const handleSubmit = async (e: React.FormEvent) => {
+
+    // Prevent the browser from refreshing the page
+    e.preventDefault();
+
+    // Remove any previous error message
+    setError("");
+
+
+    // Create the list of selected sizes and their prices
+    const sizes = sizeOptions
+      .filter(s => selectedSizes[s.id])
+      .map(s => ({
+        sizeId: s.id,
+        price: Number(prices[s.id] || 0)
+      }));
+
+
+    // Check if the required information was provided
+    if (!name || !categoryId || sizes.length === 0) {
+      setError(
+        "Please fill in the item name, category, and at least one size with a price."
+      );
+      return;
+    }
+
+
+    // Tell the UI that the form is being submitted
+    setSubmitting(true);
+
+
+    try {
+
+      // Send the menu item data to the backend API
+      const response = await fetch('/api/menu', {
+
+        // Use POST because we are creating a new item
+        method: 'POST',
+
+        // Tell the server that we're sending JSON
+        headers: {
+          'Content-Type': 'application/json'
+        },
+
+        // Convert the form data into JSON
+        body: JSON.stringify({
+          name,
+
+          // Convert categoryId from a string to a number
+          categoryId: Number(categoryId),
+
+          // If there is no image URL, send undefined
+          imageUrl: imageUrl || undefined,
+
+          isAvailable,
+
+          // Send the selected sizes and prices
+          sizes,
+        }),
+      });
+
+
+      // Check if the server returned an error
+      if (!response.ok) {
+
+        // Try to get the error message from the server
+        const data = await response.json().catch(() => ({}));
+
+        // Stop and go to the catch block
+        throw new Error(
+          data.error || "Failed to create item"
+        );
+      }
+
+
+      // Tell the parent component that an item was created
+      onCreated();
+
+      // Close the modal after successful creation
+      handleClose();
+
+
+    } catch (err) {
+
+      // Show the error in the browser console
+      console.error(err);
+
+      // Display the error message to the user
+      setError(
+        err instanceof Error
+          ? err.message
+          : "Failed to create item"
+      );
+
+
+    } finally {
+
+      // Allow the form to be submitted again
+      setSubmitting(false);
+    }
+  };
+
+
+  // The visual part of the component
   return (
-    // BACKDROP
     <div
       className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4"
-      onClick={onClose}
+
+      // Clicking outside the modal closes it
+      onClick={handleClose}
     >
-      {/* MODAL CONTENT */}
+
       <div
         className="bg-white w-full max-w-md rounded-2xl shadow-2xl p-6 max-h-[90vh] overflow-y-auto"
+
+        // Prevent clicking inside the modal from closing it
         onClick={(e) => e.stopPropagation()}
       >
-        {/* Header */}
+
+        {/* Modal header */}
         <div className="flex items-center justify-between mb-4">
-          <h2 className="text-xl font-bold text-gray-900">Add New Item</h2>
+
+          <h2 className="text-xl font-bold text-gray-900">
+            Add New Item
+          </h2>
+
+          {/* X button */}
           <button
-            onClick={onClose}
+            onClick={handleClose}
             className="text-gray-400 hover:text-gray-600 text-2xl leading-none"
           >
             ×
           </button>
         </div>
 
-        {/* Form */}
-        <form onSubmit={handleSubmit} className="space-y-4">
+
+        {/* Display an error message if there is one */}
+        {error && (
+          <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-2 rounded-lg text-sm mb-4">
+            {error}
+          </div>
+        )}
+
+
+        {/* Main form */}
+        <form
+          onSubmit={handleSubmit}
+          className="space-y-4"
+        >
+
           {/* Item Name */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
               Item Name
             </label>
+
             <input
               type="text"
               required
+
+              // Show the current name value
+              value={name}
+
+              // Update name when the user types
+              onChange={(e) => setName(e.target.value)}
+
               className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500"
+
               placeholder="e.g. Kombi Latte"
             />
           </div>
+
 
           {/* Category */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
               Category
             </label>
+
             <select
               required
+
+              // Show the currently selected category
+              value={categoryId}
+
+              // Update category when the user selects one
+              onChange={(e) => setCategoryId(e.target.value)}
+
               className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500"
             >
-              <option value="">Select a category</option>
-              <option value="1">Coffee</option>
-              <option value="2">Matcha</option>
-              <option value="3">Fruit Tea</option>
-              <option value="4">Milk Tea</option>
-              <option value="5">Smoothie</option>
-              <option value="6">Pastry</option>
-              <option value="7">Snacks</option>
+
+              <option value="">
+                Select a category
+              </option>
+
+              {/* Create an option for every category */}
+              {categories.map((c) => (
+                <option
+                  key={c.id}
+                  value={c.id}
+                >
+                  {c.name}
+                </option>
+              ))}
+
             </select>
           </div>
+
 
           {/* Image URL */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
               Image URL
             </label>
+
             <input
               type="text"
-              required
+
+              // Display the current image URL
+              value={imageUrl}
+
+              // Update image URL when the user types
+              onChange={(e) => setImageUrl(e.target.value)}
+
               className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500"
+
               placeholder="/drinks/item-name.jpg"
             />
           </div>
 
-          {/* Available Sizes */}
+
+          {/* Sizes and Prices */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
-              Available Sizes
+              Available Sizes & Prices
             </label>
+
             <div className="space-y-2">
-              <label className="flex items-center">
-                <input
-                  type="checkbox"
-                  className="w-4 h-4 text-amber-600 border-gray-300 rounded focus:ring-amber-500"
-                />
-                <span className="ml-2 text-sm text-gray-700">Kafer (12oz Hot)</span>
-              </label>
-              <label className="flex items-center">
-                <input
-                  type="checkbox"
-                  className="w-4 h-4 text-amber-600 border-gray-300 rounded focus:ring-amber-500"
-                />
-                <span className="ml-2 text-sm text-gray-700">Hippie (16oz Iced)</span>
-              </label>
-              <label className="flex items-center">
-                <input
-                  type="checkbox"
-                  className="w-4 h-4 text-amber-600 border-gray-300 rounded focus:ring-amber-500"
-                />
-                <span className="ml-2 text-sm text-gray-700">Bulli (22oz Iced)</span>
-              </label>
+
+              {/* Create a row for every available size */}
+              {sizeOptions.map((s) => (
+
+                <div
+                  key={s.id}
+                  className="flex items-center gap-2"
+                >
+
+                  {/* Checkbox for selecting the size */}
+                  <input
+                    type="checkbox"
+
+                    // Check if this size is selected
+                    checked={!!selectedSizes[s.id]}
+
+                    // Select/unselect the size
+                    onChange={() => toggleSize(s.id)}
+
+                    className="w-4 h-4 text-amber-600 border-gray-300 rounded focus:ring-amber-500"
+                  />
+
+
+                  {/* Display size information */}
+                  <span className="text-sm text-gray-700 w-32">
+                    {s.label}
+                    {s.oz
+                      ? ` (${s.oz}oz ${s.temperature ?? ''})`
+                      : ''}
+                  </span>
+
+
+                  {/* Only show price input if the size is selected */}
+                  {selectedSizes[s.id] && (
+
+                    <input
+                      type="number"
+                      min="0"
+                      step="0.01"
+
+                      // Show the price for this size
+                      value={prices[s.id] ?? ''}
+
+                      // Update the price when the user types
+                      onChange={(e) =>
+                        setPrices(prev => ({
+                          ...prev,
+                          [s.id]: e.target.value
+                        }))
+                      }
+
+                      placeholder="Price"
+
+                      className="flex-1 px-2 py-1 border border-gray-300 rounded-lg text-sm"
+                    />
+                  )}
+
+                </div>
+              ))}
+
             </div>
           </div>
 
-          {/* Available Toggle */}
+
+          {/* Available for ordering checkbox */}
           <div>
             <label className="flex items-center">
+
               <input
                 type="checkbox"
-                defaultChecked
+
+                // Checked if the item is available
+                checked={isAvailable}
+
+                // Update availability when clicked
+                onChange={(e) =>
+                  setIsAvailable(e.target.checked)
+                }
+
                 className="w-4 h-4 text-amber-600 border-gray-300 rounded focus:ring-amber-500"
               />
-              <span className="ml-2 text-sm text-gray-700">Available for ordering</span>
+
+              <span className="ml-2 text-sm text-gray-700">
+                Available for ordering
+              </span>
+
             </label>
           </div>
 
-          {/* Action Buttons */}
+
+          {/* Cancel and Add Item buttons */}
           <div className="flex gap-2 pt-4">
+
+            {/* Cancel button */}
             <button
               type="button"
-              onClick={onClose}
+              onClick={handleClose}
               className="flex-1 px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors"
             >
               Cancel
             </button>
+
+
+            {/* Submit button */}
             <button
               type="submit"
-              className="flex-1 px-4 py-2 text-sm font-medium text-white bg-amber-600 rounded-lg hover:bg-amber-700 transition-colors"
+
+              // Disable the button while submitting
+              disabled={submitting}
+
+              className="flex-1 px-4 py-2 text-sm font-medium text-white bg-amber-600 rounded-lg hover:bg-amber-700 transition-colors disabled:opacity-50"
             >
-              Add Item
+
+              {/* Change button text while submitting */}
+              {submitting
+                ? "Adding..."
+                : "Add Item"}
+
             </button>
+
           </div>
+
         </form>
       </div>
     </div>
   );
 }
 
-export default AddItemModal
+
+// Make this component available for other files to import
+export default AddItemModal;
+
