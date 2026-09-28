@@ -7,7 +7,8 @@
 import { useEffect, useState } from "react";
 
 // Import the Zustand store that contains order information
-import { useBaristaStore } from "@/store/BaristaStore";
+
+import { OrderSummary } from "@/app/lib/types";
 
 
 // Component that displays statistics
@@ -17,8 +18,12 @@ function StatsCard() {
   //
   // state => state.orders means:
   // "Get the orders property from the store."
-  const orders = useBaristaStore(state => state.orders);
-
+  
+  const [orders, setOrders] = useState<OrderSummary[]>([]);
+useEffect(() => {
+  fetch('/api/orders?range=today').then(r => r.json()).then(setOrders).catch(console.error);
+}, []);
+  
 
   // Stores the number of ingredients that are low in stock
   // The starting value is 0.
@@ -88,9 +93,7 @@ function StatsCard() {
   // whose status is "ready".
   //
   // .length tells us how many were found.
-  const processed = orders.filter(
-    o => o.orderStatus === 'ready'
-  ).length;
+const processed = orders.filter(o => o.status === 'ready').length;
 
 
   // ==========================================
@@ -104,10 +107,7 @@ function StatsCard() {
   // o.totalPrice = price of the current order
   //
   // The 0 is the starting total.
-  const sales = orders.reduce(
-    (acc, o) => acc + o.totalPrice,
-    0
-  );
+const sales = orders.reduce((acc, o) => acc + o.total, 0);
 
 
   // ==========================================

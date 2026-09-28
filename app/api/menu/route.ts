@@ -1,26 +1,23 @@
 import pool from "@/app/lib/db";
 import { MenuRow, MenuItem } from "@/app/lib/types";
 
-export async function GET() {
+export async function GET(request: Request) {
+  const all = new URL(request.url).searchParams.get("all") === "true";
+
   const result = await pool.query(`
-    -- your SQL query goes here
     SELECT
-    mi.id AS item_id,
-    mi.name AS item_name,
-    mi.image_url AS item_img,
-    c.name AS category,
-    s.id AS size_id,
-    s.label AS size,
-    s.oz AS oz,
-    s.temperature AS temperature,
-    mis.price AS price
+      mi.id AS item_id, mi.name AS item_name, mi.image_url AS item_img,
+      mi.is_available AS is_available,
+      c.name AS category,
+      s.id AS size_id, s.label AS size, s.oz AS oz, s.temperature AS temperature,
+      mis.price AS price
     FROM menu_items AS mi
     JOIN categories AS c ON mi.category_id = c.id
     JOIN menu_item_sizes AS mis ON mi.id = mis.menu_item_id
     JOIN sizes AS s ON mis.size_id = s.id
-    WHERE mi.is_available = TRUE
-    
-  `);
+    WHERE ($1::boolean OR mi.is_available = TRUE)
+    ORDER BY mi.id, s.id
+  `, [all]);
   const rows: MenuRow[] = result.rows;
 
   const grouped: Record<number, MenuItem> = {};
@@ -34,6 +31,7 @@ export async function GET() {
         category: row.category,
         ingredients: [],
         sizes: [],
+        isAvailable: row.is_available,
       };
     }
 

@@ -8,6 +8,7 @@ export type MenuRow = {
   oz: number | null;
   temperature: string | null;
   price: number;
+  is_available: boolean;
 }
 
 export type MenuItem = {
@@ -22,5 +23,15 @@ export type MenuItem = {
     oz: number | null;
     temperature: string | null;
     price: number;
-  }[]
+  }[];
+  isAvailable: boolean;
+}
+
+export type OrderSummary = {
+  id: number;
+  orderReference: string;
+  status: 'pending' | 'preparing' | 'ready';
+  createdAt: string;
+  total: number;
+  items: { name: string; size: string | null; quantity: number; unitPrice: number; addOns: string[] }[];
 }

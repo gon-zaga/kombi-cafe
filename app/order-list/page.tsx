@@ -13,7 +13,13 @@ import type { AddOn } from "@/app/api/add-ons/route";
 function OrdersLists() {
   const [addOns, setAddOns] = useState<AddOn[]>([]);
   const { orders, removeOrder } = useOrderStore();
-  const grandtotal = orders.reduce((acc, order) => acc + order.selectedSize.price * order.quantity, 0);
+  // Cart grand total including add-ons, matching the server's calculation
+const grandtotal = orders.reduce((acc, order) => {
+  const addOnTotal = addOns
+    .filter(a => order.selectedAddOn.includes(a.addOnsId))
+    .reduce((sum, a) => sum + a.price, 0);
+  return acc + (order.selectedSize.price + addOnTotal) * order.quantity;
+}, 0);
   const [hydrated, setHydrated] = useState(false);
 
   // Waits for Zustand's persisted store to finish loading from localStorage before rendering,

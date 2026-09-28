@@ -14,6 +14,147 @@ interface PlaceOrderPayload {
   }[];
 }
 
+// app/api/orders/route.ts
+
+// GET is used to retrieve orders from the database.
+export async function GET(request: Request) {
+
+  // Get the query parameters from the URL.
+  // Example: /api/orders?range=today&status=pending
+  const params = new URL(request.url).searchParams;
+
+  // Get the "range" parameter.
+  // If no range is provided, use "today" by default.
+  const range = params.get("range") ?? "today";
+
+  // Get the "status" parameter.
+  // It can be something like "pending", "ready", etc.
+  // If no status is provided, this will be null.
+  const status = params.get("status");
+
+  // This SQL expression gets today's date using the Philippines timezone.
+  // It is used when filtering today's orders.
+  const today = `(NOW() AT TIME ZONE 'Asia/Manila')::date`;
+
+  // Decide which SQL condition should be used for the selected range.
+  const rangeSql =
+    // If range is "week", get orders from the last 7 days.
+    range === "week" ? `o.order_date >= ${today} - 7`
+
+    // If range is "month", get orders from the last month.
+    : range === "month" ? `o.order_date >= ${today} - INTERVAL '1 month'`
+
+    // If range is "all", don't filter by date.
+    : range === "all" ? `TRUE`
+
+    // Otherwise, only get orders from today.
+    : `o.order_date = ${today}`;
+
+  try {
+
+    // Send the SQL query to PostgreSQL.
+    const result = await pool.query(`
+      SELECT
+        o.id,
+        o.daily_number,
+        o.status,
+        o.created_at,
+        o.total,
+
+        
+        COALESCE(
+          json_agg(
+            json_build_object(
+              'name', mi.name,
+              'size', s.label,
+              'quantity', oi.quantity,
+              'unitPrice', oi.unit_price,
+
+              
+              'addOns',
+              (
+                SELECT COALESCE(
+                  json_agg(a.name),
+                  '[]'::json
+                )
+                FROM order_item_addons oia
+                JOIN add_ons a ON a.id = oia.add_on_id
+                WHERE oia.order_item_id = oi.id
+              )
+            )
+            ORDER BY oi.id
+          )
+
+          FILTER (WHERE oi.id IS NOT NULL),
+
+          '[]'::json
+        ) AS items
+
+      FROM orders o
+
+      LEFT JOIN order_items oi ON oi.order_id = o.id
+
+      LEFT JOIN menu_items mi ON mi.id = oi.menu_item_id
+
+      LEFT JOIN sizes s ON s.id = oi.size_id
+
+      WHERE ${rangeSql}
+        AND ($1::text IS NULL OR o.status = $1)
+
+      GROUP BY o.id
+
+      ORDER BY o.created_at DESC
+
+    `, [
+      // $1 in the SQL query receives the value of "status".
+      status
+    ]);
+
+    // Convert the database rows into the format expected by the frontend.
+    return NextResponse.json(
+      result.rows.map(r => ({
+
+        // Database order ID.
+        id: r.id,
+
+        // Convert the daily number into a 4-digit string.
+        // Example: 7 becomes "0007".
+        orderReference: String(r.daily_number).padStart(4, '0'),
+
+        // Order status such as pending, ready, etc.
+        status: r.status,
+
+        // When the order was created.
+        createdAt: r.created_at,
+
+        // Convert the database total into a JavaScript number.
+        total: Number(r.total),
+
+        // Convert each item's unitPrice from a database value
+        // into a JavaScript number.
+        items: r.items.map(
+          (i: { unitPrice: string | number }) => ({
+            ...i,
+            unitPrice: Number(i.unitPrice)
+          })
+        ),
+      }))
+    );
+
+  } catch (error) {
+
+    // If something goes wrong, show the error in the server console.
+    console.error("Failed to fetch orders:", error);
+
+    // Send an error response back to the frontend.
+    return NextResponse.json(
+      { error: "Failed to fetch orders" },
+      { status: 500 }
+    );
+  }
+}
+
+
 export async function POST(request: Request) {
   try {
     const body: PlaceOrderPayload = await request.json();

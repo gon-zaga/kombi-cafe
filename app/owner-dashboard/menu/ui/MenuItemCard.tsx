@@ -10,9 +10,12 @@ interface MenuItemCardProps {
   isAvailable: boolean
   onToggle: (checked: boolean) => void
   onEdit: () => void
+  onDelete: () =>  void
 }
 
-function MenuItemCard({ item, isAvailable, onToggle, onEdit }: MenuItemCardProps) {
+
+
+function MenuItemCard({ item, isAvailable, onToggle, onEdit, onDelete }: MenuItemCardProps) {
   return (
     <div className="bg-white rounded-lg shadow p-4 flex flex-col gap-3 hover:shadow-md transition-shadow">
       
@@ -37,18 +40,11 @@ function MenuItemCard({ item, isAvailable, onToggle, onEdit }: MenuItemCardProps
 
         {/* Available Toggle */}
         <div className="shrink-0">
-          <label className="relative inline-flex items-center cursor-pointer">
-            <input 
-              type="checkbox" 
-              checked={isAvailable} 
-              onChange={(e) => onToggle(e.target.checked)}
-              className="sr-only peer" 
-            />
-            {/* Track */}
-            <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer-checked:bg-green-500 transition-colors">
-              {/* Thumb — must be INSIDE the track div to inherit peer state */}
+         <label className="relative inline-flex items-center cursor-pointer">
+              <input type="checkbox" checked={isAvailable}
+                onChange={(e) => onToggle(e.target.checked)} className="sr-only peer" />
+              <div className="w-11 h-6 bg-gray-200 rounded-full peer-checked:bg-green-500 transition-colors" />
               <div className="absolute top-0.5 left-0.5 bg-white w-5 h-5 rounded-full transition-transform peer-checked:translate-x-5" />
-            </div>
           </label>
         </div>
       </div>
@@ -61,7 +57,7 @@ function MenuItemCard({ item, isAvailable, onToggle, onEdit }: MenuItemCardProps
         >
           Edit
         </button>
-        <button className="px-3 py-1.5 text-sm font-medium text-red-700 bg-red-50 rounded-lg hover:bg-red-100 transition-colors">
+        <button onClick={onDelete} className="px-3 py-1.5 text-sm font-medium text-red-700 bg-red-50 rounded-lg hover:bg-red-100 transition-colors">
           Delete
         </button>
       </div>

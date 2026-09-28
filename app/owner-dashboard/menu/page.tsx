@@ -65,53 +65,18 @@ export default function MenuManagement() {
 
 
   // Function used to get menu items from the API
-  const fetchMenu = useCallback(async () => {
-    try {
-
-      // Send a GET request to the menu API
-      const response = await fetch('/api/menu');
-
-      // Convert the response from JSON into JavaScript data
-      const data: MenuItem[] = await response.json();
-
-      // Store the menu items in React state
-      setMenuItems(data);
-
-
-      // Create an availability object for all menu items
-      //
-      // reduce() goes through every menu item and creates an object.
-      //
-      // Example result:
-      // {
-      //   1: true,
-      //   2: true,
-      //   3: true
-      // }
-      //
-      // This initially assumes all items are available.
-      setItemAvailability(
-        data.reduce(
-          (acc, item) => ({
-            ...acc,
-            [item.itemId]: true
-          }),
-          {} as Record<number, boolean>
-        )
-      );
-
-    } catch (error) {
-
-      // If the API request fails, show the error in the console
-      console.error("Failed to fetch menu items:", error);
-
-    } finally {
-
-      // Loading is finished whether the request succeeded or failed
-      setLoading(false);
-    }
-
-  }, []);
+const fetchMenu = useCallback(async () => {
+  try {
+    const response = await fetch('/api/menu?all=true');
+    const data: MenuItem[] = await response.json();
+    setMenuItems(data);
+    setItemAvailability(Object.fromEntries(data.map(i => [i.itemId, i.isAvailable])));
+  } catch (error) {
+    console.error("Failed to fetch menu items:", error);
+  } finally {
+    setLoading(false);
+  }
+}, []);
 
 
   // Run fetchMenu when the component first loads
@@ -165,56 +130,32 @@ export default function MenuManagement() {
 
 
   // Called when the availability switch/checkbox is changed
-  const handleToggleAvailability = async (
-    itemId: number,
-    checked: boolean
-  ) => {
+  const handleToggleAvailability = async (itemId: number, checked: boolean) => {
+  setItemAvailability(prev => ({ ...prev, [itemId]: checked })); // optimistic
+  try {
+    const res = await fetch(`/api/menu/${itemId}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ isAvailable: checked }),
+    });
+    if (!res.ok) throw new Error("PATCH failed");
+  } catch (error) {
+    console.error("Failed to update availability:", error);
+    setItemAvailability(prev => ({ ...prev, [itemId]: !checked })); // revert
+  }
+};
 
-    // Immediately update the availability on the screen
-    //
-    // This makes the UI feel faster because the user
-    // does not have to wait for the API request.
-    setItemAvailability(prev => ({
-      ...prev,
-      [itemId]: checked
-    }));
-
-
-    try {
-
-      // Send the new availability to the backend
-      //
-      // Example:
-      // PATCH /api/menu/5
-      //
-      // This means we are updating menu item ID 5.
-      await fetch(`/api/menu/${itemId}`, {
-        method: 'PATCH',
-
-        // Tell the API that we are sending JSON
-        headers: {
-          'Content-Type': 'application/json'
-        },
-
-        // Convert the JavaScript object into JSON
-        //
-        // Example:
-        // { isAvailable: false }
-        body: JSON.stringify({
-          isAvailable: checked
-        }),
-      });
-
-    } catch (error) {
-
-      // Show an error if the API request fails
-      console.error(
-        "Failed to update availability:",
-        error
-      );
-    }
-  };
-
+// Owner menu page: confirm, DELETE, then refetch; surfaces the 409 message
+const handleDelete = async (item: MenuItem) => {
+  if (!window.confirm(`Delete "${item.itemName}"?`)) return;
+  const res = await fetch(`/api/menu/${item.itemId}`, { method: 'DELETE' });
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({}));
+    window.alert(data.error || "Failed to delete item");
+    return;
+  }
+  fetchMenu();
+}
 
   // If the menu is still loading,
   // show a loading message instead of the menu.
@@ -320,7 +261,7 @@ export default function MenuManagement() {
             isAvailable={
               itemAvailability[item.itemId] ?? true
             }
-
+            
 
             // Called when the availability switch is changed
             //
@@ -343,6 +284,8 @@ export default function MenuManagement() {
               // Open the edit modal
               setIsEditModalOpen(true);
             }}
+            
+            onDelete={ () => handleDelete(item)}
           />
 
         ))}

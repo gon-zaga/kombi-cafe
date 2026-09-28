@@ -29,31 +29,27 @@ export async function PATCH(
     );
   }
 
+  
+
   try {
     // Get the data sent by the client
     const body = await request.json();
 
     // Get the values we want to update
-    const { name, unit, stockQty, restockThreshold } = body;
+    const { name, unit, stockQty, restockThreshold, stockDelta } = body;
 
     // Update the ingredient in the database
-    const result = await pool.query(
-      `UPDATE ingredients 
-       SET name = COALESCE($1, name), 
-           unit = COALESCE($2, unit), 
-           stock_qty = COALESCE($3, stock_qty), 
-           restock_threshold = COALESCE($4, restock_threshold), 
-           updated_at = CURRENT_TIMESTAMP 
-
-       -- Only update the ingredient with this ID
-       WHERE id = $5 
-
-       -- Return the updated ingredient
-       RETURNING id, name, unit, stock_qty, restock_threshold`,
-
-      // Values that replace $1, $2, $3, $4, and $5
-      [name ?? null, unit ?? null, stockQty ?? null, restockThreshold ?? null, ingredientId]
-    );
+const result = await pool.query(
+  `UPDATE ingredients
+   SET name = COALESCE($1, name),
+       unit = COALESCE($2, unit),
+       stock_qty = COALESCE($3, stock_qty) + COALESCE($6, 0),
+       restock_threshold = COALESCE($4, restock_threshold),
+       updated_at = CURRENT_TIMESTAMP
+   WHERE id = $5
+   RETURNING id, name, unit, stock_qty, restock_threshold`,
+  [name ?? null, unit ?? null, stockQty ?? null, restockThreshold ?? null, ingredientId, stockDelta ?? null]
+);
 
 
     // If no rows were updated, the ingredient doesn't exist
@@ -113,6 +109,8 @@ export async function DELETE(
       { status: 400 }
     );
   }
+
+  
 
 
   try {

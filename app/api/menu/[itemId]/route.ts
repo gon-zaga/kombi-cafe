@@ -56,6 +56,7 @@ export async function GET(
         temperature: row.temperature,
         price: Number(row.price),
       })),
+      isAvailable: first.is_available
     };
 
     return NextResponse.json(item);
@@ -115,4 +116,97 @@ export async function PATCH(
   } finally {
     client.release();
   }
+
+  
 }
+
+
+// app/api/menu/[itemId]/route.ts
+
+// DELETE removes one menu item from the database.
+// If past orders still reference the item,
+// PostgreSQL will return a foreign key error.
+
+export async function DELETE(
+  request: NextRequest,
+  { params }: { params: Promise<{ itemId: string }> }
+) {
+  // Get the itemId from the URL.
+  //
+  // Example:
+  // /api/menu/5
+  //
+  // itemId = "5"
+  const { itemId } = await params;
+
+  // Convert the itemId from a string to a number.
+  //
+  // "5" → 5
+  const id = Number(itemId);
+
+  // Check if the ID is a valid number.
+  if (isNaN(id)) {
+    return NextResponse.json(
+      { error: "Invalid itemId" },
+      { status: 400 }
+    );
+  }
+
+  try {
+    // Delete the menu item with the matching ID.
+    //
+    // $1 is replaced by the value inside [id].
+    const result = await pool.query(
+      `DELETE FROM menu_items WHERE id = $1`,
+      [id]
+    );
+
+    // rowCount tells us how many rows were deleted.
+    //
+    // If it is 0, no menu item with that ID exists.
+    if (result.rowCount === 0) {
+      return NextResponse.json(
+        { error: "Item not found" },
+        { status: 404 }
+      );
+    }
+
+    // The item was successfully deleted.
+    return NextResponse.json({
+      success: true
+    });
+
+  } catch (error) {
+
+    // PostgreSQL error code 23503 means
+    // a foreign key constraint was violated.
+    //
+    // This can happen when an old order still
+    // references this menu item.
+    if ((error as { code?: string }).code === '23503') {
+
+      // Return HTTP 409 Conflict.
+      return NextResponse.json(
+        {
+          error: "This item has past orders. Mark it unavailable instead."
+        },
+        {
+          status: 409
+        }
+      );
+    }
+
+    // Print unexpected errors in the server console.
+    console.error(
+      "Failed to delete menu item:",
+      error
+    );
+
+    // Return a general server error.
+    return NextResponse.json(
+      { error: "Failed to delete menu item" },
+      { status: 500 }
+    );
+  }
+}
+
