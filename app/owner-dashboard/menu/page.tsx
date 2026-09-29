@@ -67,9 +67,10 @@ export default function MenuManagement() {
   // Function used to get menu items from the API
 const fetchMenu = useCallback(async () => {
   try {
-    const response = await fetch('/api/menu?all=true');
-    const data: MenuItem[] = await response.json();
-    setMenuItems(data);
+      const response = await fetch('/api/menu?all=true');
+      const data: MenuItem[] = await response.json();
+      setMenuItems(data);
+
     setItemAvailability(Object.fromEntries(data.map(i => [i.itemId, i.isAvailable])));
   } catch (error) {
     console.error("Failed to fetch menu items:", error);
@@ -232,7 +233,7 @@ const handleDelete = async (item: MenuItem) => {
 
           // Update the category filter
           onCategoryChange={setSelectedCategory}
-        />
+        />  
 
       </section>
 

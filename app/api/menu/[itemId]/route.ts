@@ -21,6 +21,7 @@ export async function GET(
         mi.id AS item_id,
         mi.name AS item_name,
         mi.image_url AS item_img,
+        mi.is_available AS is_available,
         c.name AS category,
         s.id AS size_id,
         s.label AS size,
@@ -32,6 +33,7 @@ export async function GET(
       JOIN menu_item_sizes AS mis ON mi.id = mis.menu_item_id
       JOIN sizes AS s ON mis.size_id = s.id
       WHERE mi.id = $1 AND mi.is_available = TRUE
+      ORDER BY s.id;
       `,
       [id]
     );
@@ -48,6 +50,7 @@ export async function GET(
       itemName: first.item_name,
       itemImg: first.item_img,
       category: first.category,
+      isAvailable: first.is_available,
       ingredients: [],
       sizes: rows.map((row) => ({
         sizeId: row.size_id,
@@ -56,7 +59,6 @@ export async function GET(
         temperature: row.temperature,
         price: Number(row.price),
       })),
-      isAvailable: first.is_available
     };
 
     return NextResponse.json(item);

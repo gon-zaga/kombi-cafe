@@ -3,12 +3,12 @@ export type MenuRow = {
   item_name: string;
   item_img: string | null;
   category: string | null;
+  is_available: boolean;
   size_id: number;
   size: string;
   oz: number | null;
   temperature: string | null;
   price: number;
-  is_available: boolean;
 }
 
 export type MenuItem = {
@@ -16,6 +16,7 @@ export type MenuItem = {
   itemName: string;
   itemImg: string | null;
   category: string | null;
+  isAvailable: boolean;
   ingredients: string[];
   sizes: {
     sizeId: number;
@@ -23,8 +24,7 @@ export type MenuItem = {
     oz: number | null;
     temperature: string | null;
     price: number;
-  }[];
-  isAvailable: boolean;
+  }[]
 }
 
 export type OrderSummary = {
@@ -33,5 +33,11 @@ export type OrderSummary = {
   status: 'pending' | 'preparing' | 'ready';
   createdAt: string;
   total: number;
-  items: { name: string; size: string | null; quantity: number; unitPrice: number; addOns: string[] }[];
+  items: {
+    name: string;
+    size: string;
+    quantity: number;
+    unitPrice: number;
+    addOns: string[];
+  }[];
 }

@@ -1,15 +1,23 @@
 import pool from "@/app/lib/db";
 import { MenuRow, MenuItem } from "@/app/lib/types";
 
+// Returns menu items grouped with their sizes; ?all=true includes unavailable items (owner view)
 export async function GET(request: Request) {
   const all = new URL(request.url).searchParams.get("all") === "true";
 
-  const result = await pool.query(`
+  // $1 is true for the owner view, so the availability check is skipped
+  const result = await pool.query(
+    `
     SELECT
-      mi.id AS item_id, mi.name AS item_name, mi.image_url AS item_img,
+      mi.id AS item_id,
+      mi.name AS item_name,
+      mi.image_url AS item_img,
       mi.is_available AS is_available,
       c.name AS category,
-      s.id AS size_id, s.label AS size, s.oz AS oz, s.temperature AS temperature,
+      s.id AS size_id,
+      s.label AS size,
+      s.oz AS oz,
+      s.temperature AS temperature,
       mis.price AS price
     FROM menu_items AS mi
     JOIN categories AS c ON mi.category_id = c.id
@@ -17,7 +25,9 @@ export async function GET(request: Request) {
     JOIN sizes AS s ON mis.size_id = s.id
     WHERE ($1::boolean OR mi.is_available = TRUE)
     ORDER BY mi.id, s.id
-  `, [all]);
+    `,
+    [all]
+  );
   const rows: MenuRow[] = result.rows;
 
   const grouped: Record<number, MenuItem> = {};
@@ -29,9 +39,9 @@ export async function GET(request: Request) {
         itemName: row.item_name,
         itemImg: row.item_img,
         category: row.category,
+        isAvailable: row.is_available,
         ingredients: [],
         sizes: [],
-        isAvailable: row.is_available,
       };
     }
 
@@ -44,9 +54,7 @@ export async function GET(request: Request) {
     });
   }
 
-  const menuItems: MenuItem[] = Object.values(grouped);
-
-  return Response.json(menuItems);
+  return Response.json(Object.values(grouped));
 }
 
 
