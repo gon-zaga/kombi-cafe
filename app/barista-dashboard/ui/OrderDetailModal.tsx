@@ -1,6 +1,7 @@
 'use client'
 
 // Detail overlay for one barista order; status buttons call the parent PATCH handler
+import { useState } from "react";
 import { getRelativeTime } from "@/app/lib/utils";
 import type { OrderSummary } from "@/app/lib/types";
 
@@ -11,11 +12,22 @@ interface OrderDetailModalProps {
 }
 
 function OrderDetailModal({ order, onClose, onUpdateStatus }: OrderDetailModalProps) {
+  // Reverting is a correction, not routine flow, so the button turns into an
+  // in-app confirm first. Kept in-component so no native dialog is used.
+  const [confirmingRevert, setConfirmingRevert] = useState(false);
+
   if (!order) return null;
 
+  // Only 'ready' ends the order's turn, so the parent auto-advances to the next
+  // order. 'preparing' keeps this card open on the same order.
   const handleUpdateStatus = (status: 'pending' | 'preparing' | 'ready') => {
+    if (status === 'ready') onClose();
     onUpdateStatus(order.id, status);
-    onClose();
+  };
+
+  const handleRevert = () => {
+    onUpdateStatus(order.id, 'preparing');
+    setConfirmingRevert(false);
   };
 
   return (
@@ -119,6 +131,15 @@ function OrderDetailModal({ order, onClose, onUpdateStatus }: OrderDetailModalPr
             </button>
           )}
 
+          {order.status === 'ready' && (
+            <button
+              onClick={() => setConfirmingRevert(true)}
+              className="w-full text-sm font-medium bg-amber-50 border border-amber-200 text-amber-800 rounded-lg py-3 hover:bg-amber-100 active:scale-95 transition-transform"
+            >
+              Move Back to Preparing
+            </button>
+          )}
+
           <button
             onClick={onClose}
             className="w-full text-sm font-medium bg-gray-100 text-gray-700 rounded-lg py-3 hover:bg-gray-200 active:scale-95 transition-transform"
@@ -127,6 +148,42 @@ function OrderDetailModal({ order, onClose, onUpdateStatus }: OrderDetailModalPr
           </button>
         </div>
       </div>
+
+      {/* Revert confirmation: a second overlay stacked above the detail card,
+          so it reads as its own modal rather than part of the order card */}
+      {confirmingRevert && (
+        <div
+          className="fixed inset-0 bg-black/60 flex items-center justify-center z-[60] p-4"
+          onClick={() => setConfirmingRevert(false)}
+        >
+          <div
+            className="bg-white w-full max-w-sm rounded-2xl shadow-2xl p-6"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h3 className="text-lg font-bold text-gray-900 mb-2">
+              Move Back to Preparing?
+            </h3>
+            <p className="text-sm text-gray-600 mb-5">
+              Order #{order.orderReference} will go back to Preparing and be
+              counted in the queue again.
+            </p>
+            <div className="flex gap-2">
+              <button
+                onClick={handleRevert}
+                className="flex-1 text-sm font-medium bg-amber-600 text-white rounded-lg py-2.5 hover:bg-amber-700 active:scale-95 transition-transform"
+              >
+                Yes, Move It Back
+              </button>
+              <button
+                onClick={() => setConfirmingRevert(false)}
+                className="flex-1 text-sm font-medium bg-gray-100 text-gray-700 rounded-lg py-2.5 hover:bg-gray-200 active:scale-95 transition-transform"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

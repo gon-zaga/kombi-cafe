@@ -43,7 +43,7 @@ const result = await pool.query(
   `UPDATE ingredients
    SET name = COALESCE($1, name),
        unit = COALESCE($2, unit),
-       stock_qty = COALESCE($3, stock_qty) + COALESCE($6, 0),
+       stock_qty = COALESCE($3, stock_qty) + COALESCE($6::numeric, 0),
        restock_threshold = COALESCE($4, restock_threshold),
        updated_at = CURRENT_TIMESTAMP
    WHERE id = $5

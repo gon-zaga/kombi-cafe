@@ -1,8 +1,10 @@
+// Owner inventory page: lists stock levels, restocks via RestockModal, and flags low stock
 'use client'
 
 import { useCallback, useEffect, useState } from "react";
 import OwnerHeader from "../ui/OwnerHeader";
 import AddingIngredientModal from "./ui/AddingIngredientModal";
+import RestockModal from "./ui/RestockModal";
 
 interface Ingredient {
   id: number;
@@ -16,6 +18,9 @@ export default function Inventory() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [ingredients, setIngredients] = useState<Ingredient[]>([]);
   const [loading, setLoading] = useState(true);
+
+  // Which ingredient the restock modal is open for; null means it is closed
+  const [restocking, setRestocking] = useState<Ingredient | null>(null);
 
   const fetchIngredients = useCallback(async () => {
     try {
@@ -32,36 +37,6 @@ export default function Inventory() {
   useEffect(() => {
     fetchIngredients();
   }, [fetchIngredients]);
-
-  const handleRestock = async (ingredient: Ingredient) => {
-    const input = window.prompt(
-      `Add how much ${ingredient.unit} to ${ingredient.name}?`,
-      "0"
-    );
-
-    if (!input) return;
-
-    const amount = Number(input);
-    if (isNaN(amount) || amount <= 0) return;
-
-    try {
-      // FIX: send only the amount to add (stockDelta). The database does
-      // stock_qty + delta itself, so a stale number on screen can never
-      // overwrite the real stock.
-      const res = await fetch(`/api/ingredients/${ingredient.id}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ stockDelta: amount }),
-      });
-
-      if (!res.ok) throw new Error("Restock failed");
-
-      fetchIngredients();
-    } catch (error) {
-      console.error("Failed to restock ingredient:", error);
-      window.alert("Failed to restock ingredient.");
-    }
-  };
 
   const handleDelete = async (ingredientId: number) => {
     try {
@@ -178,7 +153,7 @@ export default function Inventory() {
 
               <div className="flex gap-2">
                 <button
-                  onClick={() => handleRestock(ingredient)}
+                  onClick={() => setRestocking(ingredient)}
                   className="flex-1 text-sm font-medium text-blue-700 bg-blue-50 py-2 rounded-lg hover:bg-blue-100 transition-colors"
                 >
                   Restock
@@ -199,6 +174,12 @@ export default function Inventory() {
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
         onAdded={fetchIngredients}
+      />
+
+      <RestockModal
+        ingredient={restocking}
+        onClose={() => setRestocking(null)}
+        onRestocked={fetchIngredients}
       />
     </section>
   );

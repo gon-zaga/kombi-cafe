@@ -1,41 +1,59 @@
-'use client'
+'use client';
 
-import { useBaristaStore } from "@/store/BaristaStore";
-import { useEffect } from "react";
+// Customer-facing queue board: polls today's real orders and lists reference numbers
+// under PREPARING and READY so customers can see when their number is called
+import { useCallback, useEffect, useState } from "react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
+import type { OrderSummary } from "@/app/lib/types";
 
 export default function OrderQueue() {
-  const orders = useBaristaStore(state => state.orders);
+  const [orders, setOrders] = useState<OrderSummary[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   const router = useRouter();
 
-  const preparing = orders.filter(
-    (order) => order.orderStatus === 'preparing'
-  );
-
-  const ready = orders.filter(
-    (order) => order.orderStatus === 'ready'
-  );
+  const fetchOrders = useCallback(async () => {
+    try {
+      const response = await fetch('/api/orders?range=today');
+      if (!response.ok) throw new Error('Failed to fetch orders');
+      setOrders(await response.json());
+    } catch (error) {
+      console.error(error);
+    } finally {
+      // Only hide the placeholder on the first load; a later failed poll
+      // should keep the last good list on screen instead of blanking it
+      setIsLoading(false);
+    }
+  }, []);
 
   useEffect(() => {
-    // Fetch/ refresh every 3 seconds
-    const interval = setInterval(() => {
+    // setOrders happens inside the async callback, not in the effect body,
+    // so this reads as a subscription to an external system
+    fetchOrders();
+    const interval = setInterval(fetchOrders, 3000);
 
-    }, 3000);
-    
     return () => clearInterval(interval);
-  }, [])
+  }, [fetchOrders]);
+
+  // Newest first from the API, which is the order a customer cares about
+  // when several numbers are showing at once
+  const preparing = orders.filter((o) => o.status === 'preparing');
+  const ready = orders.filter((o) => o.status === 'ready');
 
   return (
     <div className="min-h-screen bg-card-cream flex flex-col">
       <header className="flex flex-row bg-dark-brown text-white font-roboto-mono justify-between items-center p-2 mb-7">
         <span>ORDERS</span>
-        <button className="cursor-pointer" onClick={() => router.push('/')}>
-          <Image 
-          src="/cream-close.svg"
-          alt="exit-button"
-          width={32}
-          height={32}
+        <button
+          className="cursor-pointer"
+          onClick={() => router.push('/')}
+          aria-label="Back to menu"
+        >
+          <Image
+            src="/cream-close.svg"
+            alt="exit-button"
+            width={32}
+            height={32}
           />
         </button>
       </header>
@@ -73,6 +91,13 @@ export default function OrderQueue() {
           ))}
         </div>
       </section>
+
+      {/* Empty state, shown only once we've actually loaded and there's nothing to show */}
+      {!isLoading && preparing.length === 0 && ready.length === 0 && (
+        <p className="text-center text-dark-brown mt-8">
+          No orders yet. Your number will appear here.
+        </p>
+      )}
     </div>
   );
 }
