@@ -1,19 +1,20 @@
 'use client'
 
+// Customer order page: loads one menu item + add-ons, then lets the user pick size/add-ons and add to cart
 import React, { useEffect, useState } from "react";
 import ItemHeader from "./_ui/ItemHeader";
 import ItemInfo from "./_ui/ItemInfo";
 import SizeSelector from "./_ui/SizeSelector";
 import AddOns from "./_ui/AddOns";
 import AddToOrderButton from "./_ui/AddToOrderButton";
-import { MenuRow, MenuItem } from "@/app/lib/types";
+import { MenuItem } from "@/app/lib/types";
 import type { Size } from "./_ui/SizeSelector";
 
 export default function OrderPage({ params }: { params: Promise<{ itemId: number }> }) {
   const { itemId } = React.use(params);
 
   const [item, setItem] = useState<MenuItem | null>(null);
-  const [addOns, setAddOns] = useState<{ addOnsId: number; name: string; price: number; imgUrl: string}[]>([]);
+  const [addOns, setAddOns] = useState<{ addOnsId: number; name: string; price: number; imgUrl: string }[]>([]);
   const [selectedAddOn, setSelectedAddOn] = useState<number[]>([]);
   const [quantity, setQuantity] = useState(1);
   const [selectedSize, setSelectedSize] = useState<Size | null>(null);
@@ -111,7 +112,6 @@ export default function OrderPage({ params }: { params: Promise<{ itemId: number
           selectedSize={selectedSize}
           selectedAddOn={selectedAddOn}
           quantity={quantity}
-          specialInstruction=""
         />
       </div>
     </section>

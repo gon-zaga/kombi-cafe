@@ -72,11 +72,16 @@ const grandtotal = orders.reduce((acc, order) => {
 
         ? <EmptyOrder />
 
-        : orders.map((order) => (
-          // Key combines itemId + selected add-ons so two cart lines for the same
-          // item with different add-on combos don't collide
-          <OrderCard key={`${order.itemId}-${JSON.stringify(order.selectedAddOn)}`} order={order} addOns={addOns} onDelete={() => removeOrder(order)} />
-        ))
+: orders.map((order) => (
+  // itemId + sizeId + add-ons must all be in the key, because those
+  // three fields are what make a cart line unique in the store
+  <OrderCard
+    key={`${order.itemId}-${order.selectedSize.sizeId}-${JSON.stringify(order.selectedAddOn)}`}
+    order={order}
+    addOns={addOns}
+    onDelete={() => removeOrder(order)}
+  />
+))
       }
 
       {

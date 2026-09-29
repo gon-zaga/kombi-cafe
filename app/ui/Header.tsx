@@ -10,8 +10,6 @@ function Header() {
   return (
     <>
       <header className="shrink-0 flex flex-row items-center gap-3 text-white h-18 w-full bg-card-cream font-roboto-slab px-4 relative">
-
-        {/* ── Hamburger ───────────────────────────────────────────────────── */}
         <button
           onClick={() => setNavOpen(true)}
           aria-label="Open staff menu"
@@ -23,15 +21,14 @@ function Header() {
             transition-colors duration-200
           "
         >
-        <Image 
-          src="\brown-menu.svg"
-          alt="brown-menu icon"
-          height={28}
-          width={28 }
-        /> 
+          <Image
+            src="/brown-menu.svg"
+            alt="brown-menu icon"
+            height={28}
+            width={28}
+          />
         </button>
 
-        {/* ── Logo + name ─────────────────────────────────────────────────── */}
         <Image
           src="/transparent-logo-v1.svg"
           alt="KOMBI COFFEE"
