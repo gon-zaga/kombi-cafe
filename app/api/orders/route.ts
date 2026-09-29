@@ -5,7 +5,6 @@ import { NextResponse } from "next/server";
 import pool from "@/app/lib/db";
 import type { OrderSummary } from "@/app/lib/types";
 
-// Defining the expected structure of the incoming request
 interface PlaceOrderPayload {
   items: {
     itemId: number;
@@ -15,17 +14,17 @@ interface PlaceOrderPayload {
   }[];
 }
 
-// app/api/orders/route.ts
-
-// GET is used to retrieve orders from the database.
 // Lists orders with their items and add-ons; supports ?range=today|week|month|all and optional ?status=
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const range = searchParams.get("range") ?? "today";
   const status = searchParams.get("status");
 
-  // Whitelist inputs instead of trusting the query string
-  const daysBack: Record<string, number | null> = { today: 0, week: 7, month: 30, all: null };
+  // Value = how many days BEFORE today to include, so:
+  //   today = 0  -> today only
+  //   week  = 6  -> last 7 days including today
+  //   month = 29 -> last 30 days including today
+  const daysBack: Record<string, number | null> = { today: 0, week: 6, month: 29, all: null };
   if (!(range in daysBack)) {
     return NextResponse.json({ error: "Invalid range" }, { status: 400 });
   }
@@ -78,7 +77,7 @@ export async function GET(request: Request) {
       status: row.status,
       createdAt: new Date(row.created_at).toISOString(),
       total: Number(row.total),
-      items: row.items, // json_agg already arrives as a parsed JS array
+      items: row.items,
     }));
 
     return NextResponse.json(orders);
@@ -88,41 +87,35 @@ export async function GET(request: Request) {
   }
 }
 
-
-
 export async function POST(request: Request) {
   try {
     const body: PlaceOrderPayload = await request.json();
 
-    // validation
     if (!body.items || body.items.length === 0) {
       return NextResponse.json(
-        { error: "Order must contain atleast one item" },
+        { error: "Order must contain at least one item" },
         { status: 400 }
       );
     }
 
-    // Check out a single client so every query below runs on the same
-    // connection — required for BEGIN/COMMIT/ROLLBACK to actually work together
+    // One client so BEGIN/COMMIT/ROLLBACK all run on the same connection
     const client = await pool.connect();
 
     try {
       await client.query('BEGIN');
 
-      // step 1: atomically bump today's daily_counters row (or create it if this
-      // is the first order today), and get back the number this order should use
+      // step 1: bump today's counter (or create it) and get this order's number
       const dailyNumberResult = await client.query(`
         INSERT INTO daily_counters (order_date, last_number)
         VALUES ((NOW() AT TIME ZONE 'Asia/Manila')::date, 1)
         ON CONFLICT (order_date)
         DO UPDATE SET last_number = daily_counters.last_number + 1
-        RETURNING last_number;      
+        RETURNING last_number;
         `);
 
       const dailyNumber = dailyNumberResult.rows[0].last_number;
 
-      // step 2: insert the orders row itself. total starts at 0 as a placeholder —
-      // we don't know the real total until every item/add-on below is priced
+      // step 2: insert the order with a placeholder total of 0
       const orderResult = await client.query(
         `
           INSERT INTO orders (daily_number, order_date, total, status)
@@ -136,11 +129,8 @@ export async function POST(request: Request) {
 
       let runningTotal = 0;
 
-      // step 3 + 4: for each cart item, re-look-up its real price, insert its
-      // order_items row, then loop its add-ons and do the same for each of those
+      // step 3 + 4: price each item and add-on server-side
       for (const item of body.items) {
-        // Re-look-up the current price for this item+size — never trust a price
-        // sent from the client, since menu prices can change after the client fetched them
         const priceResult = await client.query(
           `SELECT price FROM menu_item_sizes WHERE menu_item_id = $1 AND size_id = $2;`,
           [item.itemId, item.sizeId]
@@ -153,8 +143,6 @@ export async function POST(request: Request) {
         const unitPrice = Number(priceResult.rows[0].price);
         runningTotal += unitPrice * item.quantity;
 
-        // step 3: insert this cart line as an order_items row, snapshotting unitPrice
-        // so this order stays accurate even if the menu price changes later
         const orderItemResult = await client.query(
           `
           INSERT INTO order_items (order_id, menu_item_id, size_id, quantity, unit_price)
@@ -166,7 +154,6 @@ export async function POST(request: Request) {
 
         const orderItemId = orderItemResult.rows[0].id;
 
-        // step 4: insert one order_item_addons row per add-on selected on this item
         for (const addOnId of item.addOnIds) {
           const addOnPriceResult = await client.query(
             `SELECT price FROM add_ons WHERE id = $1;`,
@@ -190,7 +177,7 @@ export async function POST(request: Request) {
         }
       }
 
-      // Now that every item/add-on has been priced, go back and set the real total
+      // Set the real total now that everything is priced
       await client.query(
         `UPDATE orders SET total = $1 WHERE id = $2;`,
         [runningTotal, orderId]
@@ -198,7 +185,6 @@ export async function POST(request: Request) {
 
       await client.query('COMMIT');
 
-      // Format daily_number the same way the rest of the app displays reference numbers (e.g. 0001)
       const orderReference = String(dailyNumber).padStart(4, '0');
 
       return NextResponse.json(
@@ -206,8 +192,6 @@ export async function POST(request: Request) {
         { status: 201 }
       );
     } catch (error) {
-      // Something failed partway through the insert sequence — undo everything
-      // that happened after BEGIN so no half-finished order survives
       await client.query('ROLLBACK');
       console.error("Failed to place order:", error);
       return NextResponse.json(
@@ -215,16 +199,14 @@ export async function POST(request: Request) {
         { status: 500 }
       );
     } finally {
-      // Always return the connection to the pool, whether we succeeded or failed
       client.release();
     }
   } catch (error) {
-    // Catches request.json() failures (malformed JSON body) or anything else
-    // that goes wrong before we even reach the database
+    // Malformed JSON body or anything else before we reach the database
     console.error("Failed to process order request:", error);
     return NextResponse.json(
       { error: "Invalid request" },
-      { status: 500 }
+      { status: 400 }
     );
   }
 }

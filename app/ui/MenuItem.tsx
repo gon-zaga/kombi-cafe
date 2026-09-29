@@ -1,5 +1,5 @@
 import ProductCard from "./ProductCard";
-import type { MenuItem as MenuItemType } from "@/app/api/menu/route";
+import type { MenuItem as MenuItemType } from "@/app/lib/types";
 
 function MenuItem({ active, menuItems }: { active: string, menuItems: MenuItemType[] }) {
   const filtered = menuItems.filter(
