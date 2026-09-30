@@ -5,6 +5,8 @@
 // a row with a size applies to that size only and overrides the general row.
 import { useCallback, useEffect, useState } from "react";
 import type { Recipe } from "@/app/api/recipes/route";
+import IngredientPicker from "./IngredientPicker";
+import AddingIngredientModal from "../../inventory/ui/AddingIngredientModal";
 
 interface IngredientOption {
   id: number;
@@ -33,6 +35,9 @@ function RecipeEditor({ menuItemId, itemSizes, onChanged }: RecipeEditorProps) {
 
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
+
+  // Lets the owner create a new ingredient without leaving this screen
+  const [isAddOpen, setIsAddOpen] = useState(false);
 
   const load = useCallback(async () => {
     try {
@@ -174,22 +179,24 @@ function RecipeEditor({ menuItemId, itemSizes, onChanged }: RecipeEditorProps) {
       )}
 
       <form onSubmit={handleAdd} className="flex flex-col gap-2 pt-2">
-        <label className="block text-sm font-semibold text-gray-900">
-          Add Ingredient
-        </label>
+        <div className="flex items-center justify-between">
+          <label className="block text-sm font-semibold text-gray-900">
+            Add Ingredient
+          </label>
+          <button
+            type="button"
+            onClick={() => setIsAddOpen(true)}
+            className="text-xs text-amber-700 bg-amber-50 px-2 py-1 rounded hover:bg-amber-100 transition-colors"
+          >
+            + New Ingredient
+          </button>
+        </div>
 
-        <select
+        <IngredientPicker
+          ingredients={ingredients}
           value={ingredientId}
-          onChange={(e) => setIngredientId(e.target.value)}
-          className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-amber-500"
-        >
-          <option value="">Select ingredient</option>
-          {ingredients.map((i) => (
-            <option key={i.id} value={i.id}>
-              {i.name} ({i.unit})
-            </option>
-          ))}
-        </select>
+          onChange={setIngredientId}
+        />
 
         <div className="flex gap-2">
           <input
@@ -224,6 +231,14 @@ function RecipeEditor({ menuItemId, itemSizes, onChanged }: RecipeEditorProps) {
           {saving ? 'Adding...' : 'Add to Recipe'}
         </button>
       </form>
+
+      {/* Sits above the Edit Item modal: both use z-50, and this one is later
+          in the DOM, so it stacks on top. The modal returns null when closed. */}
+      <AddingIngredientModal
+        isOpen={isAddOpen}
+        onClose={() => setIsAddOpen(false)}
+        onAdded={load}
+      />
     </div>
   );
 }

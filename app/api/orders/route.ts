@@ -3,6 +3,7 @@
 // insert sequence run as one transaction so a failure partway rolls everything back
 import { NextResponse } from "next/server";
 import pool from "@/app/lib/db";
+import type { PoolClient } from "pg";
 import type { OrderSummary } from "@/app/lib/types";
 
 interface PlaceOrderPayload {
@@ -12,6 +13,71 @@ interface PlaceOrderPayload {
     quantity: number;
     addOnIds: number[];
   }[];
+}
+
+// Which recipe rows apply to a given item + size, and how much each costs.
+// Shared by the check and the update so the two can never disagree.
+const recipeCostSql = `
+  SELECT i.id, i.name, i.unit, i.stock_qty,
+         SUM(r.quantity_needed) * $3::numeric AS needed
+  FROM recipes r
+  JOIN ingredients i ON i.id = r.ingredient_id
+  WHERE r.menu_item_id = $1
+    AND (r.size_id = $2 OR r.size_id IS NULL)
+    AND NOT EXISTS (
+      SELECT 1 FROM recipes r2
+      WHERE r2.menu_item_id = r.menu_item_id
+        AND r2.size_id = $2
+        AND r2.ingredient_id = r.ingredient_id
+    )
+  GROUP BY i.id, i.name, i.unit, i.stock_qty;
+`;
+
+// Removes stock for one ordered item's recipe. Throws (which rolls the whole
+// transaction back) when an ingredient can't cover the order, rather than
+// letting stock go negative or silently clamping to zero.
+async function deductRecipeStock(
+  client: PoolClient,
+  menuItemId: number,
+  sizeId: number,
+  quantity: number
+) {
+  const costResult = await client.query(recipeCostSql, [
+    menuItemId,
+    sizeId,
+    quantity,
+  ]);
+
+  // No recipes on this item, so nothing to deduct
+  if (costResult.rows.length === 0) return;
+
+  // Check everything before changing anything, so a failure can't leave
+  // some ingredients deducted and others not
+  const short = costResult.rows.filter(
+    (row) => Number(row.stock_qty) < Number(row.needed)
+  );
+
+  if (short.length > 0) {
+    throw new Error(
+      `Not enough stock: ${short
+        .map(
+          (r) =>
+            `${r.name} (needs ${Number(r.needed)}, have ${Number(r.stock_qty)} ${r.unit})`
+        )
+        .join(', ')}`
+    );
+  }
+
+  await client.query(
+    `
+    UPDATE ingredients i
+    SET stock_qty = i.stock_qty - c.needed,
+        updated_at = CURRENT_TIMESTAMP
+    FROM (${recipeCostSql}) c
+    WHERE i.id = c.id;
+    `,
+    [menuItemId, sizeId, quantity]
+  );
 }
 
 // Lists orders with their items and add-ons; supports ?range=today|week|month|all and optional ?status=
@@ -154,6 +220,16 @@ export async function POST(request: Request) {
 
         const orderItemId = orderItemResult.rows[0].id;
 
+        // Deduct recipe ingredients before the order can commit. A size-specific
+        // recipe overrides the general "all sizes" row for the same ingredient,
+        // so the two never stack.
+        await deductRecipeStock(
+          client,
+          item.itemId,
+          item.sizeId,
+          item.quantity
+        );
+
         for (const addOnId of item.addOnIds) {
           const addOnPriceResult = await client.query(
             `SELECT price FROM add_ons WHERE id = $1;`,
@@ -194,6 +270,16 @@ export async function POST(request: Request) {
     } catch (error) {
       await client.query('ROLLBACK');
       console.error("Failed to place order:", error);
+
+      // Stock shortage is an expected outcome, not a server fault: the message
+      // thrown by deductRecipeStock is safe (and useful) to show the customer.
+      if (error instanceof Error && error.message.startsWith('Not enough stock:')) {
+        return NextResponse.json(
+          { error: error.message },
+          { status: 409 }
+        );
+      }
+
       return NextResponse.json(
         { error: "Failed to place order" },
         { status: 500 }

@@ -13,6 +13,7 @@ import AddItemModal from "./ui/AddItemModal";
 import EditItemModal from "./ui/EditItemModal";
 import AddItemButton from "./ui/AddItemButton";
 import MenuItemCard from "./ui/MenuItemCard";
+import RecipeModal from "./ui/RecipeModal";
 import FilterBar from "./ui/FilterBar";
 
 // MenuItem is the TypeScript type that describes a menu item
@@ -37,6 +38,9 @@ export default function MenuManagement() {
   // Stores the menu item currently being edited
   // null means no item is currently selected for editing
   const [editingItem, setEditingItem] = useState<MenuItem | null>(null);
+
+  // Stores the menu item whose recipe (ingredients used) is open
+  const [recipeItem, setRecipeItem] = useState<MenuItem | null>(null);
 
   // Stores the currently selected category filter
   // "All" means show every category
@@ -287,6 +291,7 @@ const handleDelete = async (item: MenuItem) => {
             }}
             
             onDelete={ () => handleDelete(item)}
+            onIngredients={() => setRecipeItem(item)}
           />
 
         ))}
@@ -323,6 +328,14 @@ const handleDelete = async (item: MenuItem) => {
         // After the item is successfully updated,
         // fetch the latest menu data again.
         onUpdated={fetchMenu}
+      />
+
+      {/* Recipe editor, opened from the card's Ingredients button */}
+      <RecipeModal
+        isOpen={recipeItem !== null}
+        item={recipeItem}
+        onClose={() => setRecipeItem(null)}
+        onChanged={fetchMenu}
       />
 
     </section>

@@ -1,8 +1,10 @@
 # Coffee Shop App: Project Context & Roadmap
 
-*Last updated after the inventory work: restock modal, unique-name constraint, clickable edit card. Reconciled against the actual files. Section "Open items" lists what is still missing.*
+*Last updated after the recipe + stock-deduction work: `recipes` gained a nullable `size_id`, the recipes API and editor were built, order placement now deducts stock, and the ingredient picker became searchable. `npx eslint` + `npx tsc --noEmit` pass on `app/owner-dashboard` and `app/api/orders`. Section "Open items" lists what is still missing.*
 
-**Toolchain note:** Next.js 16 + React 19.2. `npm run lint` is `eslint` (flat config, no path). The `react-hooks/set-state-in-effect` rule is active and strict — storing derived state in a `useEffect` that calls `setState` is a **lint error**, not a warning. Compute it with `useMemo` during render instead.
+**Toolchain note:** Next.js 16 + React 19.2. `npm run lint` is `eslint` (flat config, no path). Two rules bite in practice and are **errors, not warnings**:
+- `react-hooks/set-state-in-effect` — derived state computed in a `useEffect` is rejected. Use `useMemo` during render instead.
+- `react/no-unescaped-entities` — literal `'` and `"` in JSX text must be `&apos;` / `&quot;`.
 
 ## Stack
 - **Next.js** (App Router, TypeScript)
@@ -25,7 +27,7 @@ All 11 tables plus `daily_counters` are live in Neon. `latest_schema.sql` has th
 | `sizes` | label, oz (nullable), temperature (nullable) |
 | `menu_item_sizes` | Join table: price of an item at a given size |
 | `ingredients` | Inventory master list, **seeded by the owner**. `unit` is free-text `VARCHAR(20)`; UI offers g, kg, ml, L, pcs, packs, pumps, scoops. **No `expires_at` column** — expiry tracking was built and then reverted. |
-| `recipes` | Item → ingredient quantities, **not yet seeded** |
+| `recipes` | Item → ingredient quantities. **Now in use.** `size_id` is **nullable and live in Neon**: `NULL` = applies to every size, non-null = that size only and overrides the general row |
 | `add_ons` | Universal extras. `id`, `name`, `price NUMERIC(10,2)`, `is_available BOOLEAN DEFAULT TRUE`, `image_url VARCHAR(255)` (nullable) |
 | `orders` | daily_number + order_date + status + total |
 | `order_items` | menu_item_id + size_id + quantity + **unit_price** (price snapshot) |
@@ -45,6 +47,7 @@ All 11 tables plus `daily_counters` are live in Neon. `latest_schema.sql` has th
 - **Duplicate ingredient names**: enforced by `idx_ingredients_name_unique`, a functional unique index on `LOWER(TRIM(name))` so `Whole Milk` / `whole milk ` / `  Whole Milk` collide. ⚠️ **The index itself still has to be created in Neon by hand** — the app code assumes it exists. `POST /api/ingredients` uses `ON CONFLICT (LOWER(TRIM(name))) DO NOTHING` → **409**, deliberately refusing rather than updating (an upsert would let someone typing "whole milk" with stock 100 silently reset the real 20000). Seed scripts use `DO UPDATE` instead, since resetting stock to known values *is* the seed's job — same constraint, different intent per caller. `PATCH` maps 23505 → 409; `DELETE` maps 23503 → 409 so a recipe-linked ingredient can't be deleted out from under it.
 - **Restock threshold decision**: raw number in the same unit as `stock_qty`, typed by the owner per ingredient. No auto-suggested defaults by unit. *Open item*: cosmetic placeholder on the threshold input (per-unit examples vs. one generic "Alert below this amount"). Not yet chosen.
 - **Timezone**: Neon runs in UTC, so `CURRENT_DATE` rolls over at **8 AM Manila time**. `POST /api/orders` now uses `(NOW() AT TIME ZONE 'Asia/Manila')::date` for both the `daily_counters` insert and the `orders` insert, and `GET /api/orders` uses the same expression in its range filter. `orders.created_at` is zone-less UTC; `GET /api/orders` now selects `(o.created_at AT TIME ZONE 'UTC')` so `pg` doesn't re-interpret it as the Node process's local time. ✅
+- **Recipes and stock deduction — ✅ BUILT (unverified end-to-end).** See "Phase 5 Steps 8–9" below for the design.
 - Staff accounts: none created yet. `StaffAccess.tsx` is a **hardcoded mock** (`user` / `root`, any role). **All `/api/*` owner routes (including `?all=true` on the menu) are unauthenticated.**
 
 ---
@@ -127,7 +130,27 @@ All 11 tables plus `daily_counters` are live in Neon. `latest_schema.sql` has th
 **Step 6: defensive fetch — ✅ APPLIED (fixed a real crash)**
 `inventory/page.tsx`, `StatsCard.tsx` and `sales-report/page.tsx` all did `await response.json()` and stored the result **without checking `response.ok`**. A failing route returns `{ error }`, not an array, so the page stored an object and every later `.filter()` threw `ingredients.filter is not a function`. All three now check the status and validate `Array.isArray` before storing. Worth remembering: this is why a missing DB column looked like "my data disappeared" — the data was fine, the query was failing.
 
-**Step 7: housekeeping — ⏳ NOT DONE**
+**Step 8: recipes — ✅ BUILT (needs an end-to-end test)**
+- **Schema (run in Neon ✅)**: `recipes.size_id INTEGER REFERENCES sizes(id) ON DELETE CASCADE` (nullable), `idx_recipes_size_id`, `CHECK (quantity_needed > 0)` added `NOT VALID`, and `idx_recipes_unique_row ON recipes (menu_item_id, COALESCE(size_id, 0), ingredient_id)`.
+  - **`COALESCE(size_id, 0)` is required.** Postgres treats NULLs as distinct in a plain unique index, so without it the "All sizes" row could never collide with itself and duplicates would slip in.
+- **`app/api/recipes/route.ts`**: `GET` (optional `?menuItemId=`) joins `ingredients` for name/unit; `POST` adds a row using `ON CONFLICT ... DO UPDATE`, so re-adding the same ingredient for the same item+size **updates the quantity instead of erroring**. Maps 23503/23514 → 400.
+- **`app/api/recipes/[id]/route.ts`**: `DELETE` one row, 404 when absent.
+- **`app/owner-dashboard/menu/ui/RecipeEditor.tsx`**: the recipe list + add/remove form. It is **not mounted directly in either modal's own `<form>`** — see `RecipeModal` below.
+- **`app/owner-dashboard/menu/ui/RecipeModal.tsx`**: a **standalone** modal titled "Ingredients" with the item name beneath, opened only from a card's **Ingredients** button. Recipes were previously embedded at the bottom of `EditItemModal`, below Save/Cancel, where they were easy to miss and blurred two unrelated tasks together ("rename this drink" vs "what does this drink consume"). Keeping the editor in its own component means both modals can host it without nesting forms.
+- **`app/owner-dashboard/menu/ui/IngredientPicker.tsx`**: searchable dropdown (type-to-filter on name, click-away layer, unit shown per row). Replaced a plain `<select>`, which stops being usable past ~15 ingredients. `AddingIngredientModal` is reused from the Inventory folder so both places open the identical dialog; it stacks above its host modal because both use `z-50` and it is later in the DOM.
+- **`MenuItemCard.tsx`**: the **whole card opens Edit**, signalled three ways — `cursor-pointer`, a resting ring that thickens and turns amber on hover, and a "Click card to edit" hint under the name. Three buttons at the bottom: **Ingredients**, **Edit**, **Delete**.
+  - ⚠️ Because the card is now clickable, **every inner control must call `e.stopPropagation()`** or it fires both handlers. The availability toggle is the one to watch: without it, flipping availability opened the edit modal.
+- *Not verified*: the deduction below has never been run against real recipe data.
+
+**Step 9: stock deduction on order placement — ✅ BUILT (needs an end-to-end test)**
+- `deductRecipeStock()` in `app/api/orders/route.ts`, called inside the existing transaction right after each `order_items` insert.
+- One shared SQL string (`recipeCostSql`) drives both the availability check and the `UPDATE`, so the two can never disagree.
+- The size-override is done with an exclusion: rows matching the exact size are kept, `size_id IS NULL` rows are kept **only** where no size-specific row exists for that ingredient. So "2 pumps All sizes" plus "3 pumps Bulli only" deducts 3, not 5.
+- **Shortage → 409** with the ingredient named and needs/have shown, thrown *before* any deduction so a failure can't leave some ingredients deducted. `ROLLBACK` removes the order row, and because the `daily_counters` increment is inside the same transaction, **failed orders must not consume reference numbers** — this is worth checking explicitly.
+- *Deliberately recipe-only for now.* Add-on depletion would need an `add_ons.ingredient_id` column, and whipped cream's home is still unresolved. Adding it before recipes are proven risks double-counting.
+- **Test still owed**: link Bacon to a snack, order ×1 → expect 120 → 118; order ×2 → 114. Then set stock to 3, order ×2 → expect 409, and confirm `SELECT COUNT(*) FROM orders WHERE created_at > now() - interval '2 minutes'` is unchanged.
+
+**Step 10: housekeeping — ⏳ NOT DONE**
 - `latest_schema.sql` is missing `daily_counters` and `add_ons.image_url`; both exist in Neon. Add them so the file matches the live database. (Verified: only one `image_url` exists, on `menu_items`.)
 - `latest_schema.sql` now includes `idx_ingredients_name_unique`; that index still needs creating in Neon.
 - `app/lib/schema.txt` is a **stale, misleading duplicate** of the schema and should be deleted. It predates the price-snapshot columns and has `sizes` with `NOT NULL` oz/temperature, no `daily_counters`, and no `add_ons.is_available`. Copying from it will produce broken SQL. `latest_schema.sql` at the repo root is the real one.
@@ -135,6 +158,7 @@ All 11 tables plus `daily_counters` are live in Neon. `latest_schema.sql` has th
 ---
 
 ## Open items / gaps
+- **The whole order→deduct path is untested.** Recipes and deduction are built but never run against real data. Until it's verified, treat Phases 3–5 as "code complete, behaviour unconfirmed". The one-line check that matters most: a **failed** (409) order must not consume a `daily_number`.
 - **No auth** on any owner route or page (NextAuth not implemented; `?all=true` and all mutations are open). Biggest structural risk left, and the reason this must be done **before any public deploy** — while it's on localhost it costs nothing to defer.
 - **The `expires_at` column does not exist in Neon**, and no code references it. Nothing to clean up; just be aware the earlier session built and reverted that feature.
 - **`idx_ingredients_name_unique` may not exist in Neon yet.** `POST /api/ingredients` uses `ON CONFLICT (LOWER(TRIM(name)))`, which **errors if the index is missing**. If adding a duplicate-named ingredient throws a 500 mentioning no matching constraint, run `CREATE UNIQUE INDEX idx_ingredients_name_unique ON ingredients (LOWER(TRIM(name)));`.
@@ -148,9 +172,9 @@ All 11 tables plus `daily_counters` are live in Neon. `latest_schema.sql` has th
 - Consider whether Delete should be hidden in favor of "unavailable" for items with order history (currently it 409s with a message).
 - Scaling: `?range=today` re-sends every order including all of day's `ready` ones, every 3s. Fine at café volume; if it drags, use `?status=pending` plus a second fetch for `preparing` rather than filtering a growing array client-side.
 
-**Still to do in Phase 5**: recipe-linking UI (menu item ↔ ingredient ↔ raw quantity, no conversion); ingredient deduction on order placement inside the `/api/orders` transaction (`stock_qty -= quantity_needed × item quantity`, guarded by `CHECK (stock_qty >= 0)`); image hosting migration for `menu_items`.
-- **Deduction design recommendation (settled, implement it this way)**: when stock is insufficient, **reject the order with a 409 naming the short ingredient**. The alternatives are both worse — letting stock go negative fights the `CHECK (stock_qty >= 0)` constraint, and clamping silently produces wrong stock numbers nobody notices until an audit. Rejecting up front means the owner finds out while the menu is still being set up, not with a customer waiting.
-- **Whipped cream** is the awkward ingredient: a spray canister can't be weighed, so its unit is `servings`, not g/ml. It may need to exist in *both* `ingredients` (as stock) and `add_ons` (as the priced toggle), which means `add_ons` eventually needs a nullable `ingredient_id` so the system knows which stock an extra depletes. Unresolved.
+**Still to do in Phase 5**: image hosting migration for `menu_items`; add-on depletion (needs `add_ons.ingredient_id`, blocked on deciding where whipped cream lives).
+- **Whipped cream is the awkward ingredient**: a spray canister can't be weighed, so its unit is `servings`, not g/ml. It may need to exist in *both* `ingredients` (as stock) and `add_ons` (as the priced toggle). Still unresolved.
+- **Expiry tracking: not done, deliberately deferred** for now. See "Ingredient units decision" above for the reasoning.
 
 ### Phase 6: Data quality & edge cases
 Validate required fields before insert, default image/size/temperature labels, null-safe admin forms, filter invalid records in queries.
@@ -169,7 +193,8 @@ Test drinks + snacks together, order placement, barista status updates, admin CR
 - When a fix surfaces a genuine design decision, pause and reason through options with the user rather than picking silently. For design/tradeoff questions, give a clear recommendation with reasoning rather than a menu of options. Favor honesty over false precision.
 - When the user pastes their own draft, check it line-by-line against names/types already agreed on before assuming the logic is wrong (many past errors were pure naming mismatches, e.g. `menuItemId` vs `itemId`). Name the two disagreeing identifiers.
 - User sometimes pastes stale code from earlier in the chat. Ask whether it's the current file before diagnosing. **Also applies to repo snapshots and to this doc** — cross-check against the actual repo before acting.
-- **The assistant has no database access.** It can read the repo and hand the user SQL to run in Neon, nothing more. Never imply otherwise, and never claim data was verified in the database.
+- **The assistant has no database access.** It can read the repo and hand the user SQL to run in Neon, nothing more. Never imply otherwise, and never claim data was verified in the database. It also **cannot view images** — if the user pastes a screenshot, ask for the error text or a description instead.
+- **Design lesson from this round**: two of the "bugs" reported this session were **affordance problems, not code problems** — a section buried at the bottom of a long modal, and a clickable card with no visual indication it was clickable. When a UI step is hard to find, consider whether it deserves its own entry point before assuming the styling is wrong.
 - **Lesson worth keeping**: a "my data is gone" report is usually a *failing query*, not lost data — check the server/terminal error before assuming deletion. A `GET` route returning `{ error }` that a page stored as a list produced `ingredients.filter is not a function` and looked exactly like data loss.
 - **When a feature needs a schema change**, land the SQL and the app code as separate steps, and make the app fail *legibly* (check `response.ok`) rather than rendering an empty list that mimics data loss.
 - Apply big batches **one small testable group at a time**, and list what to test after each. Before moving on, confirm each earlier step was actually applied, since delivered ≠ applied.
