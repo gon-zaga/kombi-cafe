@@ -190,7 +190,7 @@ function AddingIngredientModal({
       <div
 
         // The actual white modal box
-        className="bg-white w-full max-w-md rounded-2xl shadow-2xl p-6 max-h-[90vh] overflow-y-auto"
+        className="bg-white w-full max-w-xl rounded-2xl shadow-2xl p-6 max-h-[90vh] overflow-y-auto"
 
         // Prevent clicking inside the modal
         // from triggering the outer onClick.
