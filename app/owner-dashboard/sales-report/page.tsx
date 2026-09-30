@@ -15,9 +15,14 @@ export default function SalesReport() {
     let isMounted = true;
 
     fetch(`/api/orders?range=${dateFilter}`)
-      .then((r) => r.json())
+      .then((r) => {
+        // Check the status before parsing: a failing route returns an
+        // { error } object, not an array
+        if (!r.ok) throw new Error(`Request failed (${r.status})`);
+        return r.json();
+      })
       .then((data) => {
-        if (isMounted) setOrders(data);
+        if (isMounted && Array.isArray(data)) setOrders(data);
       })
       .catch((error) => console.error("Failed to fetch orders:", error));
 

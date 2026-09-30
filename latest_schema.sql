@@ -51,6 +51,11 @@ CREATE TABLE IF NOT EXISTS ingredients (
   restock_threshold NUMERIC(10, 2) NOT NULL DEFAULT 10,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
+-- One ingredient per name, ignoring case and surrounding spaces, so
+-- "Whole Milk" / "whole milk " / "  Whole Milk" collide instead of
+-- creating near-duplicate rows. Used with ON CONFLICT in the API.
+CREATE UNIQUE INDEX IF NOT EXISTS idx_ingredients_name_unique
+  ON ingredients (LOWER(TRIM(name)));
 -- Recipes (which ingredients each menu item needs and how much) ---
 CREATE TABLE IF NOT EXISTS recipes (
   id SERIAL PRIMARY KEY,

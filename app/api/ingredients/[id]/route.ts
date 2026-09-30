@@ -38,18 +38,20 @@ export async function PATCH(
     // Get the values we want to update
     const { name, unit, stockQty, restockThreshold, stockDelta } = body;
 
-    // Update the ingredient in the database
-const result = await pool.query(
-  `UPDATE ingredients
-   SET name = COALESCE($1, name),
-       unit = COALESCE($2, unit),
-       stock_qty = COALESCE($3, stock_qty) + COALESCE($6::numeric, 0),
-       restock_threshold = COALESCE($4, restock_threshold),
-       updated_at = CURRENT_TIMESTAMP
-   WHERE id = $5
-   RETURNING id, name, unit, stock_qty, restock_threshold`,
-  [name ?? null, unit ?? null, stockQty ?? null, restockThreshold ?? null, ingredientId, stockDelta ?? null]
-);
+    // Update the ingredient in the database.
+    // $6::numeric is required; without the cast Postgres infers integer
+    // and rejects a decimal restock like 2.5.
+    const result = await pool.query(
+      `UPDATE ingredients
+       SET name = COALESCE($1, name),
+           unit = COALESCE($2, unit),
+           stock_qty = COALESCE($3, stock_qty) + COALESCE($6::numeric, 0),
+           restock_threshold = COALESCE($4, restock_threshold),
+           updated_at = CURRENT_TIMESTAMP
+       WHERE id = $5
+       RETURNING id, name, unit, stock_qty, restock_threshold`,
+      [name ?? null, unit ?? null, stockQty ?? null, restockThreshold ?? null, ingredientId, stockDelta ?? null]
+    );
 
 
     // If no rows were updated, the ingredient doesn't exist
@@ -75,6 +77,15 @@ const result = await pool.query(
 
 
   } catch (error) {
+
+    // 23505 = unique violation, e.g. renaming an ingredient to a name
+    // that already exists (ignoring case and padding)
+    if ((error as { code?: string }).code === '23505') {
+      return NextResponse.json(
+        { error: "An ingredient with that name already exists" },
+        { status: 409 }
+      );
+    }
 
     // Show the error in the server console
     console.error("Failed to update ingredient:", error);
@@ -126,6 +137,15 @@ export async function DELETE(
 
 
   } catch (error) {
+
+    // 23503 = foreign key violation, meaning a recipe still references
+    // this ingredient, so deleting it would break that recipe
+    if ((error as { code?: string }).code === '23503') {
+      return NextResponse.json(
+        { error: "This ingredient is used by a recipe and can't be deleted" },
+        { status: 409 }
+      );
+    }
 
     // Show the error in the server console
     console.error("Failed to delete ingredient:", error);

@@ -20,9 +20,19 @@ function StatsCard() {
   // "Get the orders property from the store."
   
   const [orders, setOrders] = useState<OrderSummary[]>([]);
-useEffect(() => {
-  fetch('/api/orders?range=today').then(r => r.json()).then(setOrders).catch(console.error);
-}, []);
+  useEffect(() => {
+    // response.ok is checked before parsing, otherwise an error object
+    // would be stored as the orders list and .filter() would crash
+    fetch('/api/orders?range=today')
+      .then((r) => {
+        if (!r.ok) throw new Error(`Request failed (${r.status})`);
+        return r.json();
+      })
+      .then((data) => {
+        if (Array.isArray(data)) setOrders(data);
+      })
+      .catch(console.error);
+  }, []);
   
 
   // Stores the number of ingredients that are low in stock

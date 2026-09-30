@@ -68,15 +68,29 @@ export async function POST(request: Request) {
       );
     }
 
-    // Insert the new ingredient into the database
+    // Insert the new ingredient into the database.
+    // DO NOTHING + the unique index means a near-duplicate name (same name
+    // ignoring case and padding) is refused instead of silently creating a
+    // second row. rowCount 0 is how we detect that it was refused.
     const result = await pool.query(
       `INSERT INTO ingredients (name, unit, stock_qty, restock_threshold)
        VALUES ($1, $2, $3, $4)
+       ON CONFLICT (LOWER(TRIM(name))) DO NOTHING
        RETURNING id, name, unit, stock_qty, restock_threshold`,
 
       // These values replace $1, $2, $3, and $4
       [name, unit, stockQty, restockThreshold]
     );
+
+    // No row came back, so an ingredient with that name already exists.
+    // 409 Conflict is the right code: the request was well-formed, the
+    // resource it wanted to create already exists.
+    if (result.rowCount === 0) {
+      return NextResponse.json(
+        { error: `"${name}" is already in the ingredient list` },
+        { status: 409 }
+      );
+    }
 
     // Get the newly inserted ingredient from the database result
     const row = result.rows[0];

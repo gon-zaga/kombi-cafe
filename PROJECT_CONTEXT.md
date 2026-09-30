@@ -1,6 +1,6 @@
 # Coffee Shop App: Project Context & Roadmap
 
-*Last updated after Phase 4's barista workflow was built and linted clean (`npx eslint` + `npx tsc --noEmit` both pass on `app/barista-dashboard`). Reconciled against the actual files again. Section "Open items" lists what is still missing.*
+*Last updated after the inventory work: restock modal, unique-name constraint, clickable edit card. Reconciled against the actual files. Section "Open items" lists what is still missing.*
 
 **Toolchain note:** Next.js 16 + React 19.2. `npm run lint` is `eslint` (flat config, no path). The `react-hooks/set-state-in-effect` rule is active and strict — storing derived state in a `useEffect` that calls `setState` is a **lint error**, not a warning. Compute it with `useMemo` during render instead.
 
@@ -9,7 +9,7 @@
 - **Neon** (managed Postgres, Singapore region): free tier, auto-suspends on idle (expect ~3–4s cold start on first request after idle)
 - **NextAuth.js** (Credentials provider): staff/admin login only, no public customer accounts (**not implemented yet**)
 - DB access via **`pg`**, through `app/lib/db.ts` exporting a **default export** `pool` (`import pool from "@/app/lib/db"`)
-- **Zustand**: `useOrderStore` (cart, persisted to `localStorage`) and `useBaristaStore` (barista-side queue, **mock/local only, still used only by `/order-queue` — retire in Phase 4**)
+- **Zustand**: `useOrderStore` only (cart, persisted to `localStorage`). `useBaristaStore` / `store/BaristaStore.ts` was **deleted** once `/order-queue` moved to the real API. `app/lib/data.tsx` (mock menu) and the empty `app/barista-dashboard/ui/OrderQueue.tsx` stub were also deleted.
 
 ---
 
@@ -24,7 +24,7 @@ All 11 tables plus `daily_counters` are live in Neon. `latest_schema.sql` has th
 | `menu_items` | Sellable items: name, category_id, image_url, is_available. **No price here.** |
 | `sizes` | label, oz (nullable), temperature (nullable) |
 | `menu_item_sizes` | Join table: price of an item at a given size |
-| `ingredients` | Inventory master list, **not yet seeded**. `unit` is free-text `VARCHAR(20)`; UI offers g, ml, kg, L, pumps, scoops, packs |
+| `ingredients` | Inventory master list, **seeded by the owner**. `unit` is free-text `VARCHAR(20)`; UI offers g, kg, ml, L, pcs, packs, pumps, scoops. **No `expires_at` column** — expiry tracking was built and then reverted. |
 | `recipes` | Item → ingredient quantities, **not yet seeded** |
 | `add_ons` | Universal extras. `id`, `name`, `price NUMERIC(10,2)`, `is_available BOOLEAN DEFAULT TRUE`, `image_url VARCHAR(255)` (nullable) |
 | `orders` | daily_number + order_date + status + total |
@@ -38,7 +38,11 @@ All 11 tables plus `daily_counters` are live in Neon. `latest_schema.sql` has th
 - **Sizes**: Kafer (12oz, hot), Hippie (16oz, iced), Bulli (22oz, iced), Regular (null/null, snacks only). Not every item has every size.
 - **`add_ons.image_url`**: `NULL` is a valid, permanent state. The frontend falls back to `/drinks/no-drink-image.svg` when `imgUrl` is null.
 - Menu item images are still all placeholder `/drinks/no-drink-image.svg`. Real image hosting for `menu_items` is deferred.
-- **Ingredient units decision**: track each ingredient in the unit it's actually consumed in (g/ml/kg/L where weighed/measured; pumps/scoops/packs for syrups, powders, boxed items). **No unit-conversion layer**; conversion factors drift in real life and would make `stock_qty` silently inaccurate. Recipes will say e.g. "Vanilla Latte needs 2 pumps of Vanilla Syrup" and order placement does `stock_qty -= 2` directly.
+- **Ingredient units decision (re-confirmed)**: track each ingredient in the unit it's actually consumed in (g/ml/kg/L where weighed/measured; pumps/scoops/packs for syrups, powders, boxed items). **No unit-conversion layer, and deliberately none for now.** The bulk-purchase → recipe-consumption model (track stock in bottles, deduct in pumps, bridge with "1 bottle = 50 pumps") was evaluated and **deferred by decision**, not overlooked: the conversion would sit in the order transaction's hot path, so a wrong factor silently corrupts `stock_qty` forever. If it's ever adopted, put the conversion at the *purchase* boundary (extra columns for `purchase_unit` + `purchase_size` per ingredient) rather than in the deduction. No per-ingredient cost column exists yet, so there is no COGS/margin reporting. Unit dropdown offers g, kg, ml, L, pcs, packs, pumps, scoops.
+- **Expiry tracking: NOT DONE, and currently reverted.** A full `ingredients.expires_at DATE NOT NULL` feature (add/edit forms, card badges, "Expiring Soon" banner) was built, then **reverted on request** the same session. Nothing about it remains in the code. It was raised because an opened jar of jam/milk has a real use-by date that a bulk sack doesn't.
+  - *Why it was risky when it was attempted*: making it `NOT NULL` and required forces the owner to date-stamp things like espresso beans, where the date is meaningless and will end up faked — and a faked date is worse than a missing one because it looks trustworthy.
+  - *If revisited*: the honest version is a nullable `expires_at` plus alerts, or a `batches` table (one row per open container, with `opened_at`), because one ingredient can have several open containers at once and a single column on `ingredients` can't represent that. Bulk/recipe unit conversion and expiry tracking are the same class of problem: a stored ratio that the app trusts.
+- **Duplicate ingredient names**: enforced by `idx_ingredients_name_unique`, a functional unique index on `LOWER(TRIM(name))` so `Whole Milk` / `whole milk ` / `  Whole Milk` collide. ⚠️ **The index itself still has to be created in Neon by hand** — the app code assumes it exists. `POST /api/ingredients` uses `ON CONFLICT (LOWER(TRIM(name))) DO NOTHING` → **409**, deliberately refusing rather than updating (an upsert would let someone typing "whole milk" with stock 100 silently reset the real 20000). Seed scripts use `DO UPDATE` instead, since resetting stock to known values *is* the seed's job — same constraint, different intent per caller. `PATCH` maps 23505 → 409; `DELETE` maps 23503 → 409 so a recipe-linked ingredient can't be deleted out from under it.
 - **Restock threshold decision**: raw number in the same unit as `stock_qty`, typed by the owner per ingredient. No auto-suggested defaults by unit. *Open item*: cosmetic placeholder on the threshold input (per-unit examples vs. one generic "Alert below this amount"). Not yet chosen.
 - **Timezone**: Neon runs in UTC, so `CURRENT_DATE` rolls over at **8 AM Manila time**. `POST /api/orders` now uses `(NOW() AT TIME ZONE 'Asia/Manila')::date` for both the `daily_counters` insert and the `orders` insert, and `GET /api/orders` uses the same expression in its range filter. `orders.created_at` is zone-less UTC; `GET /api/orders` now selects `(o.created_at AT TIME ZONE 'UTC')` so `pg` doesn't re-interpret it as the Node process's local time. ✅
 - Staff accounts: none created yet. `StaffAccess.tsx` is a **hardcoded mock** (`user` / `root`, any role). **All `/api/*` owner routes (including `?all=true` on the menu) are unauthenticated.**
@@ -64,7 +68,7 @@ All 11 tables plus `daily_counters` are live in Neon. `latest_schema.sql` has th
 - `PlaceOrderButton.tsx` is **rewritten and applied**: builds the payload from `useOrderStore` (IDs only, `o.selectedSize.sizeId`, `o.selectedAddOn`), POSTs to `/api/orders`, has `isSubmitting` + `error` state, throws the server's `error` on `!res.ok`, and navigates to `/order-confirmation?ref=…&total=…` using the **server** values, then `clearOrder()`. The cart is only cleared on success. `order-confirmation/page.tsx` already reads `ref` and `total` from the query string. **This means orders placed through the UI now reach the database.**
 - Cart `grandtotal` in `order-list/page.tsx` includes add-on prices: `(selectedSize.price + Σ selected add-on prices) × quantity`, using the fetched `addOns` list. Matches the server calculation.
 
-### Phase 4: Barista workflow 🔨 MOSTLY BUILT
+### Phase 4: Barista workflow ✅ DONE
 - **`PATCH /api/orders/[id]` — ✅ APPLIED** (new file `app/api/orders/[id]/route.ts`). Validates `status` against `["pending", "preparing", "ready"]` and 400s on anything else (plus 400 on a non-numeric id, 404 when no row matched). Returns `{ id, orderReference, status, total }`. **Status ordering is deliberately NOT enforced server-side** — the UI only offers the forward move, so server-side transition rules would just create a way to break the screen. A misclick is fixed by the revert path instead.
 - **Barista dashboard — ✅ REWRITTEN for one-click flow.** `Dashboard.tsx` polls `GET /api/orders?range=today` every 3s and derives which order the card shows *during render* rather than storing it:
   - `focusedId` (`number | null`) is the barista's explicit click, if any.
@@ -74,8 +78,8 @@ All 11 tables plus `daily_counters` are live in Neon. `latest_schema.sql` has th
   - `ready` rows render at `opacity-40` so attention stays on active work. Skipped rows are **not** dimmed.
   - Finished orders are still clickable and inspectable; `focusedOrder` resolves `focusedId` against `orders`, not `queue` (otherwise clicking a `ready` row would silently open a different order).
 - **Revert path — ✅ ADDED** in `OrderDetailModal.tsx`: a `ready`-only "Move Back to Preparing" button behind an **in-app** confirm overlay (`z-[60]` above the card's `z-50`, sibling inside the same `fixed inset-0`). Cancel leaves the detail card open.
-  - *Do not use `window.confirm` / `window.prompt` / `alert` for new UI.* Native dialogs title themselves with the page origin, so they render as "localhost" regardless of the message, and they break the visual style. This bit the revert confirm; `inventory/page.tsx`'s `handleRestock` prompt and the owner menu's `handleDelete` confirm are the remaining native dialogs.
-- **Still to do**: `/order-queue` is the last mock holdout — it still imports `useBaristaStore` and its 3s `setInterval` body is **empty** (lines 20–27). Switch it to `GET /api/orders` with the same polling pattern as the dashboard, then delete `store/BaristaStore.ts` and `app/lib/data.tsx` (both have no remaining importers).
+  - *Do not use `window.confirm` / `window.prompt` / `alert` for new UI.* Native dialogs title themselves with the page origin, so they render as "localhost" regardless of the message, and they break the visual style. This bit the revert confirm. `RestockModal` replaced the inventory page's `window.prompt`; the owner menu's `handleDelete` `window.confirm` is now the only one left.
+- **`/order-queue` — ✅ DONE.** Customer-facing display board (reachable from the menu's "Queue Display" button) listing reference numbers under PREPARING and READY. Now polls `GET /api/orders?range=today` every 3s using the same pattern as the dashboard, with an `isLoading` guard so the empty state only shows after a real load. `useBaristaStore` is gone from the app.
 - **Open design question**: no "cancel" for baristas. An order the customer never collects stays `ready` forever and re-sends on every poll.
 
 ### Phase 5: Owner/admin features 🔨 MOSTLY APPLIED
@@ -106,7 +110,7 @@ All 11 tables plus `daily_counters` are live in Neon. `latest_schema.sql` has th
 2. Cart `grandtotal` includes add-on prices. ✅
 3. `StatsCard` fetches `/api/orders?range=today` and uses `o.total`; `SalesReport` fetches `/api/orders?range=${dateFilter}` with an `isMounted` guard, uses `total` / `createdAt`, and computes total / count / average / top seller. ✅
 4. `specialInstruction` cleanup is **complete**: zero occurrences of `specialInstruction` or `SpecialInstructions` remain anywhere in the repo, and `SpecialInstructions.tsx` is gone. `OrderListStore`'s `addToOrder` / `removeOrder` both compare on `selectedSize.sizeId`. ✅
-5. `app/lib/data.tsx` (mock menu) now has **no importers** and is safe to delete. ✅
+5. `app/lib/data.tsx` (mock menu) had no importers — **deleted** along with `store/BaristaStore.ts` and the empty `app/barista-dashboard/ui/OrderQueue.tsx` stub. ✅
 
 **Step 4: small bugs found in the repo review — ✅ ALL APPLIED**
 - `Header.tsx`: `src="/brown-menu.svg"` ✅
@@ -115,26 +119,38 @@ All 11 tables plus `daily_counters` are live in Neon. `latest_schema.sql` has th
 - `SpecialInstructions.tsx` deleted ✅
 - `SideNav.tsx` footer still says **© 2025** (owner nav says 2026) — *still outstanding, cosmetic*.
 
-**Step 5: housekeeping — ⏳ NOT DONE**
+**Step 5: inventory UX — ✅ APPLIED**
+- **`RestockModal.tsx`** (new): replaces the `window.prompt`. Shows the ingredient name and current stock, validates the amount is > 0, and sends `{ stockDelta }` so the DB adds rather than overwrites. `step="0.01"` because stock is tracked in g/ml where 2.5 is normal.
+- **`EditIngredientModal.tsx`** (new): opened by clicking anywhere on an ingredient card. Edits **name, unit, threshold only — never stock**, because PATCH treats `stockQty` as a set value and this form must not be able to clobber real stock. Uses an outer-null-check + inner form split with `key={ingredient.id}`, so switching cards remounts and shows the right values (the render-phase `setState` approach trips `react-hooks/set-state-in-effect`).
+- **Inventory page**: cards are now `cursor-pointer` with a hover shadow. Restock/Delete call `e.stopPropagation()` so they don't also trigger the card's edit handler.
+
+**Step 6: defensive fetch — ✅ APPLIED (fixed a real crash)**
+`inventory/page.tsx`, `StatsCard.tsx` and `sales-report/page.tsx` all did `await response.json()` and stored the result **without checking `response.ok`**. A failing route returns `{ error }`, not an array, so the page stored an object and every later `.filter()` threw `ingredients.filter is not a function`. All three now check the status and validate `Array.isArray` before storing. Worth remembering: this is why a missing DB column looked like "my data disappeared" — the data was fine, the query was failing.
+
+**Step 7: housekeeping — ⏳ NOT DONE**
 - `latest_schema.sql` is missing `daily_counters` and `add_ons.image_url`; both exist in Neon. Add them so the file matches the live database. (Verified: only one `image_url` exists, on `menu_items`.)
-- `app/lib/data.tsx` is now orphaned and can be deleted.
+- `latest_schema.sql` now includes `idx_ingredients_name_unique`; that index still needs creating in Neon.
+- `app/lib/schema.txt` is a **stale, misleading duplicate** of the schema and should be deleted. It predates the price-snapshot columns and has `sizes` with `NOT NULL` oz/temperature, no `daily_counters`, and no `add_ons.is_available`. Copying from it will produce broken SQL. `latest_schema.sql` at the repo root is the real one.
 
 ---
 
 ## Open items / gaps
-- **No auth** on any owner route or page (NextAuth not implemented; `?all=true` and all mutations are open). Biggest structural risk left.
+- **No auth** on any owner route or page (NextAuth not implemented; `?all=true` and all mutations are open). Biggest structural risk left, and the reason this must be done **before any public deploy** — while it's on localhost it costs nothing to defer.
+- **The `expires_at` column does not exist in Neon**, and no code references it. Nothing to clean up; just be aware the earlier session built and reverted that feature.
+- **`idx_ingredients_name_unique` may not exist in Neon yet.** `POST /api/ingredients` uses `ON CONFLICT (LOWER(TRIM(name)))`, which **errors if the index is missing**. If adding a duplicate-named ingredient throws a 500 mentioning no matching constraint, run `CREATE UNIQUE INDEX idx_ingredients_name_unique ON ingredients (LOWER(TRIM(name)));`.
 - `MenuItemCard` renders a raw `null` category; needs the "Uncategorized" fallback.
 - `OrderPage` still fetches all of `/api/menu` instead of `/api/menu/[itemId]`.
-- `/order-queue` is still on `useBaristaStore` with an empty poll body; `store/BaristaStore.ts` and `app/lib/data.tsx` are dead once that's done.
-- **Native browser dialogs remain in two places**: `inventory/page.tsx`'s restock `window.prompt` and the owner menu's delete `window.confirm`. Both show "localhost" as the title and don't match the app's styling. Replace with in-app modals, following the revert-confirm pattern in `OrderDetailModal.tsx`.
-- Ingredient Delete has no confirmation dialog; ingredient **Edit** modal not built.
+- **One native dialog left**: the owner menu's `handleDelete` still uses `window.confirm`. Follow the revert-confirm pattern in `OrderDetailModal.tsx`.
+- Ingredient Delete has no confirmation dialog.
 - Owner modals fetch categories/sizes inline on every open; could be cached.
 - `SideNav.tsx` © 2025 → 2026.
-- `orders/[itemId]/page.tsx` types its local add-ons as `imgUrl: string` while the API's `AddOn.imgUrl` is nullable. Harmless (the `??` fallback covers it) but the type is wrong.
+- `orders/[itemId]/page.tsx` has an unused `setQuantity` (the one remaining lint warning) and types its local add-ons as `imgUrl: string` while the API's `AddOn.imgUrl` is nullable. Harmless (the `??` fallback covers it) but both are wrong.
 - Consider whether Delete should be hidden in favor of "unavailable" for items with order history (currently it 409s with a message).
 - Scaling: `?range=today` re-sends every order including all of day's `ready` ones, every 3s. Fine at café volume; if it drags, use `?status=pending` plus a second fetch for `preparing` rather than filtering a growing array client-side.
 
-**Still to do in Phase 5**: seed `ingredients`; recipe-linking UI (menu item ↔ ingredient ↔ raw quantity, no conversion); ingredient deduction on order placement inside the `/api/orders` transaction (`stock_qty -= quantity_needed × item quantity`, guarded by `CHECK (stock_qty >= 0)`, and decide what happens when stock is insufficient); image hosting migration for `menu_items`.
+**Still to do in Phase 5**: recipe-linking UI (menu item ↔ ingredient ↔ raw quantity, no conversion); ingredient deduction on order placement inside the `/api/orders` transaction (`stock_qty -= quantity_needed × item quantity`, guarded by `CHECK (stock_qty >= 0)`); image hosting migration for `menu_items`.
+- **Deduction design recommendation (settled, implement it this way)**: when stock is insufficient, **reject the order with a 409 naming the short ingredient**. The alternatives are both worse — letting stock go negative fights the `CHECK (stock_qty >= 0)` constraint, and clamping silently produces wrong stock numbers nobody notices until an audit. Rejecting up front means the owner finds out while the menu is still being set up, not with a customer waiting.
+- **Whipped cream** is the awkward ingredient: a spray canister can't be weighed, so its unit is `servings`, not g/ml. It may need to exist in *both* `ingredients` (as stock) and `add_ons` (as the priced toggle), which means `add_ons` eventually needs a nullable `ingredient_id` so the system knows which stock an extra depletes. Unresolved.
 
 ### Phase 6: Data quality & edge cases
 Validate required fields before insert, default image/size/temperature labels, null-safe admin forms, filter invalid records in queries.
@@ -153,5 +169,8 @@ Test drinks + snacks together, order placement, barista status updates, admin CR
 - When a fix surfaces a genuine design decision, pause and reason through options with the user rather than picking silently. For design/tradeoff questions, give a clear recommendation with reasoning rather than a menu of options. Favor honesty over false precision.
 - When the user pastes their own draft, check it line-by-line against names/types already agreed on before assuming the logic is wrong (many past errors were pure naming mismatches, e.g. `menuItemId` vs `itemId`). Name the two disagreeing identifiers.
 - User sometimes pastes stale code from earlier in the chat. Ask whether it's the current file before diagnosing. **Also applies to repo snapshots and to this doc** — cross-check against the actual repo before acting.
+- **The assistant has no database access.** It can read the repo and hand the user SQL to run in Neon, nothing more. Never imply otherwise, and never claim data was verified in the database.
+- **Lesson worth keeping**: a "my data is gone" report is usually a *failing query*, not lost data — check the server/terminal error before assuming deletion. A `GET` route returning `{ error }` that a page stored as a list produced `ingredients.filter is not a function` and looked exactly like data loss.
+- **When a feature needs a schema change**, land the SQL and the app code as separate steps, and make the app fail *legibly* (check `response.ok`) rather than rendering an empty list that mimics data loss.
 - Apply big batches **one small testable group at a time**, and list what to test after each. Before moving on, confirm each earlier step was actually applied, since delivered ≠ applied.
 - When the user pastes their own working version of a delivered function, compare behavior, keep theirs when equivalent, flag only real bugs, and warn against pasting a second copy (duplicate exports error).

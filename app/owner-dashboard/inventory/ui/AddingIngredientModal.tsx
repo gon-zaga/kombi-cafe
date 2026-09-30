@@ -77,7 +77,7 @@ function AddingIngredientModal({
 
     // Prevent the browser from refreshing the page
     e.preventDefault();
-
+    
     // Remove any previous error message
     setError("");
 
@@ -302,25 +302,48 @@ function AddingIngredientModal({
                 Select unit
               </option>
 
-              {/* Available units */}
+              {/* 
+                Units are free text in the database, so this list is only
+                a convenience. There is deliberately no unit conversion:
+                each ingredient is tracked in the unit it's actually
+                consumed in, and recipes use that same unit directly.
+              */}
+
+              {/* Weight */}
               <option value="g">
                 Grams (g)
-              </option>
-
-              <option value="ml">
-                Milliliters (ml)
-              </option>
-
-              <option value="pcs">
-                Pieces (pcs)
               </option>
 
               <option value="kg">
                 Kilograms (kg)
               </option>
 
+              {/* Volume */}
+              <option value="ml">
+                Milliliters (ml)
+              </option>
+
               <option value="L">
                 Liters (L)
+              </option>
+
+              {/* Countable */}
+              <option value="pcs">
+                Pieces (pcs)
+              </option>
+
+              <option value="packs">
+                Packs (packs)
+              </option>
+
+              {/* Syrups, powders and other bar consumables. These are the
+                  units recipes will use, e.g. "2 pumps of Vanilla Syrup" */}
+              <option value="pumps">
+                Pumps (pumps)
+              </option>
+
+              <option value="scoops">
+                Scoops (scoops)
               </option>
 
             </select>
