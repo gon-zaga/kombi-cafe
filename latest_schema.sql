@@ -57,14 +57,24 @@ CREATE TABLE IF NOT EXISTS ingredients (
 CREATE UNIQUE INDEX IF NOT EXISTS idx_ingredients_name_unique
   ON ingredients (LOWER(TRIM(name)));
 -- Recipes (which ingredients each menu item needs and how much) ---
+-- size_id is NULLABLE and means "applies to every size". A non-null size_id
+-- overrides the general row for that size only, so a 22oz Bulli can use more
+-- milk than a 12oz Kafer without duplicating every other ingredient.
 CREATE TABLE IF NOT EXISTS recipes (
   id SERIAL PRIMARY KEY,
   menu_item_id INTEGER REFERENCES menu_items(id) ON DELETE CASCADE,
+  size_id INTEGER REFERENCES sizes(id) ON DELETE CASCADE,
   ingredient_id INTEGER REFERENCES ingredients(id) ON DELETE CASCADE,
-  quantity_needed NUMERIC(10, 2) NOT NULL
+  quantity_needed NUMERIC(10, 2) NOT NULL CHECK (quantity_needed > 0)
 );
 CREATE INDEX IF NOT EXISTS idx_recipes_menu_item_id ON recipes (menu_item_id);
 CREATE INDEX IF NOT EXISTS idx_recipes_ingredient_id ON recipes (ingredient_id);
+CREATE INDEX IF NOT EXISTS idx_recipes_size_id ON recipes (size_id);
+-- A given ingredient can only appear once per (item, size) pair, including the
+-- "all sizes" row where size_id is NULL. Postgres treats NULLs as distinct in a
+-- plain unique index, so the COALESCE gives those rows a real key to collide on.
+CREATE UNIQUE INDEX IF NOT EXISTS idx_recipes_unique_row
+  ON recipes (menu_item_id, COALESCE(size_id, 0), ingredient_id);
 -- Add-ons ---
 CREATE TABLE IF NOT EXISTS add_ons (
   id SERIAL PRIMARY KEY,

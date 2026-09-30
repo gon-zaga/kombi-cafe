@@ -1,7 +1,9 @@
 'use client'
 
+// Edits a menu item's details and its recipe (which ingredients it consumes)
 import { useEffect, useState } from "react";
 import type { MenuItem } from "@/app/lib/types";
+import RecipeEditor from "./RecipeEditor";
 
 interface Category {
   id: number;
@@ -273,6 +275,20 @@ function EditItemModal({ isOpen, onClose, item, onUpdated }: EditItemModalProps)
           </div>
 
         </form>
+
+        {/* Recipes sit outside the form above: RecipeEditor has its own <form>,
+            and nested forms are invalid HTML whose inner submit would trigger
+            the outer "Save Changes" instead of "Add to Recipe". */}
+        <div className="mt-6 pt-4 border-t border-gray-200">
+          <h3 className="text-sm font-semibold text-gray-900 mb-2">
+            Recipes (stock used)
+          </h3>
+          <RecipeEditor
+            menuItemId={item.itemId}
+            itemSizes={item.sizes}
+            onChanged={onUpdated}
+          />
+        </div>
       </div>
     </div>
   );
