@@ -3,16 +3,18 @@ CREATE TABLE IF NOT EXISTS categories (
   id SERIAL PRIMARY KEY,
   name VARCHAR(50) UNIQUE NOT NULL
 );
--- Staff (Barista / Admin) ---
+-- Staff (Barista / Owner) ---
 CREATE TABLE IF NOT EXISTS staff (
   user_id SERIAL PRIMARY KEY,
   username VARCHAR(50) UNIQUE NOT NULL,
   password_hash TEXT NOT NULL,
-  role VARCHAR(20) NOT NULL CHECK (role IN ('barista', 'admin')),
+  role VARCHAR(20) NOT NULL CHECK (role IN ('barista', 'owner')),
   first_name VARCHAR(100),
   last_name VARCHAR(100),
   started_at DATE,
-  birthdate DATE
+  birthdate DATE,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 -- Menu Items ---
 CREATE TABLE IF NOT EXISTS menu_items (

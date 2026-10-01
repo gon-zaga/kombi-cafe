@@ -8,7 +8,7 @@ import AddStaffModal from "./ui/AddStaffModal";
 interface Staff {
   user_id: number;
   username: string;
-  role: "barista" | "owner";
+  role: "barista" | "admin";
   first_name: string | null;
   last_name: string | null;
   started_at: string | null;
@@ -54,7 +54,7 @@ export default function StaffManagement() {
   if (loading) {
     return (
       <section className="min-h-screen">
-        <OwnerHeader title="WORKER PROFILE" />
+        <OwnerHeader title="STAFF MANAGEMENT" />
         <p className="text-center py-10 text-dark-brown">Loading staff...</p>
       </section>
     );
@@ -62,7 +62,7 @@ export default function StaffManagement() {
 
   return (
     <section className="min-h-screen">
-      <OwnerHeader title="WORKER PROFILE" />
+      <OwnerHeader title="STAFF MANAGEMENT" />
 
       <section className="px-4">
         <div className="flex justify-between items-center mb-6">

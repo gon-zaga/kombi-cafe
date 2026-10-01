@@ -16,7 +16,7 @@ interface PlaceOrderPayload {
 }
 
 // Which recipe rows apply to a given item + size, and how much each costs.
-// Shared by the check and the update so the two can never disagree.
+// No trailing semicolon: this string is also embedded as a subquery.
 const recipeCostSql = `
   SELECT i.id, i.name, i.unit, i.stock_qty,
          SUM(r.quantity_needed) * $3::numeric AS needed
@@ -30,7 +30,7 @@ const recipeCostSql = `
         AND r2.size_id = $2
         AND r2.ingredient_id = r.ingredient_id
     )
-  GROUP BY i.id, i.name, i.unit, i.stock_qty;
+  GROUP BY i.id, i.name, i.unit, i.stock_qty
 `;
 
 // Removes stock for one ordered item's recipe. Throws (which rolls the whole

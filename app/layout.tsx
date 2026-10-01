@@ -7,6 +7,7 @@ import {
   Monoton,
 } from "next/font/google";
 import "./globals.css";
+import { AuthProvider } from "@/app/lib/auth/AuthContext";
 
 const roboto = Roboto({
   variable: "--font-roboto",
@@ -70,7 +71,9 @@ export default function RootLayout({
         "h-full antialiased",
       ].join(" ")}
     >
-      <body className="min-h-full flex flex-col">{children}</body>
+      <body className="min-h-full flex flex-col">
+        <AuthProvider>{children}</AuthProvider>
+      </body>
     </html>
   );
 }
