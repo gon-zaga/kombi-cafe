@@ -21,11 +21,11 @@ interface StaffTableProps {
 
 export default function StaffTable({ staff, onUpdated }: StaffTableProps) {
   const [editingStaff, setEditingStaff] = useState<Staff | null>(null);
-  const [deletingId] = useState<number | null>(null);
+  const [deletingId, setDeletingId] = useState<number | null>(null);
   const [deleteError, setDeleteError] = useState("");
 
   const handleDelete = async (id: number) => {
-    if (!window.confirm(`Delete this staff member?`)) return;
+    if (!window.confirm("Delete this staff member?")) return;
     setDeleteError("");
     try {
       const res = await fetch(`/api/staff/${id}`, { method: "DELETE" });
@@ -42,7 +42,7 @@ export default function StaffTable({ staff, onUpdated }: StaffTableProps) {
   if (staff.length === 0) {
     return (
       <div className="bg-white rounded-2xl shadow-sm p-10 text-center">
-        <p className="text-gray-500">No staff members yet. Click Add Staff to create one.</p>
+        <p className="text-gray-500">No staff members yet. Click  "Add Staff" to create one.</p>
       </div>
     );
   }
@@ -95,7 +95,7 @@ export default function StaffTable({ staff, onUpdated }: StaffTableProps) {
                       Edit
                     </button>
                     <button
-                      onClick={() => handleDelete(member.user_id)}
+                      onClick={() => setDeletingId(member.user_id)}
                       disabled={deletingId === member.user_id}
                       className="text-red-600 hover:text-red-900 text-sm font-medium disabled:opacity-50"
                     >
