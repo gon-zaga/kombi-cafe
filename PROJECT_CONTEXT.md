@@ -83,7 +83,7 @@ All 11 tables plus `daily_counters` are live in Neon. `latest_schema.sql` has th
 - **Revert path — ✅ ADDED** in `OrderDetailModal.tsx`: a `ready`-only "Move Back to Preparing" button behind an **in-app** confirm overlay (`z-[60]` above the card's `z-50`, sibling inside the same `fixed inset-0`). Cancel leaves the detail card open.
   - *Do not use `window.confirm` / `window.prompt` / `alert` for new UI.* Native dialogs title themselves with the page origin, so they render as "localhost" regardless of the message, and they break the visual style. This bit the revert confirm. **Zero native dialogs remain** — all of them now go through `app/ui/ConfirmModal.tsx` (see "Phase 5 Step 11").
 - **`/order-queue` — ✅ DONE.** Customer-facing display board (reachable from the menu's "Queue Display" button) listing reference numbers under PREPARING and READY. Now polls `GET /api/orders?range=today` every 3s using the same pattern as the dashboard, with an `isLoading` guard so the empty state only shows after a real load. `useBaristaStore` is gone from the app.
-- **Open design question**: no "cancel" for baristas. An order the customer never collects stays `ready` forever and re-sends on every poll.
+- **Open design question**: ~~no "cancel" for baristas~~ ✅ Resolved by `completed` (Step 13) — a collected order now leaves the board instead of re-sending on every poll.
 
 ### Phase 5: Owner/admin features 🔨 MOSTLY APPLIED
 
@@ -139,7 +139,7 @@ All 11 tables plus `daily_counters` are live in Neon. `latest_schema.sql` has th
 - **`app/owner-dashboard/menu/ui/RecipeModal.tsx`**: a **standalone** modal titled "Ingredients" with the item name beneath, opened only from a card's **Ingredients** button. Recipes were previously embedded at the bottom of `EditItemModal`, below Save/Cancel, where they were easy to miss and blurred two unrelated tasks together ("rename this drink" vs "what does this drink consume"). Keeping the editor in its own component means both modals can host it without nesting forms.
 - **`app/owner-dashboard/menu/ui/IngredientPicker.tsx`**: searchable dropdown (type-to-filter on name, click-away layer, unit shown per row). Replaced a plain `<select>`, which stops being usable past ~15 ingredients. `AddingIngredientModal` is reused from the Inventory folder so both places open the identical dialog; it stacks above its host modal because both use `z-50` and it is later in the DOM.
 - **`MenuItemCard.tsx`**: the **whole card opens Edit**, signalled three ways — `cursor-pointer`, a resting ring that thickens and turns amber on hover, and a "Click card to edit" hint under the name. Three buttons at the bottom: **Ingredients**, **Edit**, **Delete**.
-  - ⚠️ Because the card is now clickable, **every inner control must call `e.stopPropagation()`** or it fires both handlers. The availability toggle is the one to watch: without it, flipping availability opened the edit modal.
+  - ⚠️ Because the card is now clickable, **every inner control must call `e.stopPropagation()`** or it fires both handlers. **This actually bit us**: `MenuItemCard`'s toggle had `stopPropagation` on the `<input>`, but that input is `sr-only` — the visible pill and knob are sibling `<div>`s, so the real click never touched the input and bubbled up to the card's `onEdit`, opening Edit on every toggle flip. **Put `stopPropagation` on the `<label>`** (the actual hit target) as well as the input; a label click still forwards to its input, so `onChange` keeps working. General rule: stop propagation on the **visible wrapper**, not on the visually-hidden control.
 - *Not verified*: the deduction below has never been run against real recipe data.
 
 **Step 9: stock deduction on order placement — ✅ BUILT (needs an end-to-end test)**
@@ -177,6 +177,37 @@ All 11 tables plus `daily_counters` are live in Neon. `latest_schema.sql` has th
 - Export menu offers three files: **Sales & orders** (ref, time, date, status, item count, total), **Low stock** (every ingredient + a Yes/No low flag, not just the low ones — the owner needs the full picture to plan a restock run), **Best sellers** (rank, item, quantity, revenue). Filenames carry both the range slug and a Manila timestamp so exports don't overwrite each other.
 - **Honest limitation**: the best-sellers revenue column is `quantity × unitPrice`, so it **excludes add-ons** (charged at the order level). It's a floor. The per-order Total in the sales CSV is exact.
 - **Low stock is a current snapshot, not range-scoped** — there is no stock history in the schema, so that card and CSV always reflect right now. Sales, processed orders and best seller follow the selected range.
+
+**Step 13: `completed` status — ✅ CODE BUILT, ⚠️ NEEDS SQL IN NEON FIRST**
+- **Run this in Neon before testing**, or the PATCH will fail on the CHECK constraint:
+  ```sql
+  ALTER TABLE orders DROP CONSTRAINT orders_status_check;
+  ALTER TABLE orders ADD CONSTRAINT orders_status_check
+    CHECK (status IN ('pending', 'preparing', 'ready', 'completed'));
+  ```
+  Postgres auto-named the original column CHECK `orders_status_check`; confirm with `SELECT conname FROM pg_constraint WHERE conrelid = 'orders'::regclass AND contype = 'c';` if the DROP fails.
+- **Deliberately a status, not a DELETE.** An order row *is* the sales history — `orders`, `order_items` and `order_item_addons` are what every report reads. Deleting completed orders would erase the day's revenue. The status only controls what the barista board shows.
+- This also **closes the old open question** ("no cancel for baristas; an order the customer never collects stays `ready` forever"). Completed is the barista's "handed over" signal, and such an order leaves the board.
+- Flow: pending → preparing → ready → **completed**. On a `ready` order the detail modal now shows a prominent green **Mark as Completed** above **Move Back to Preparing**; completing releases the card to the next order, exactly like "Mark as Ready" does.
+- **Completed orders are filtered in `Dashboard.tsx`'s `fetchOrders`**, once, so the counts, the queue, the focused card and the row list all exclude them without four separate filters. The badge reads "N active". `/order-queue` needed no change: it filters explicitly for `preparing`/`ready`, so collected orders vanish off the customer board for free.
+- `StatsCard`'s **Orders Processed now counts `completed`**, not `ready` — crediting drinks that were made but never collected was the old behaviour.
+- The barista status-update failure was an `alert()`; it's now an inline `actionError` banner (**the last native dialog in the app**).
+- `VALID_STATUSES` in `app/api/orders/[id]/route.ts` and the `?status=` whitelist in `app/api/orders/route.ts` both had to learn the new value, plus `OrderSummary["status"]` in `types.ts` and the CHECK in `latest_schema.sql`. Four places, one list — a new status means editing all four.
+- *Not verified end-to-end.* Completing an order is untested against the real constraint.
+
+**Step 14: customer-facing low-stock / unavailable badges — ✅ BUILT (needs a live test)**
+- **Red "Unavailable" / orange "Low stock" on the customer menu, and unavailable items can no longer be ordered.** The row is still kept; only the menu hides it.
+- `GET /api/menu` gained a third mode, `?unavailable=true`, and every item now carries **`isLowStock`** (added to `MenuRow` and `MenuItem` in `types.ts`):
+  - `?all=true` — owner view, includes unavailable.
+  - `?unavailable=true` — customer view that **also** includes unavailable items, so a drink the owner switched off shows as red instead of silently disappearing.
+  - no params — available only (unchanged default).
+  - ⚠️ The two views are now *distinguishable in content*, not just in filtering. If you ever want unavailable items hidden again, drop the param from `app/page.tsx` — do **not** change the default, because the owner page relies on `?all=true` and the default is what keeps the plain customer fetch honest.
+- **`isLowStock` SQL**: `EXISTS (SELECT 1 FROM recipes r JOIN ingredients ing ON ing.id = r.ingredient_id WHERE r.menu_item_id = mi.id AND ing.stock_qty <= ing.restock_threshold)`. One low ingredient flags the whole item. Two known limits: a **size-specific** recipe row can flag an item as low for one size only (no per-size granularity), and an item with **no recipe rows is never low** (nothing to be short of). Same expression is duplicated in `/api/menu` and `/api/menu/[itemId]` — keep them in sync or a badge will differ between the grid and the item page.
+- **Low stock is a warning, never a block.** The order API already refuses a genuine shortage with a 409 naming the ingredient, so blocking at "at threshold" would hide sellable drinks and lose sales.
+- **`POST /api/orders` now re-checks `is_available` inside the transaction** (the price lookup joins `menu_items`). This was a real hole: the UI blocked unavailable items, but a cart left open while the owner switched an item off would still have submitted it. Throws `Unavailable: <name>`, caught alongside the stock message and returned as a **409** the customer can read. Never trust a cart that sat open.
+- `ProductCard` renders a non-`Link` `<div>` for unavailable items, so there is no href to follow even by keyboard; the image goes grayscale and the name is struck through. Low stock renders the orange badge above the price.
+- `/orders/[itemId]` shows a read-only page with a red "Unavailable" pill and **no** `AddToOrderButton`, plus an orange low-stock note. `/api/menu/[itemId]` still 404s unavailable items — the page is convenience, the server is the guard.
+- *Untested.* Nothing has confirmed the `EXISTS` subquery against real recipes, nor that a stale cart produces the 409.
 
 ## Open items / gaps
 - **The whole order→deduct path is untested.** Recipes and deduction are built but never run against real data. Until it's verified, treat Phases 3–5 as "code complete, behaviour unconfirmed". The one-line check that matters most: a **failed** (409) order must not consume a `daily_number`.

@@ -9,7 +9,7 @@ import type { OrderSummary } from "@/app/lib/types";
 interface OrderDetailModalProps {
   order: OrderSummary | null
   onClose: () => void
-  onUpdateStatus: (id: number, status: 'pending' | 'preparing' | 'ready') => void
+  onUpdateStatus: (id: number, status: 'pending' | 'preparing' | 'ready' | 'completed') => void
 }
 
 function OrderDetailModal({ order, onClose, onUpdateStatus }: OrderDetailModalProps) {
@@ -21,10 +21,11 @@ function OrderDetailModal({ order, onClose, onUpdateStatus }: OrderDetailModalPr
 
   if (!order) return null;
 
-  // Only 'ready' ends the order's turn, so the parent auto-advances to the next
-  // order. 'preparing' keeps this card open on the same order.
-  const handleUpdateStatus = (status: 'pending' | 'preparing' | 'ready') => {
-    if (status === 'ready') onClose();
+  // 'ready' and 'completed' both end the order's turn, so the parent
+  // auto-advances to the next order. 'preparing' keeps this card open on the
+  // same order.
+  const handleUpdateStatus = (status: 'pending' | 'preparing' | 'ready' | 'completed') => {
+    if (status === 'ready' || status === 'completed') onClose();
     onUpdateStatus(order.id, status);
   };
 
@@ -131,6 +132,18 @@ function OrderDetailModal({ order, onClose, onUpdateStatus }: OrderDetailModalPr
               className="w-full text-sm font-medium bg-green-50 border border-green-200 text-green-800 rounded-lg py-3 hover:bg-green-100 active:scale-95 transition-transform"
             >
               Mark as Ready
+            </button>
+          )}
+
+          {/* Ready means it's on the counter waiting to be collected. Completing it is
+              what actually clears the order off the board, so it gets the
+              prominent button and sits above the revert. */}
+          {order.status === 'ready' && (
+            <button
+              onClick={() => handleUpdateStatus('completed')}
+              className="w-full text-sm font-medium bg-green-600 text-white rounded-lg py-3 hover:bg-green-700 active:scale-95 transition-transform"
+            >
+              Mark as Completed
             </button>
           )}
 

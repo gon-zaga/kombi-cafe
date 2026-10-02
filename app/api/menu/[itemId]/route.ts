@@ -27,7 +27,17 @@ export async function GET(
         s.label AS size,
         s.oz AS oz,
         s.temperature AS temperature,
-        mis.price AS price
+        mis.price AS price,
+
+        -- Same low-stock rule as /api/menu: one recipe ingredient at or below
+        -- its restock threshold is enough
+        EXISTS (
+          SELECT 1
+          FROM recipes r
+          JOIN ingredients ing ON ing.id = r.ingredient_id
+          WHERE r.menu_item_id = mi.id
+            AND ing.stock_qty <= ing.restock_threshold
+        ) AS is_low_stock
       FROM menu_items AS mi
       JOIN categories AS c ON mi.category_id = c.id
       JOIN menu_item_sizes AS mis ON mi.id = mis.menu_item_id
@@ -51,6 +61,7 @@ export async function GET(
       itemImg: first.item_img,
       category: first.category,
       isAvailable: first.is_available,
+      isLowStock: first.is_low_stock,
       ingredients: [],
       sizes: rows.map((row) => ({
         sizeId: row.size_id,

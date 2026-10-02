@@ -1,7 +1,9 @@
 'use client';
 
 // Customer-facing queue board: polls today's real orders and lists reference numbers
-// under PREPARING and READY so customers can see when their number is called
+// under PREPARING and READY so customers can see when their number is called.
+// 'pending' and 'completed' are excluded by the two filters below, so a collected
+// order disappears off the customer board as soon as the barista completes it.
 import { useCallback, useEffect, useState } from "react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";

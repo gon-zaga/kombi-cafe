@@ -90,7 +90,9 @@ CREATE TABLE IF NOT EXISTS orders (
   daily_number INTEGER NOT NULL,
   order_date DATE NOT NULL DEFAULT CURRENT_DATE,
   total NUMERIC(10, 2) NOT NULL,
-  status VARCHAR(20) DEFAULT 'pending' CHECK (status IN ('pending', 'preparing', 'ready')),
+  -- 'completed' = handed to the customer. The row is kept (sales history lives
+  -- here); only the barista board hides it. See PROJECT_CONTEXT Step 13.
+  status VARCHAR(20) DEFAULT 'pending' CHECK (status IN ('pending', 'preparing', 'ready', 'completed')),
   created_at TIMESTAMP DEFAULT NOW(),
   UNIQUE (daily_number, order_date)
 );

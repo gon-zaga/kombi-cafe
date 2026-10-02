@@ -181,7 +181,7 @@ export async function GET(request: Request) {
     to = resolved.to;
   }
 
-  if (status !== null && !["pending", "preparing", "ready"].includes(status)) {
+  if (status !== null && !["pending", "preparing", "ready", "completed"].includes(status)) {
     return NextResponse.json({ error: "Invalid status" }, { status: 400 });
   }
 
@@ -285,13 +285,26 @@ export async function POST(request: Request) {
 
       // step 3 + 4: price each item and add-on server-side
       for (const item of body.items) {
+        // Availability is re-read here, inside the transaction, rather than
+        // trusted from the cart: the UI blocks unavailable items, but a cart can
+        // sit open while the owner switches something off, and the stale item id
+        // would otherwise still be accepted.
         const priceResult = await client.query(
-          `SELECT price FROM menu_item_sizes WHERE menu_item_id = $1 AND size_id = $2;`,
+          `SELECT mis.price, mi.name, mi.is_available
+           FROM menu_item_sizes AS mis
+           JOIN menu_items AS mi ON mi.id = mis.menu_item_id
+           WHERE mis.menu_item_id = $1 AND mis.size_id = $2;`,
           [item.itemId, item.sizeId]
         );
 
         if (priceResult.rows.length === 0) {
           throw new Error(`No price found for itemId ${item.itemId}, sizeId ${item.sizeId}`);
+        }
+
+        if (priceResult.rows[0].is_available !== true) {
+          // Same prefix convention as the stock shortage so the catch below can
+          // tell a customer-facing refusal from a server fault
+          throw new Error(`Unavailable: ${priceResult.rows[0].name}`);
         }
 
         const unitPrice = Number(priceResult.rows[0].price);
@@ -359,11 +372,19 @@ export async function POST(request: Request) {
       await client.query('ROLLBACK');
       console.error("Failed to place order:", error);
 
-      // Stock shortage is an expected outcome, not a server fault: the message
-      // thrown by deductRecipeStock is safe (and useful) to show the customer.
-      if (error instanceof Error && error.message.startsWith('Not enough stock:')) {
+      // Stock shortage and unavailable items are expected outcomes, not server
+      // faults: both messages are safe (and useful) to show the customer.
+      if (
+        error instanceof Error &&
+        (error.message.startsWith('Not enough stock:') ||
+          error.message.startsWith('Unavailable:'))
+      ) {
         return NextResponse.json(
-          { error: error.message },
+          {
+            error: error.message.startsWith('Unavailable:')
+              ? `${error.message.slice('Unavailable:'.length)} is no longer available. Please remove it from your order.`
+              : error.message,
+          },
           { status: 409 }
         );
       }

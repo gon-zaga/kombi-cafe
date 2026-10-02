@@ -25,7 +25,9 @@ export default function OrderPage({ params }: { params: Promise<{ itemId: number
 
     async function fetchItemData() {
       try {
-        const menuResponse = await fetch('/api/menu');
+        // ?unavailable=true so a switched-off item can be shown with an explanation
+        // instead of the misleading "Item not found"
+        const menuResponse = await fetch('/api/menu?unavailable=true');
         const menuData: MenuItem[] = await menuResponse.json();
         const foundItem = menuData.find((entry) => entry.itemId === Number(itemId));
 
@@ -79,6 +81,32 @@ export default function OrderPage({ params }: { params: Promise<{ itemId: number
     return <p className="text-center py-10 text-dark-brown">Item not found.</p>;
   }
 
+  // Unavailable: show the page read-only, with no way to add it to the cart.
+  // /api/menu/[itemId] also 404s unavailable items, so this is a convenience,
+  // not the guard -- the server is what actually refuses the order.
+  if (!item.isAvailable) {
+    return (
+      <section className="min-h-screen bg-cream text-dark-brown">
+        <div className="pb-24">
+          <ItemHeader
+            itemImg={item.itemImg ?? '/drinks/no-drink-image.svg'}
+            itemName={item.itemName}
+            itemId={item.itemId}
+          />
+          <div className="px-5">
+            <span className="inline-block text-xs font-bold uppercase tracking-wide text-white bg-red-600 rounded-full px-3 py-1">
+              Unavailable
+            </span>
+            <p className="mt-3 text-sm text-gray-700">
+              This item is currently unavailable. Please check back later or ask
+              the counter for alternatives.
+            </p>
+          </div>
+        </div>
+      </section>
+    );
+  }
+
   return (
     <section className="min-h-screen bg-cream text-dark-brown">
       <div className="pb-24">
@@ -92,6 +120,14 @@ export default function OrderPage({ params }: { params: Promise<{ itemId: number
           price={selectedSize.price}
           ingredients={item.ingredients}
         />
+
+        {/* Warning only. The item is still orderable: the order API refuses an
+            order on a genuine shortage, so this is a heads-up, not a block. */}
+        {item.isLowStock && (
+          <div className="mx-5 mt-3 bg-orange-50 border border-orange-200 text-orange-800 text-sm rounded-lg px-3 py-2">
+            Low stock &mdash; some ingredients for this item are running low.
+          </div>
+        )}
         <SizeSelector
           sizes={item.sizes}
           selectedSize={selectedSize}

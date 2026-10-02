@@ -1,3 +1,4 @@
+import type { MouseEvent } from "react"
 import Image from "next/image"
 
 interface MenuItemCardProps {
@@ -22,11 +23,24 @@ function MenuItemCard({
   onDelete,
   onIngredients,
 }: MenuItemCardProps) {
+  // The whole card opens Edit, so any click that STARTS on an inner control
+  // (the availability toggle, or one of the action buttons) must not count.
+  //
+  // This checks where the click came from instead of relying on
+  // stopPropagation inside those controls: a control that hides its real input
+  // (the toggle is sr-only) can forward a second, un-stoppable click, and
+  // propagation-based guards failed in practice. `closest()` walks up from the
+  // exact element that was hit, so it can't be bypassed.
+  const handleCardClick = (e: MouseEvent<HTMLDivElement>) => {
+    if ((e.target as HTMLElement).closest("[data-card-control]")) return
+    onEdit()
+  }
+
   return (
-    // The whole card opens Edit. The ring + cursor make that clickable area
-    // obvious, instead of it being an unlabelled box.
+    // The ring + cursor make the card's clickable area obvious, instead of it
+    // being an unlabelled box.
     <div
-      onClick={onEdit}
+      onClick={handleCardClick}
       className="bg-white rounded-lg shadow p-4 flex flex-col gap-3 cursor-pointer
                  ring-1 ring-gray-200 hover:ring-2 hover:ring-amber-400
                  hover:shadow-md transition-all"
@@ -53,13 +67,19 @@ function MenuItemCard({
         </div>
 
         {/* Available Toggle */}
-        <div className="shrink-0">
-         <label className="relative inline-flex items-center cursor-pointer">
-              {/* stopPropagation so flipping availability doesn't also open Edit */}
+        <div className="shrink-0" data-card-control>
+          {/* The input is sr-only, so the visible pill/knob divs are what get
+              clicked; a label click forwards activation to the input, which is
+              why onChange still fires. */}
+          <label
+            onClick={(e) => e.stopPropagation()}
+            title={isAvailable ? "Available — click to mark unavailable" : "Unavailable — click to mark available"}
+            className="relative inline-flex items-center cursor-pointer"
+          >
               <input
                 type="checkbox"
                 checked={isAvailable}
-                onClick={(e) => e.stopPropagation()}
+                aria-label={`Mark ${item.itemName} as ${isAvailable ? "unavailable" : "available"}`}
                 onChange={(e) => onToggle(e.target.checked)}
                 className="sr-only peer"
               />
@@ -70,22 +90,23 @@ function MenuItemCard({
       </div>
 
       {/* Bottom row: Action Buttons */}
-      {/* stopPropagation on each so they don't bubble up to the card's Edit */}
-      <div className="flex flex-row gap-2 justify-end">
+      {/* The whole row is one control region, so a click on any of these
+          buttons can never reach the card's Edit handler */}
+      <div className="flex flex-row gap-2 justify-end" data-card-control>
         <button
-          onClick={(e) => { e.stopPropagation(); onIngredients(); }}
+          onClick={onIngredients}
           className="px-3 py-1.5 text-sm font-medium text-purple-700 bg-purple-50 rounded-lg hover:bg-purple-100 transition-colors"
         >
           Ingredients
         </button>
         <button
-          onClick={(e) => { e.stopPropagation(); onEdit(); }}
+          onClick={onEdit}
           className="px-3 py-1.5 text-sm font-medium text-blue-700 bg-blue-50 rounded-lg hover:bg-blue-100 transition-colors"
         >
           Edit
         </button>
         <button
-          onClick={(e) => { e.stopPropagation(); onDelete(); }}
+          onClick={onDelete}
           className="px-3 py-1.5 text-sm font-medium text-red-700 bg-red-50 rounded-lg hover:bg-red-100 transition-colors"
         >
           Delete

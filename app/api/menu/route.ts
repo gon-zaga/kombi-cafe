@@ -1,11 +1,20 @@
 import pool from "@/app/lib/db";
 import { MenuRow, MenuItem } from "@/app/lib/types";
 
-// Returns menu items grouped with their sizes; ?all=true includes unavailable items (owner view)
+// Returns menu items grouped with their sizes.
+//   ?all=true          -> owner view, includes unavailable items
+//   ?unavailable=true  -> customer view that ALSO includes unavailable items, so
+//                         the menu can show them as unavailable instead of
+//                         silently hiding a drink the owner just switched off
+//   (no params)        -> available items only
+// Every item carries isLowStock, computed from its recipe ingredients.
 export async function GET(request: Request) {
-  const all = new URL(request.url).searchParams.get("all") === "true";
+  const params = new URL(request.url).searchParams;
+  const all = params.get("all") === "true";
+  const includeUnavailable = params.get("unavailable") === "true";
 
-  // $1 is true for the owner view, so the availability check is skipped
+  // $1 true = owner view (no availability filter), $2 true = customer view that
+  // wants unavailable items shown too
   const result = await pool.query(
     `
     SELECT
@@ -18,15 +27,29 @@ export async function GET(request: Request) {
       s.label AS size,
       s.oz AS oz,
       s.temperature AS temperature,
-      mis.price AS price
+      mis.price AS price,
+
+      -- Low stock = at least ONE ingredient in the item's recipe is at or below
+      -- its restock threshold. Size-specific recipe rows are counted too, so an
+      -- item can read as low because of one size only; this is a warning, not a
+      -- block. The order API is what actually refuses an order on a shortage.
+      -- An item with no recipe rows at all is never "low" -- there is nothing to
+      -- be short of.
+      EXISTS (
+        SELECT 1
+        FROM recipes r
+        JOIN ingredients ing ON ing.id = r.ingredient_id
+        WHERE r.menu_item_id = mi.id
+          AND ing.stock_qty <= ing.restock_threshold
+      ) AS is_low_stock
     FROM menu_items AS mi
     JOIN categories AS c ON mi.category_id = c.id
     JOIN menu_item_sizes AS mis ON mi.id = mis.menu_item_id
     JOIN sizes AS s ON mis.size_id = s.id
-    WHERE ($1::boolean OR mi.is_available = TRUE)
+    WHERE ($1::boolean OR $2::boolean OR mi.is_available = TRUE)
     ORDER BY mi.id, s.id
     `,
-    [all]
+    [all, includeUnavailable]
   );
   const rows: MenuRow[] = result.rows;
 
@@ -40,6 +63,7 @@ export async function GET(request: Request) {
         itemImg: row.item_img,
         category: row.category,
         isAvailable: row.is_available,
+        isLowStock: row.is_low_stock,
         ingredients: [],
         sizes: [],
       };

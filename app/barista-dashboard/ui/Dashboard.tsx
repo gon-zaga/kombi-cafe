@@ -20,6 +20,10 @@ export default function BaristaPage() {
 
   // Orders the barista dismissed with X, keyed by id + status
   const [skipped, setSkipped] = useState<Set<string>>(new Set());
+
+  // Failed status update, shown as a banner. This used to be window.alert,
+  // which renders as "localhost says" and is banned for new UI.
+  const [actionError, setActionError] = useState('');
   const router = useRouter();
   const [timeString, setTimeString] = useState('');
   const [dateString, setDateString] = useState('');
@@ -42,8 +46,14 @@ export default function BaristaPage() {
     const response = await fetch('/api/orders?range=today');
     if (!response.ok) return [] as OrderSummary[];
     const data: OrderSummary[] = await response.json();
-    if (mountedRef.current) setOrders(data);
-    return data;
+
+    // Completed orders are dropped here, once, instead of being filtered at
+    // every use below. They stay in the database for sales history; the barista
+    // board just stops showing them.
+    const active = data.filter((o) => o.status !== 'completed');
+
+    if (mountedRef.current) setOrders(active);
+    return active;
   }, []);
 
   useEffect(() => {
@@ -120,7 +130,7 @@ export default function BaristaPage() {
 
   async function handleUpdateStatus(
     id: number,
-    status: 'pending' | 'preparing' | 'ready'
+    status: 'pending' | 'preparing' | 'ready' | 'completed'
   ) {
     const response = await fetch(`/api/orders/${id}`, {
       method: 'PATCH',
@@ -130,16 +140,17 @@ export default function BaristaPage() {
 
     if (!response.ok) {
       const data = await response.json().catch(() => ({}));
-      alert(data.error || 'Failed to update order');
+      setActionError(data.error || 'Failed to update order');
       return;
     }
 
-    // Only 'ready' ends the order's turn, so the card moves on by itself.
-    // 'preparing' leaves the card on the same order.
-    if (status === 'ready') {
+    // 'ready' and 'completed' both end the order's turn, so the card moves on by
+    // itself. 'preparing' leaves the card on the same order.
+    if (status === 'ready' || status === 'completed') {
       setFocusedId(null);
     }
 
+    setActionError('');
     await fetchOrders();
   }
 
@@ -173,10 +184,24 @@ export default function BaristaPage() {
         </div>
       </div>
 
+      {/* Status update failure, e.g. the DB rejecting an unknown status */}
+      {actionError && (
+        <div className="mx-4 mt-3 bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm flex items-center justify-between gap-4">
+          <span>{actionError}</span>
+          <button
+            onClick={() => setActionError('')}
+            className="text-red-700 hover:text-red-900 font-bold"
+            aria-label="Dismiss error"
+          >
+            ×
+          </button>
+        </div>
+      )}
+
       <div className="px-4 pt-4 pb-2 flex items-center justify-between">
         <p className="text-sm font-medium text-gray-900">Order Queue</p>
         <span className="text-xs text-gray-500 bg-gray-100 rounded-full px-2.5 py-0.5">
-          {orders.length} orders
+          {orders.length} active
         </span>
       </div>
 

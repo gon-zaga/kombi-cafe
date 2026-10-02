@@ -17,7 +17,9 @@ export default function Home() {
   useEffect(() => {
     async function fetchMenu() {
       try {
-        const response = await fetch('/api/menu');
+        // ?unavailable=true so items the owner switched off are still listed, marked
+        // Unavailable, instead of vanishing from the menu
+        const response = await fetch('/api/menu?unavailable=true');
         const data = await response.json();
         setMenuItems(data);
       } catch (error) {

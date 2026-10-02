@@ -92,7 +92,10 @@ function StatsCard() {
     [ingredients]
   );
 
-  const processed = orders.filter((o) => o.status === "ready").length;
+  // Counts orders that reached the customer, i.e. the barista marked them
+  // completed. Counting 'ready' instead would have credited drinks that were
+  // made but never collected.
+  const processed = orders.filter((o) => o.status === "completed").length;
   const sales = orders.reduce((acc, o) => acc + o.total, 0);
 
   // Flattens every order's items into one list, then sums quantity and revenue
