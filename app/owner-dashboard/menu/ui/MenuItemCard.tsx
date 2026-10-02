@@ -1,5 +1,5 @@
 import type { MouseEvent } from "react"
-import Image from "next/image"
+import ItemImage from "@/app/ui/ItemImage"
 
 interface MenuItemCardProps {
   item: {
@@ -50,8 +50,8 @@ function MenuItemCard({
       <div className="flex flex-row items-center gap-4">
         {/* Image */}
         <div className="shrink-0">
-          <Image
-            src={item.itemImg ?? '/drinks/no-drink-image.svg'}
+          <ItemImage
+            src={item.itemImg}
             alt={item.itemName}
             width={80}
             height={80}

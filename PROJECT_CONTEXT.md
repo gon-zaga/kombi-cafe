@@ -209,6 +209,21 @@ All 11 tables plus `daily_counters` are live in Neon. `latest_schema.sql` has th
 - `/orders/[itemId]` shows a read-only page with a red "Unavailable" pill and **no** `AddToOrderButton`, plus an orange low-stock note. `/api/menu/[itemId]` still 404s unavailable items — the page is convenience, the server is the guard.
 - *Untested.* Nothing has confirmed the `EXISTS` subquery against real recipes, nor that a stale cart produces the 409.
 
+**Step 15: menu item image upload — ✅ BUILT (needs a live test)**
+- **Decision: images are stored in the database, not on disk or a CDN.** `menu_items.image_url` already being `TEXT` is what makes this possible — a data URL is ~40KB of text. Chosen because it needs no account, no keys and no hosting, and works on any host. *If the menu ever grows past a few dozen photos, revisit this* — every `/api/menu` response carries the bytes inline, and a CDN would be the fix.
+- **Verify the column type in Neon** (the schema file says TEXT, but confirm):
+  ```sql
+  SELECT column_name, data_type FROM information_schema.columns
+  WHERE table_name = 'menu_items' AND column_name = 'image_url';
+  ```
+  If it comes back `character varying`, run `ALTER TABLE menu_items ALTER COLUMN image_url TYPE TEXT;` — otherwise a data URL silently fails to insert (or truncates at 255 chars).
+- **`app/lib/imageUpload.ts`**: `fileToDataUrl()` resizes the picked file **in the browser** on a canvas to 600px longest edge, encodes WebP at 0.8 (falling back to JPEG, detected by checking the returned data URL prefix rather than assuming), and returns the data URL. A phone photo goes from 3–8 MB to ~40 KB, so neither the request nor the row is bloated. Also `isDataUrl()` and `slugifyImageName()`.
+- **`app/lib/imageValue.ts`**: `validateImageValue()`, the **server-side** guard, used by both `POST /api/menu` and `PATCH /api/menu/[id]`. Accepts only a data URL (length-capped at `MAX_DATA_URL_CHARS`), an `http(s)` URL, or a `/public` path. It lives in `lib`, not in a route file, because route modules shouldn't be imported into each other. This is what rejects a pasted OS path like `C:\pics\latte.jpg` — storable but unrenderable.
+- **`app/ui/ImagePicker.tsx`**: the dashed preview box *is* the file-picker target, plus the original text field and a Remove button. It resets `inputRef.value` after each pick, otherwise selecting the same file twice in a row fires no change event.
+- **`app/ui/ItemImage.tsx`**: renders `next/image` for paths/URLs but a plain `<img>` for data URLs, since the optimizer can't fetch and resize base64. Used by `ProductCard`, `MenuItemCard`, `ItemHeader` and `OrderCard`. The `@next/next/no-img-element` rule is disabled at file level, not with `eslint-disable-next-line` — inline disables land on the wrong line inside JSX and produce an "unused directive" warning.
+- **Image name**: `slugifyImageName("Kombi Cappuccino")` → `kombi_cappuccino.webp`, shown in the picker. ⚠️ It is a **label, not a path** — no file is written to disk, because the bytes are in the database. If storage ever moves to files, the intended filename is already decided.
+- *Untested.* No upload has been run; the WebP fallback path and the 600px resize are unverified in a real browser.
+
 ## Open items / gaps
 - **The whole order→deduct path is untested.** Recipes and deduction are built but never run against real data. Until it's verified, treat Phases 3–5 as "code complete, behaviour unconfirmed". The one-line check that matters most: a **failed** (409) order must not consume a `daily_number`.
 - **No auth** on any owner route or page (NextAuth not implemented; `?all=true` and all mutations are open). Biggest structural risk left, and the reason this must be done **before any public deploy** — while it's on localhost it costs nothing to defer.

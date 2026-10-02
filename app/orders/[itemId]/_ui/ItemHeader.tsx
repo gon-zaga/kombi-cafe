@@ -1,6 +1,7 @@
 'use client'
 
 import Image from "next/image";
+import ItemImage from "@/app/ui/ItemImage";
 import {useRouter} from "next/navigation";
 
 // Template for the Prop, Expectations
@@ -15,7 +16,7 @@ function ItemHeader({itemImg, itemName, itemId}: ItemHeaderProp) {
   const router = useRouter();
   return (
           <div className="bg-[#F4EBD0] flex justify-center h-auto w-full shrink-0 drop-shadow-lg relative">
-            <Image 
+            <ItemImage
               src={itemImg}
               alt={itemName}
               height={140}

@@ -1,5 +1,6 @@
 // Fetches a single menu item by itemId, joined with category/size/price data.
 import pool from "@/app/lib/db";
+import { validateImageValue } from "@/app/lib/imageValue";
 import type { MenuRow, MenuItem } from "@/app/lib/types";
 import { NextRequest, NextResponse } from "next/server";
 
@@ -96,6 +97,14 @@ export async function PATCH(
   try {
     const body = await request.json();
     const { name, categoryId, imageUrl, isAvailable, sizes } = body;
+
+    // Same check as POST /api/menu: only an uploaded file, an http(s) link, or
+    // a /public path is storable
+    const imageError = validateImageValue(imageUrl);
+    if (imageError) {
+      await client.query("ROLLBACK");
+      return NextResponse.json({ error: imageError }, { status: 400 });
+    }
 
     await client.query("BEGIN");
 

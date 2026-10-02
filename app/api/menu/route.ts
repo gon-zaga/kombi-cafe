@@ -1,5 +1,6 @@
 import pool from "@/app/lib/db";
 import { MenuRow, MenuItem } from "@/app/lib/types";
+import { validateImageValue } from "@/app/lib/imageValue";
 
 // Returns menu items grouped with their sizes.
 //   ?all=true          -> owner view, includes unavailable items
@@ -110,6 +111,15 @@ export async function POST(request: Request) {
         { error: "Missing required fields" },
         { status: 400 }
       );
+    }
+
+    // The image field accepts three shapes: an inline data URL from the file
+    // picker, an absolute http(s) URL, or a path under /public. Anything else
+    // (a stray path like "C:\pics\x.jpg", or a multi-megabyte string) is
+    // rejected rather than stored.
+    const imageError = validateImageValue(imageUrl);
+    if (imageError) {
+      return Response.json({ error: imageError }, { status: 400 });
     }
 
 

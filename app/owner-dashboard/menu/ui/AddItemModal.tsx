@@ -3,6 +3,7 @@
 'use client'
 
 import { useEffect, useState } from "react";
+import ImagePicker from "@/app/ui/ImagePicker";
 
 
 // Describes what a Category object looks like
@@ -355,26 +356,9 @@ function AddItemModal({ isOpen, onClose, onCreated }: AddItemModalProps) {
           </div>
 
 
-          {/* Image URL */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Image URL
-            </label>
-
-            <input
-              type="text"
-
-              // Display the current image URL
-              value={imageUrl}
-
-              // Update image URL when the user types
-              onChange={(e) => setImageUrl(e.target.value)}
-
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500"
-
-              placeholder="/drinks/item-name.jpg"
-            />
-          </div>
+          {/* File picker + pasted path. Whichever is used, the value is a
+              string stored in menu_items.image_url. */}
+          <ImagePicker label="Image" value={imageUrl} onChange={setImageUrl} itemName={name} />
 
 
           {/* Sizes and Prices */}

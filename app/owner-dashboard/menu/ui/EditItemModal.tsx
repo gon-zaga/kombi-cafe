@@ -3,6 +3,7 @@
 // Edits a menu item's details. Its recipe (ingredients used) is a separate
 // modal — see RecipeModal — so this form stays short.
 import { useEffect, useState } from "react";
+import ImagePicker from "@/app/ui/ImagePicker";
 import type { MenuItem } from "@/app/lib/types";
 
 interface Category {
@@ -199,16 +200,14 @@ function EditItemModal({ isOpen, onClose, item, onUpdated }: EditItemModalProps)
             </select>
           </div>
 
-          <div>
-            <label className="block text-sm font-semibold text-gray-900 mb-1">Edit Image URL</label>
-            <input
-              type="text"
-              value={imageUrl}
-              onChange={(e) => setImageUrl(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500"
-              placeholder="/drinks/item-name.jpg"
-            />
-          </div>
+          {/* File picker + pasted path. Whichever is used, the value is a
+              string stored in menu_items.image_url. */}
+          <ImagePicker
+            label="Item Image"
+            value={imageUrl}
+            onChange={setImageUrl}
+            itemName={name}
+          />
 
           <div>
             <label className="block text-sm font-semibold text-gray-900 mb-2">Sizes & Prices</label>

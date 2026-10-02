@@ -4,6 +4,7 @@
 import { OrderItem } from "@/store/OrderListStore";
 import type { AddOn } from "@/app/api/add-ons/route"
 import Image from "next/image";
+import ItemImage from "@/app/ui/ItemImage";
 
 interface OrderCardProps {
   order: OrderItem;
@@ -19,7 +20,7 @@ function OrderCard({ order, addOns, onDelete }: OrderCardProps) {
   return (
     <div className="flex items-start gap-3 bg-cream border-stone-200 rounded-2xl p-3 my-4 shadow-sm">
       <div className="w-16 h-16 shrink-0 rounded-xl overflow-hidden bg-stone-100">
-        <Image
+        <ItemImage
           src={order.itemImg}
           alt={order.itemName}
           width={64}

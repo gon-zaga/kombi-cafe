@@ -1,7 +1,7 @@
 'use client'
 import React from "react";
-import Image from "next/image";
 import Link from "next/link";
+import ItemImage from "./ItemImage";
 
 
 type MenuCardItem = {
@@ -35,7 +35,7 @@ function ProductCard({ item }: { item: MenuCardItem }) {
   const body = (
     <>
       <div className="flex justify-center items-center bg-white rounded-xl p-2">
-        <Image
+        <ItemImage
           src={imageSrc}
           alt={itemName}
           width={110}
