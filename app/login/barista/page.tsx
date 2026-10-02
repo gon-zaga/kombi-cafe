@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useAuth } from "@/app/lib/auth/AuthContext";
 
-export default function LoginPage() {
+export default function BaristaLoginPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { user, loading: authLoading, login } = useAuth();
@@ -16,7 +16,7 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    // Skip auto-redirect if showLogin parameter is present (e.g., from side-navigation)
+    // Skip auto-redirect if showLogin parameter is present
     if (searchParams.get("showLogin") === "true") {
       return;
     }
@@ -60,7 +60,7 @@ export default function LoginPage() {
 
         <div className="text-center mb-8">
           <h1 className="text-3xl font-bold text-dark-brown">Kombi Cafe</h1>
-          <p className="text-gray-600 mt-2">Owner Login</p>
+          <p className="text-gray-600 mt-2">Barista Login</p>
         </div>
 
         {error && (

@@ -15,6 +15,7 @@ import AddItemButton from "./ui/AddItemButton";
 import MenuItemCard from "./ui/MenuItemCard";
 import RecipeModal from "./ui/RecipeModal";
 import FilterBar from "./ui/FilterBar";
+import ConfirmModal from "@/app/ui/ConfirmModal";
 
 // MenuItem is the TypeScript type that describes a menu item
 import type { MenuItem } from "@/app/lib/types";
@@ -66,6 +67,14 @@ export default function MenuManagement() {
   // false = unavailable
   const [itemAvailability, setItemAvailability] =
     useState<Record<number, boolean>>({});
+
+  // The menu item the delete confirmation is open for; null means no modal.
+  // This replaces the old window.confirm/window.alert pair.
+  const [deletingItem, setDeletingItem] = useState<MenuItem | null>(null);
+
+  // Holds a delete failure (e.g. the 409 "has past orders" message) so it can be
+  // shown on the page instead of in a browser alert
+  const [actionError, setActionError] = useState("");
 
 
   // Function used to get menu items from the API
@@ -150,16 +159,26 @@ const fetchMenu = useCallback(async () => {
   }
 };
 
-// Owner menu page: confirm, DELETE, then refetch; surfaces the 409 message
+// Owner menu page: DELETE the confirmed item, then refetch. Runs only after the
+// ConfirmModal countdown finishes, and surfaces the 409 message on the page.
 const handleDelete = async (item: MenuItem) => {
-  if (!window.confirm(`Delete "${item.itemName}"?`)) return;
-  const res = await fetch(`/api/menu/${item.itemId}`, { method: 'DELETE' });
-  if (!res.ok) {
-    const data = await res.json().catch(() => ({}));
-    window.alert(data.error || "Failed to delete item");
-    return;
+  setActionError("");
+  try {
+    const res = await fetch(`/api/menu/${item.itemId}`, { method: 'DELETE' });
+
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      throw new Error(data.error || "Failed to delete item");
+    }
+
+    setDeletingItem(null);
+    fetchMenu();
+  } catch (error) {
+    console.error("Failed to delete menu item:", error);
+    setActionError(
+      error instanceof Error ? error.message : "Failed to delete item"
+    );
   }
-  fetchMenu();
 }
 
   // If the menu is still loading,
@@ -290,7 +309,7 @@ const handleDelete = async (item: MenuItem) => {
               setIsEditModalOpen(true);
             }}
             
-            onDelete={ () => handleDelete(item)}
+            onDelete={ () => { setActionError(""); setDeletingItem(item); }}
             onIngredients={() => setRecipeItem(item)}
           />
 
@@ -336,6 +355,34 @@ const handleDelete = async (item: MenuItem) => {
         item={recipeItem}
         onClose={() => setRecipeItem(null)}
         onChanged={fetchMenu}
+      />
+
+      {/* Delete failure banner, e.g. "This item has past orders" (409) */}
+      {actionError && (
+        <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 mb-4 rounded-lg text-sm flex items-center justify-between gap-4">
+          <span>{actionError}</span>
+          <button
+            onClick={() => setActionError("")}
+            className="text-red-700 hover:text-red-900 font-bold"
+            aria-label="Dismiss error"
+          >
+            ×
+          </button>
+        </div>
+      )}
+
+      {/* Delete confirmation with a 3-second lock before the buttons respond */}
+      <ConfirmModal
+        isOpen={deletingItem !== null}
+        title="Delete menu item?"
+        message={
+          deletingItem
+            ? `"${deletingItem.itemName}" will be removed from the menu permanently.`
+            : ""
+        }
+        confirmLabel="Delete"
+        onCancel={() => setDeletingItem(null)}
+        onConfirm={() => deletingItem && handleDelete(deletingItem)}
       />
 
     </section>

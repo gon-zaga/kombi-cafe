@@ -7,6 +7,7 @@ import OwnerHeader from "../ui/OwnerHeader";
 import AddingIngredientModal from "./ui/AddingIngredientModal";
 import RestockModal from "./ui/RestockModal";
 import EditIngredientModal from "./ui/EditIngredientModal";
+import ConfirmModal from "@/app/ui/ConfirmModal";
 
 interface Ingredient {
   id: number;
@@ -26,6 +27,11 @@ export default function Inventory() {
 
   // Which ingredient the edit modal is open for; null means it is closed
   const [editing, setEditing] = useState<Ingredient | null>(null);
+
+  // Which ingredient the delete confirmation is open for; null means no modal.
+  // Replaces the old window.alert on failure with an in-page banner.
+  const [deleting, setDeleting] = useState<Ingredient | null>(null);
+  const [actionError, setActionError] = useState("");
 
   const fetchIngredients = useCallback(async () => {
     try {
@@ -51,18 +57,28 @@ export default function Inventory() {
     fetchIngredients();
   }, [fetchIngredients]);
 
+  // Runs only after the ConfirmModal countdown finishes. DELETE refuses with a
+  // 409 when the ingredient is still used by a recipe, so that message is shown
+  // on the page rather than in an alert.
   const handleDelete = async (ingredientId: number) => {
+    setActionError("");
     try {
       const res = await fetch(`/api/ingredients/${ingredientId}`, {
         method: 'DELETE'
       });
 
-      if (!res.ok) throw new Error("Delete failed");
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error || "Failed to delete ingredient");
+      }
 
+      setDeleting(null);
       fetchIngredients();
     } catch (error) {
       console.error("Failed to delete ingredient:", error);
-      window.alert("Failed to delete ingredient.");
+      setActionError(
+        error instanceof Error ? error.message : "Failed to delete ingredient"
+      );
     }
   };
 
@@ -182,7 +198,8 @@ export default function Inventory() {
                 <button
                   onClick={(e) => {
                     e.stopPropagation();
-                    handleDelete(ingredient.id);
+                    setActionError("");
+                    setDeleting(ingredient);
                   }}
                   className="text-sm font-medium text-red-700 bg-red-50 px-4 py-2 rounded-lg hover:bg-red-100 transition-colors"
                 >
@@ -210,6 +227,34 @@ export default function Inventory() {
         ingredient={editing}
         onClose={() => setEditing(null)}
         onUpdated={fetchIngredients}
+      />
+
+      {/* Delete failure banner, e.g. the 409 "used in a recipe" message */}
+      {actionError && (
+        <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 mb-4 rounded-lg text-sm flex items-center justify-between gap-4">
+          <span>{actionError}</span>
+          <button
+            onClick={() => setActionError("")}
+            className="text-red-700 hover:text-red-900 font-bold"
+            aria-label="Dismiss error"
+          >
+            ×
+          </button>
+        </div>
+      )}
+
+      {/* Delete confirmation with a 3-second lock before the buttons respond */}
+      <ConfirmModal
+        isOpen={deleting !== null}
+        title="Delete ingredient?"
+        message={
+          deleting
+            ? `${deleting.name} will be removed from inventory permanently.`
+            : ""
+        }
+        confirmLabel="Delete"
+        onCancel={() => setDeleting(null)}
+        onConfirm={() => deleting && handleDelete(deleting.id)}
       />
     </section>
   );

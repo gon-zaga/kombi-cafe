@@ -3,18 +3,35 @@
 
 import { useEffect, useMemo, useState } from "react";
 import OwnerHeader from "../ui/OwnerHeader";
+import DateFilterBar from "@/app/ui/DateFilterBar";
+import type { CustomRange, DateFilter } from "@/app/lib/dateFilter";
+import { buildOrdersQuery, describeRange } from "@/app/lib/dateFilter";
 import type { OrderSummary } from "@/app/lib/types";
 
 export default function SalesReport() {
-  // 1) State FIRST: dateFilter must exist before the effect below reads it
-  const [dateFilter, setDateFilter] = useState<"today" | "week" | "month">("today");
+  // 1) State FIRST: the filter must exist before the effect below reads it
+  const [dateFilter, setDateFilter] = useState<DateFilter>("today");
   const [orders, setOrders] = useState<OrderSummary[]>([]);
+  const [loadError, setLoadError] = useState("");
 
-  // 2) Refetch whenever the selected range changes; the server does the date filtering
+  // The custom window that's been applied. The typed fields live inside
+  // DateFilterBar, so nothing refetches until Apply is pressed
+  const [customRange, setCustomRange] = useState<CustomRange | null>(null);
+
+  // 2) The query string to fetch. Null while a custom filter has no applied
+  //    dates yet, which makes the effect below skip the fetch entirely
+  const query = useMemo(
+    () => buildOrdersQuery(dateFilter, customRange),
+    [dateFilter, customRange]
+  );
+
+  // 3) Refetch whenever the query changes; the server does the date filtering
   useEffect(() => {
+    if (!query) return;
+
     let isMounted = true;
 
-    fetch(`/api/orders?range=${dateFilter}`)
+    fetch(`/api/orders${query}`)
       .then((r) => {
         // Check the status before parsing: a failing route returns an
         // { error } object, not an array
@@ -22,16 +39,26 @@ export default function SalesReport() {
         return r.json();
       })
       .then((data) => {
-        if (isMounted && Array.isArray(data)) setOrders(data);
+        if (!isMounted) return;
+        if (Array.isArray(data)) setOrders(data);
       })
-      .catch((error) => console.error("Failed to fetch orders:", error));
+      .catch((error) => {
+        console.error("Failed to fetch orders:", error);
+        if (isMounted) setLoadError("Could not load orders for this range.");
+      });
 
     return () => {
       isMounted = false;
     };
-  }, [dateFilter]);
+  }, [query]);
 
-  // 3) Aggregates
+  // Picking a preset clears any load error so a stale message can't linger
+  const handleSelectFilter = (f: DateFilter) => {
+    setLoadError("");
+    setDateFilter(f);
+  };
+
+  // 4) Aggregates
   const totalSales = orders.reduce((acc, o) => acc + o.total, 0);
   const totalOrders = orders.length;
   const averageOrder = totalOrders > 0 ? totalSales / totalOrders : 0;
@@ -55,23 +82,28 @@ export default function SalesReport() {
     <section className="min-h-screen bg-cream">
       <OwnerHeader title="SALES REPORT" />
 
-      {/* Date filter buttons */}
+      {/* Date filter chips + custom range panel, shared with the dashboard */}
       <div className="px-4 mb-4">
-        <div className="flex gap-2 overflow-x-auto">
-          {(["today", "week", "month"] as const).map((f) => (
-            <button
-              key={f}
-              onClick={() => setDateFilter(f)}
-              className={`px-4 py-2 rounded-lg text-sm font-medium whitespace-nowrap transition-colors ${
-                dateFilter === f
-                  ? "bg-dark-brown text-white"
-                  : "bg-white text-gray-700 hover:bg-gray-100"
-              }`}
-            >
-              {f === "today" ? "Today" : f === "week" ? "This Week" : "This Month"}
-            </button>
-          ))}
-        </div>
+        <DateFilterBar
+          filter={dateFilter}
+          customRange={customRange}
+          onFilterChange={handleSelectFilter}
+          onCustomApply={(range) => {
+            setLoadError("");
+            setCustomRange(range);
+          }}
+/>
+
+        {/* Names the period the numbers below cover */}
+        <p className="text-sm text-gray-600 mt-3">
+          Report for {describeRange(dateFilter, customRange)}
+        </p>
+
+        {loadError && (
+          <div className="mt-3 bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm">
+            {loadError}
+          </div>
+        )}
       </div>
 
       {/* Sales statistics */}

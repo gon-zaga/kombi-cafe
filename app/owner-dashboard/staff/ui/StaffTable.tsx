@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import EditStaffModal from "./EditStaffModal";
+import ConfirmModal from "@/app/ui/ConfirmModal";
 
 interface Staff {
   user_id: number;
@@ -21,11 +22,13 @@ interface StaffTableProps {
 
 export default function StaffTable({ staff, onUpdated }: StaffTableProps) {
   const [editingStaff, setEditingStaff] = useState<Staff | null>(null);
-  const [deletingId, setDeletingId] = useState<number | null>(null);
+
+  // The staff member the confirm modal is open for; null means no modal. The
+  // modal replaces the old window.confirm and owns the 3-second lock.
+  const [deletingStaff, setDeletingStaff] = useState<Staff | null>(null);
   const [deleteError, setDeleteError] = useState("");
 
   const handleDelete = async (id: number) => {
-    if (!window.confirm("Delete this staff member?")) return;
     setDeleteError("");
     try {
       const res = await fetch(`/api/staff/${id}`, { method: "DELETE" });
@@ -33,6 +36,7 @@ export default function StaffTable({ staff, onUpdated }: StaffTableProps) {
         const data = await res.json().catch(() => ({}));
         throw new Error(data.error || "Failed to delete");
       }
+      setDeletingStaff(null);
       onUpdated();
     } catch (err) {
       setDeleteError(err instanceof Error ? err.message : "Failed to delete");
@@ -42,7 +46,7 @@ export default function StaffTable({ staff, onUpdated }: StaffTableProps) {
   if (staff.length === 0) {
     return (
       <div className="bg-white rounded-2xl shadow-sm p-10 text-center">
-        <p className="text-gray-500">No staff members yet. Click  "Add Staff" to create one.</p>
+        <p className="text-gray-500">No staff members yet. Click &quot;Add Staff&quot; to create one.</p>
       </div>
     );
   }
@@ -95,11 +99,10 @@ export default function StaffTable({ staff, onUpdated }: StaffTableProps) {
                       Edit
                     </button>
                     <button
-                      onClick={() => setDeletingId(member.user_id)}
-                      disabled={deletingId === member.user_id}
-                      className="text-red-600 hover:text-red-900 text-sm font-medium disabled:opacity-50"
+                      onClick={() => setDeletingStaff(member)}
+                      className="text-red-600 hover:text-red-900 text-sm font-medium"
                     >
-                      {deletingId === member.user_id ? "Deleting..." : "Delete"}
+                      Delete
                     </button>
                   </div>
                 </td>
@@ -120,6 +123,24 @@ export default function StaffTable({ staff, onUpdated }: StaffTableProps) {
         isOpen={editingStaff !== null}
         onClose={() => setEditingStaff(null)}
         onUpdated={onUpdated}
+      />
+
+      {/* Delete confirmation: in-app modal with a 3-second lock on the buttons,
+          so a misclick can't delete a staff account instantly */}
+      <ConfirmModal
+        isOpen={deletingStaff !== null}
+        title="Delete staff member?"
+        message={
+          deletingStaff
+            ? `${deletingStaff.first_name || ""} ${
+                deletingStaff.last_name || ""
+              }`.trim() +
+              ` (${deletingStaff.username}) will lose access immediately. This cannot be undone.`
+            : ""
+        }
+        confirmLabel="Delete"
+        onCancel={() => setDeletingStaff(null)}
+        onConfirm={() => deletingStaff && handleDelete(deletingStaff.user_id)}
       />
     </div>
   );

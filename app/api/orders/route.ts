@@ -80,20 +80,107 @@ async function deductRecipeStock(
   );
 }
 
-// Lists orders with their items and add-ons; supports ?range=today|week|month|all and optional ?status=
+// Today in Manila as "YYYY-MM-DD". The DB's CURRENT_DATE would be UTC, which
+// rolls over at 8 AM Manila time, so the app's day boundaries are computed here
+// from an explicit Manila date instead.
+function manilaToday(): string {
+  // formatToParts instead of relying on en-CA's date shape: the parts are read
+  // explicitly, so this can't silently change with the ICU data
+  const parts = new Intl.DateTimeFormat("en-US", {
+    timeZone: "Asia/Manila",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).formatToParts(new Date());
+
+  const get = (type: string) => parts.find((p) => p.type === type)?.value ?? "";
+  return `${get("year")}-${get("month")}-${get("day")}`;
+}
+
+// Adds (or subtracts) whole days to a "YYYY-MM-DD" string. Done in UTC because
+// these are plain calendar dates with no time or zone attached.
+function addDays(isoDate: string, days: number): string {
+  const d = new Date(`${isoDate}T00:00:00Z`);
+  d.setUTCDate(d.getUTCDate() + days);
+  return d.toISOString().slice(0, 10);
+}
+
+// True for a real "YYYY-MM-DD" calendar date that survives a round trip, which
+// rejects values like 2026-02-31 that Date.parse would otherwise roll over
+function isValidIsoDate(value: string): boolean {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
+  const d = new Date(`${value}T00:00:00Z`);
+  return !Number.isNaN(d.getTime()) && d.toISOString().slice(0, 10) === value;
+}
+
+// Named ranges, resolved to concrete Manila dates so the query is one simple
+// BETWEEN. null means unbounded on that side, which is what "all" needs.
+function resolveRange(range: string): { from: string | null; to: string | null } | null {
+  const today = manilaToday();
+  const yearStart = `${today.slice(0, 4)}-01-01`;
+
+  switch (range) {
+    case "today":
+      return { from: today, to: today };
+    case "yesterday":
+      return { from: addDays(today, -1), to: addDays(today, -1) };
+    case "week":
+      return { from: addDays(today, -6), to: today };
+    case "month":
+      return { from: addDays(today, -29), to: today };
+    case "year":
+      return { from: yearStart, to: today };
+    case "all":
+      return { from: null, to: null };
+    default:
+      return null;
+  }
+}
+
+// Lists orders with their items and add-ons.
+// Supports ?range=today|yesterday|week|month|year|all, OR ?from=YYYY-MM-DD&to=YYYY-MM-DD
+// for an exact window, plus an optional ?status=.
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
-  const range = searchParams.get("range") ?? "today";
+  const fromParam = searchParams.get("from");
+  const toParam = searchParams.get("to");
   const status = searchParams.get("status");
 
-  // Value = how many days BEFORE today to include, so:
-  //   today = 0  -> today only
-  //   week  = 6  -> last 7 days including today
-  //   month = 29 -> last 30 days including today
-  const daysBack: Record<string, number | null> = { today: 0, week: 6, month: 29, all: null };
-  if (!(range in daysBack)) {
-    return NextResponse.json({ error: "Invalid range" }, { status: 400 });
+  let from: string | null = null;
+  let to: string | null = null;
+
+  // An explicit window wins over ?range, but both dates must be present and sane
+  if (fromParam !== null || toParam !== null) {
+    if (!fromParam || !toParam) {
+      return NextResponse.json(
+        { error: "Both 'from' and 'to' are required" },
+        { status: 400 }
+      );
+    }
+    if (!isValidIsoDate(fromParam) || !isValidIsoDate(toParam)) {
+      return NextResponse.json(
+        { error: "Dates must be in YYYY-MM-DD format" },
+        { status: 400 }
+      );
+    }
+    if (fromParam > toParam) {
+      return NextResponse.json(
+        { error: "'from' must be on or before 'to'" },
+        { status: 400 }
+      );
+    }
+    from = fromParam;
+    to = toParam;
+  } else {
+    const range = searchParams.get("range") ?? "today";
+    const resolved = resolveRange(range);
+    if (!resolved) {
+      return NextResponse.json({ error: "Invalid range" }, { status: 400 });
+    }
+    from = resolved.from;
+    to = resolved.to;
   }
+
   if (status !== null && !["pending", "preparing", "ready"].includes(status)) {
     return NextResponse.json({ error: "Invalid status" }, { status: 400 });
   }
@@ -129,12 +216,13 @@ export async function GET(request: Request) {
       LEFT JOIN order_items oi ON oi.order_id = o.id
       LEFT JOIN menu_items mi ON mi.id = oi.menu_item_id
       LEFT JOIN sizes s ON s.id = oi.size_id
-      WHERE ($1::int IS NULL OR o.order_date >= (NOW() AT TIME ZONE 'Asia/Manila')::date - $1::int)
-        AND ($2::text IS NULL OR o.status = $2)
+      WHERE ($1::date IS NULL OR o.order_date >= $1::date)
+        AND ($2::date IS NULL OR o.order_date <= $2::date)
+        AND ($3::text IS NULL OR o.status = $3)
       GROUP BY o.id
       ORDER BY o.created_at DESC
       `,
-      [daysBack[range], status]
+      [from, to, status]
     );
 
     const orders: OrderSummary[] = result.rows.map((row) => ({
