@@ -18,7 +18,10 @@ type MenuCardItem = {
   isLowStock?: boolean;
 };
 
-function ProductCard({ item }: { item: MenuCardItem }) {
+// A single menu item on the customer grid, or inside the Best Sellers shelf.
+// Optional `tag` stamps a NEW (recently added) or BEST (top seller) ribbon on the
+// card, and `sublabel` adds a one-line note (e.g. "3 sold") under the price.
+function ProductCard({ item, tag, sublabel }: { item: MenuCardItem; tag?: "new" | "best"; sublabel?: string }) {
   const firstSize = item.sizes?.[0];
   const price = firstSize?.price ?? 0;
   const imageSrc = item.itemImg || "/drinks/no-drink-image.svg";
@@ -70,16 +73,31 @@ function ProductCard({ item }: { item: MenuCardItem }) {
 
   return (
     <div
-      className={`bg-[#F4EBD0] rounded-2xl drop-shadow-lg flex flex-col p-3 gap-2 text-dark-brown ${
+      className={`relative bg-[#F4EBD0] rounded-2xl drop-shadow-lg flex flex-col p-3 gap-2 text-dark-brown ${
         isAvailable ? "" : "opacity-70"
       }`}
     >
+      {tag === "new" && (
+        <span className="absolute top-1.5 left-1.5 z-10 bg-green-800 text-white text-[9px] font-bold uppercase tracking-wide rounded-full px-1.5 py-0.5">
+          NEW
+        </span>
+      )}
+      {tag === "best" && (
+        <span className="absolute top-1.5 left-1.5 z-10 bg-amber-800 text-white text-[9px] font-bold uppercase tracking-wide rounded-full px-1.5 py-0.5">
+          BEST
+        </span>
+      )}
+
       {isAvailable ? (
         <Link href={`/orders/${item.itemId}`} className="flex flex-col gap-2">
           {body}
         </Link>
       ) : (
         <div className="flex flex-col gap-2 cursor-not-allowed">{body}</div>
+      )}
+
+      {sublabel && (
+        <span className="text-xs text-dark-brown/60 px-1">{sublabel}</span>
       )}
     </div>
   );

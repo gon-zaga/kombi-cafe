@@ -4,10 +4,17 @@
 // under PREPARING and READY so customers can see when their number is called.
 // 'pending' and 'completed' are excluded by the two filters below, so a collected
 // order disappears off the customer board as soon as the barista completes it.
+// The two states sit side by side with a vertical divider between them, so the
+// split is the same shape on every screen, and the numbers are the only thing on
+// the page that is not a label.
 import { useCallback, useEffect, useState } from "react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import type { OrderSummary } from "@/app/lib/types";
+
+// Longest-waiting first, so the top number in a column is the next one due
+const byOldestFirst = (a: OrderSummary, b: OrderSummary) =>
+  new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
 
 export default function OrderQueue() {
   const [orders, setOrders] = useState<OrderSummary[]>([]);
@@ -37,67 +44,80 @@ export default function OrderQueue() {
     return () => clearInterval(interval);
   }, [fetchOrders]);
 
-  // Newest first from the API, which is the order a customer cares about
-  // when several numbers are showing at once
-  const preparing = orders.filter((o) => o.status === 'preparing');
-  const ready = orders.filter((o) => o.status === 'ready');
+  const preparing = orders.filter((o) => o.status === 'preparing').sort(byOldestFirst);
+  const ready = orders.filter((o) => o.status === 'ready').sort(byOldestFirst);
 
   return (
     <div className="min-h-screen bg-card-cream flex flex-col">
-      <header className="flex flex-row bg-dark-brown text-white font-roboto-mono justify-between items-center p-2 mb-7">
-        <span>ORDERS</span>
+      <header className="flex items-center justify-between bg-dark-brown text-white px-4 py-3">
+        <span className="font-roboto-mono text-xl tracking-[0.25em]">ORDERS</span>
+
         <button
-          className="cursor-pointer"
+          className="cursor-pointer hover:opacity-70 transition-opacity"
           onClick={() => router.push('/')}
           aria-label="Back to menu"
         >
           <Image
             src="/cream-close.svg"
             alt="exit-button"
-            width={32}
-            height={32}
+            width={28}
+            height={28}
           />
         </button>
       </header>
 
-      {/* Preparing Orders */}
-      <section className="flex flex-col mb-6">
-        <header className="flex flex-row bg-dark-brown text-white font-roboto-condensed p-1 mb-3">
-          PREPARING
-        </header>
-        <div className="flex flex-row flex-wrap gap-2 px-3">
-          {preparing.map((order) => (
-            <span
-              key={order.id}
-              className="bg-dark-brown text-white font-roboto-mono text-sm px-3 py-1 rounded"
-            >
-              #{order.orderReference}
-            </span>
-          ))}
-        </div>
-      </section>
+      <div className="flex-1 flex">
+        <section className="flex-1 min-w-0 flex flex-col items-center gap-6 px-3 py-8">
+          <h2 className="font-roboto-condensed text-base tracking-[0.2em] text-dark-brown/60">
+            PREPARING
+          </h2>
 
-      {/* Ready Orders */}
-      <section className="flex flex-col">
-        <header className="flex flex-row bg-dark-brown text-white font-roboto-condensed p-1 mb-3">
-          READY
-        </header>
-        <div className="flex flex-row flex-wrap gap-2 px-3">
-          {ready.map((order) => (
-            <span
-              key={order.id}
-              className="bg-dark-brown text-white font-roboto-mono text-sm px-3 py-1 rounded"
-            >
-              #{order.orderReference}
-            </span>
-          ))}
-        </div>
-      </section>
+          <div className="flex flex-col items-center gap-4">
+            {preparing.length === 0 ? (
+              <p className="text-2xl text-dark-brown/30">-</p>
+            ) : (
+              preparing.map((order) => (
+                <span
+                  key={order.id}
+                  className="font-roboto-mono text-3xl sm:text-4xl text-dark-brown"
+                >
+                  #{order.orderReference}
+                </span>
+              ))
+            )}
+          </div>
+        </section>
 
-      {/* Empty state, shown only once we've actually loaded and there's nothing to show */}
+        {/* The vertical divider that splits the two states */}
+        <div className="w-px shrink-0 bg-dark-brown/20" aria-hidden="true" />
+
+        <section className="flex-1 min-w-0 flex flex-col items-center gap-6 px-3 py-8">
+          <h2 className="font-roboto-condensed text-base tracking-[0.2em] text-dark-brown/60">
+            READY
+          </h2>
+
+          <div className="flex flex-col items-center gap-4">
+            {ready.length === 0 ? (
+              <p className="text-2xl text-dark-brown/30">-</p>
+            ) : (
+              ready.map((order) => (
+                <span
+                  key={order.id}
+                  className="font-roboto-mono text-3xl sm:text-4xl text-green-700"
+                >
+                  #{order.orderReference}
+                </span>
+              ))
+            )}
+          </div>
+        </section>
+      </div>
+
+      {/* Shown only after the first poll returns, so it never flashes
+          "nothing here" while the list is still on its way */}
       {!isLoading && preparing.length === 0 && ready.length === 0 && (
-        <p className="text-center text-dark-brown mt-8">
-          No orders yet. Your number will appear here.
+        <p className="text-center text-dark-brown/60 pb-8">
+          No orders right now. Your number will appear here.
         </p>
       )}
     </div>

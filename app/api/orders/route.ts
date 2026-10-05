@@ -364,8 +364,17 @@ export async function POST(request: Request) {
 
       const orderReference = String(dailyNumber).padStart(4, '0');
 
+      // order_id is the raw orders.id (a stable database key), orderReference is
+      // the human daily number the queue display and confirmation page show.
+      // Both are returned so a caller can key on one or display the other.
       return NextResponse.json(
-        { message: "Order placed successfully", orderReference, total: runningTotal },
+        {
+          message: "Order placed successfully",
+          order_id: orderId,
+          orderReference,
+          status: 'pending',
+          total: runningTotal
+        },
         { status: 201 }
       );
     } catch (error) {

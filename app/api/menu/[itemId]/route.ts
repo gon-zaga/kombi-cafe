@@ -28,9 +28,9 @@ export async function GET(
         s.label AS size,
         s.oz AS oz,
         s.temperature AS temperature,
-        mis.price AS price,
+         mis.price AS price,
 
-        -- Same low-stock rule as /api/menu: one recipe ingredient at or below
+         -- Same low-stock rule as /api/menu: one recipe ingredient at or below
         -- its restock threshold is enough
         EXISTS (
           SELECT 1

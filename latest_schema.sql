@@ -22,7 +22,8 @@ CREATE TABLE IF NOT EXISTS menu_items (
   name VARCHAR(100) NOT NULL,
   category_id INTEGER REFERENCES categories(id),
   image_url TEXT,
-  is_available BOOLEAN DEFAULT TRUE
+  is_available BOOLEAN DEFAULT TRUE,
+  created_at TIMESTAMP DEFAULT NOW()
 );
 CREATE INDEX IF NOT EXISTS idx_menu_items_category_id ON menu_items (category_id);
 -- Sizes ---

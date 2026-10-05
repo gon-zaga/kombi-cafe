@@ -28,9 +28,9 @@ export async function GET(request: Request) {
       s.label AS size,
       s.oz AS oz,
       s.temperature AS temperature,
-      mis.price AS price,
+       mis.price AS price,
 
-      -- Low stock = at least ONE ingredient in the item's recipe is at or below
+       -- Low stock = at least ONE ingredient in the item's recipe is at or below
       -- its restock threshold. Size-specific recipe rows are counted too, so an
       -- item can read as low because of one size only; this is a warning, not a
       -- block. The order API is what actually refuses an order on a shortage.
