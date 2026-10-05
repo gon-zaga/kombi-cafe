@@ -4,7 +4,7 @@
 // categories or search drinks by name. Searching shows every matching item
 // across all categories, so a forgotten pick can be found even if the customer
 // no longer remembers which section it was in. Today's best sellers surface at
-// the top, and recently added drinks carry a NEW tag.
+// the top.
 import './globals.css'
 import { useEffect, useState } from 'react';
 import Header from '@/app/ui/Header';
@@ -12,7 +12,6 @@ import BestSellers from '@/app/ui/BestSellers';
 import CategoryBar from './ui/CategoryBar';
 import MenuItem from './ui/MenuItem';
 import ProductCard from './ui/ProductCard';
-import { isNewItem } from '@/app/lib/utils';
 import ViewOrderBar from './ui/ViewOrderBar';
 import type { MenuItem as MenuItemType } from "@/app/lib/types";
 
@@ -89,7 +88,7 @@ export default function Home() {
 
       <hr className='mb-3' />
 
-      {/* MenuItem renders the category-filtered grid (with NEW tags); the search
+      {/* MenuItem renders the category-filtered grid; the search
           results mirror its grid shape, so toggling search never relayouts */}
       {!searching ? (
         <MenuItem active={active} menuItems={menuItems} />
@@ -99,7 +98,6 @@ export default function Home() {
             <ProductCard
               key={item.itemId}
               item={item}
-              tag={isNewItem(item.createdAt) ? "new" : undefined}
             />
           ))}
         </div>

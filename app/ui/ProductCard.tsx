@@ -21,7 +21,7 @@ type MenuCardItem = {
 // A single menu item on the customer grid, or inside the Best Sellers shelf.
 // Optional `tag` stamps a NEW (recently added) or BEST (top seller) ribbon on the
 // card, and `sublabel` adds a one-line note (e.g. "3 sold") under the price.
-function ProductCard({ item, tag, sublabel }: { item: MenuCardItem; tag?: "new" | "best"; sublabel?: string }) {
+function ProductCard({ item, tag, sublabel, className }: { item: MenuCardItem; tag?: "new" | "best"; sublabel?: string; className?: string }) {
   const firstSize = item.sizes?.[0];
   const price = firstSize?.price ?? 0;
   const imageSrc = item.itemImg || "/drinks/no-drink-image.svg";
@@ -75,7 +75,7 @@ function ProductCard({ item, tag, sublabel }: { item: MenuCardItem; tag?: "new" 
     <div
       className={`relative bg-[#F4EBD0] rounded-2xl drop-shadow-lg flex flex-col p-3 gap-2 text-dark-brown ${
         isAvailable ? "" : "opacity-70"
-      }`}
+      } ${className ?? ""}`}
     >
       {tag === "new" && (
         <span className="absolute top-1.5 left-1.5 z-10 bg-green-800 text-white text-[9px] font-bold uppercase tracking-wide rounded-full px-1.5 py-0.5">
