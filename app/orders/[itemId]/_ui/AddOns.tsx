@@ -1,8 +1,7 @@
 'use client'
 
-// Displays the list of available add-ons as selectable rows with image, name, price, and a checkbox.
+// Displays the list of available add-ons as selectable rows with name, price, and a checkbox.
 // Receives real add-on data as a prop (no longer imports mock data).
-import Image from "next/image";
 import { useState } from "react";
 import type { AddOn } from "@/app/api/add-ons/route";
 
@@ -33,20 +32,9 @@ function AddOns({ selectedAddOn, setSelectedAddOn, addOns }: selectedAddOnProp) 
         <div 
   key={addon.addOnsId}  
   onClick={() => toggleAddOn(addon.addOnsId)}
-  className={`flex items-center justify-between p-2 rouned-lg cursor-pointer bg-card-cream
+  className={`flex items-center justify-between p-2 rounded-lg cursor-pointer bg-card-cream
   ${selectedAddOn.includes(addon.addOnsId) ? "bg-dark-brown text-white" : ""}`}>
-  {/* LEFT: Image */}
-  <div className="w-14 shrink-0">
-    <Image
-      // Falls back to the shared placeholder when this add-on has no image_url set in the DB
-      src={addon.imgUrl ?? "/drinks/no-drink-image.svg"}
-      alt={addon.name}
-      width={50}
-      height={50}
-    />
-  </div>
-
-  {/* CENTER: Name */}
+  {/* LEFT: Name */}
   <span className="flex-1 text-sm font-medium">
     {addon.name}
   </span>
@@ -63,7 +51,7 @@ function AddOns({ selectedAddOn, setSelectedAddOn, addOns }: selectedAddOnProp) 
     checked={selectedAddOn.includes(addon.addOnsId)}
     onChange={() => toggleAddOn(addon.addOnsId)}
     className="ml-2"/>
-  </div>
+</div>
         ))}
       </div>
       {

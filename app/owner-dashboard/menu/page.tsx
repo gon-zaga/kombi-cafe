@@ -53,6 +53,9 @@ export default function MenuManagement() {
   // "Unavailable" = show unavailable items
   const [availability, setAvailability] = useState("All");
 
+  // Text search across item names (works with filters)
+  const [search, setSearch] = useState("");
+
   // Stores whether each menu item is available
   //
   // Example:
@@ -100,8 +103,15 @@ const fetchMenu = useCallback(async () => {
 
 
   // Create a new list containing only the menu items
-  // that match the selected filters.
+  // that match the selected filters and search text.
   const filteredItems = menuItems.filter(item => {
+
+    // Text search across item name
+    if (search.trim().length > 0) {
+      if (!item.itemName.toLowerCase().includes(search.toLowerCase())) {
+        return false;
+      }
+    }
 
     // Check the category filter
     //
@@ -239,7 +249,7 @@ const handleDelete = async (item: MenuItem) => {
       <hr />
 
 
-      {/* Filter section */}
+{/* Filter section */}
       <section className="flex flex-row">
 
         {/* 
@@ -260,6 +270,17 @@ const handleDelete = async (item: MenuItem) => {
 
       </section>
 
+      {/* Search input */}
+      <section className="px-2 mb-3">
+        <input
+          type="text"
+          placeholder="Search by name..."
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          className="w-full px-3 py-2 border border-dark-brown/30 rounded-xl bg-white font-roboto-mono text-dark-brown focus:outline-none focus:ring-2 focus:ring-amber-800/30 placeholder:text-dark-brown/50"
+          aria-label="Search menu items"
+        />
+      </section>
 
       {/* Another horizontal line */}
       <hr />

@@ -1,6 +1,8 @@
 export type Size = {
   sizeId: number;
   size: string;
+  oz: number | null;
+  temperature: string | null;
   price: number;
 };
 
@@ -18,17 +20,25 @@ export default function SizeSelector({ sizes, selectedSize, onSelect }: SizeSele
           <div
             key={s.sizeId}
             onClick={() => onSelect(s)}
-            className={`flex flex-row justify-between items-center px-3 py-2 rounded-lg
-              ${selectedSize.size === s.size ? "text-white bg-dark-brown" : ""}`}
+            className={`flex flex-col px-3 py-3 rounded-lg
+              ${selectedSize.size === s.size ? "text-white bg-dark-brown" : "text-dark-brown"}`}
           >
-            <div className="w-3">{s.size}</div>
-            <div>₱{s.price}</div>
+            <div className="flex items-center justify-between">
+              <span className="font-medium">{s.size}</span>
+              <span>₱{s.price}</span>
+            </div>
+            {s.oz && s.temperature && (
+              <span className="text-xs opacity-70 mt-1">
+                {s.oz}oz · {s.temperature === "hot" ? "Hot" : "Cold"}
+              </span>
+            )}
             <input
               type="radio"
               name="size"
               value={s.size}
               checked={selectedSize.size === s.size}
               onChange={() => onSelect(s)}
+              className="mt-2 self-start"
             />
           </div>
         ))}
