@@ -5,6 +5,7 @@
 import { useEffect, useState } from "react";
 import ImagePicker from "@/app/ui/ImagePicker";
 import type { MenuItem } from "@/app/lib/types";
+import { useToast } from "@/app/ui/Toast";
 
 interface Category {
   id: number;
@@ -40,7 +41,11 @@ function EditItemModal({ isOpen, onClose, item, onUpdated }: EditItemModalProps)
   const [prices, setPrices] = useState<Record<number, string>>({});
 
   const [submitting, setSubmitting] = useState(false);
-  const [error, setError] = useState("");
+  const { success, error: showError } = useToast();
+
+  // "Regular" size (oz === null && temperature === null) is for snacks only.
+  // Disable it when the item has any drink sizes (oz != null).
+  const isDrink = item ? item.sizes.some(s => s.oz !== null) : false;
 
   // Runs when the modal opens or the item changes
   useEffect(() => {
@@ -93,7 +98,6 @@ function EditItemModal({ isOpen, onClose, item, onUpdated }: EditItemModalProps)
   if (!isOpen || !item) return null;
 
   const handleClose = () => {
-    setError("");
     onClose();
   };
 
@@ -103,7 +107,6 @@ function EditItemModal({ isOpen, onClose, item, onUpdated }: EditItemModalProps)
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError("");
 
     const sizes = sizeOptions
       .filter(s => selectedSizes[s.id])
@@ -113,7 +116,7 @@ function EditItemModal({ isOpen, onClose, item, onUpdated }: EditItemModalProps)
       }));
 
     if (!name || !categoryId || sizes.length === 0) {
-      setError("Please fill in the item name, category, and at least one size with a price.");
+      showError("Please fill in the item name, category, and at least one size with a price.");
       return;
     }
 
@@ -138,10 +141,11 @@ function EditItemModal({ isOpen, onClose, item, onUpdated }: EditItemModalProps)
       }
 
       onUpdated();
+      success("Menu item updated successfully!");
       handleClose();
     } catch (err) {
       console.error(err);
-      setError(err instanceof Error ? err.message : "Failed to update item");
+      showError(err instanceof Error ? err.message : "Failed to update item");
     } finally {
       setSubmitting(false);
     }
@@ -166,12 +170,6 @@ function EditItemModal({ isOpen, onClose, item, onUpdated }: EditItemModalProps)
             ×
           </button>
         </div>
-
-        {error && (
-          <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-2 rounded-lg text-sm mb-4">
-            {error}
-          </div>
-        )}
 
         <form onSubmit={handleSubmit} className="space-y-4">
 
@@ -212,35 +210,44 @@ function EditItemModal({ isOpen, onClose, item, onUpdated }: EditItemModalProps)
           <div>
             <label className="block text-sm font-semibold text-gray-900 mb-2">Sizes & Prices</label>
             <div className="space-y-2">
-              {sizeOptions.map((s) => (
-                <div key={s.id} className="flex items-center gap-2">
-                  <input
-                    type="checkbox"
-                    checked={!!selectedSizes[s.id]}
-                    onChange={() => toggleSize(s.id)}
-                    className="w-4 h-4 text-amber-600 border-gray-300 rounded focus:ring-amber-500"
-                  />
+              {sizeOptions.map((s) => {
+                const isRegular = s.oz === null && s.temperature === null;
+                const disabled = isRegular && isDrink;
 
-                  <span className="text-sm text-gray-700 w-32">
-                    {s.label}
-                    {s.oz ? ` (${s.oz}oz ${s.temperature ?? ''})` : ''}
-                  </span>
-
-                  {selectedSizes[s.id] && (
+                return (
+                  <div key={s.id} className="flex items-center gap-2">
                     <input
-                      type="number"
-                      min="0"
-                      step="0.01"
-                      value={prices[s.id] ?? ''}
-                      onChange={(e) =>
-                        setPrices(prev => ({ ...prev, [s.id]: e.target.value }))
-                      }
-                      placeholder="Price"
-                      className="flex-1 px-2 py-1 border border-gray-300 rounded-lg text-sm"
+                      type="checkbox"
+                      checked={!!selectedSizes[s.id]}
+                      onChange={() => !disabled && toggleSize(s.id)}
+                      disabled={disabled}
+                      className={`w-4 h-4 text-amber-600 border-gray-300 rounded focus:ring-amber-500 ${
+                        disabled ? "opacity-40 cursor-not-allowed" : ""
+                      }`}
                     />
-                  )}
-                </div>
-              ))}
+
+                    <span className="text-sm text-gray-700 w-32">
+                      {s.label}
+                      {s.oz ? ` (${s.oz}oz ${s.temperature ?? ''})` : ''}
+                      {disabled && " (snacks only)"}
+                    </span>
+
+                    {selectedSizes[s.id] && (
+                      <input
+                        type="number"
+                        min="0"
+                        step="0.01"
+                        value={prices[s.id] ?? ''}
+                        onChange={(e) =>
+                          setPrices(prev => ({ ...prev, [s.id]: e.target.value }))
+                        }
+                        placeholder="Price"
+                        className="flex-1 px-2 py-1 border border-gray-300 rounded-lg text-sm"
+                      />
+                    )}
+                  </div>
+                );
+              })}
             </div>
           </div>
 

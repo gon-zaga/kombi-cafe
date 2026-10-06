@@ -25,9 +25,20 @@ VALUES ('Kafer', 12, 'hot'),
 -- ==================== STAFF (owner creates this first) ====================
 -- Default owner: username=owner, password=Owner123 (change after first login!)
 -- Password is bcrypt hashed (cost 12)
-INSERT INTO staff (username, password_hash, role, first_name, last_name)
-VALUES ('owner', '$2b$12$nH9HE53bZx38Ni8tprqox.n.QE2UrDkgk2C7gDpQpd.5OsDxEplHO', 'owner', 'Owner', 'Admin')
-ON CONFLICT (username) DO NOTHING;
+INSERT INTO staff (
+    username,
+    password_hash,
+    role,
+    first_name,
+    last_name
+  )
+VALUES (
+    'owner',
+    '$2b$12$nH9HE53bZx38Ni8tprqox.n.QE2UrDkgk2C7gDpQpd.5OsDxEplHO',
+    'owner',
+    'Owner',
+    'Admin'
+  ) ON CONFLICT (username) DO NOTHING;
 -- ==================== ADD-ONS ====================
 INSERT INTO add_ons (name, price)
 VALUES ('Espresso[1 shot]', 10),

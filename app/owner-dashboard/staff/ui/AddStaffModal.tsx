@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from "react";
+import { useToast } from "@/app/ui/Toast";
 
 interface AddStaffModalProps {
   isOpen: boolean;
@@ -16,8 +17,8 @@ export default function AddStaffModal({ isOpen, onClose, onAdded }: AddStaffModa
   const [lastName, setLastName] = useState("");
   const [startedAt, setStartedAt] = useState("");
   const [birthdate, setBirthdate] = useState("");
-  const [error, setError] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const { success, error: showError } = useToast();
 
   const resetForm = () => {
     setUsername("");
@@ -27,7 +28,6 @@ export default function AddStaffModal({ isOpen, onClose, onAdded }: AddStaffModa
     setLastName("");
     setStartedAt("");
     setBirthdate("");
-    setError("");
   };
 
   const handleClose = () => {
@@ -37,15 +37,14 @@ export default function AddStaffModal({ isOpen, onClose, onAdded }: AddStaffModa
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError("");
 
     if (!username || !password) {
-      setError("Username and password are required");
+      showError("Username and password are required");
       return;
     }
 
     if (password.length < 6) {
-      setError("Password must be at least 6 characters");
+      showError("Password must be at least 6 characters");
       return;
     }
 
@@ -73,8 +72,10 @@ export default function AddStaffModal({ isOpen, onClose, onAdded }: AddStaffModa
       }
 
       onAdded();
+      success("Staff member added successfully!");
+      handleClose();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to add staff");
+      showError(err instanceof Error ? err.message : "Failed to add staff");
     } finally {
       setSubmitting(false);
     }
@@ -100,12 +101,6 @@ export default function AddStaffModal({ isOpen, onClose, onAdded }: AddStaffModa
             ×
           </button>
         </div>
-
-        {error && (
-          <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-2 rounded-lg text-sm mb-4">
-            {error}
-          </div>
-        )}
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>

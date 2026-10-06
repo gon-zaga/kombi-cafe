@@ -4,6 +4,7 @@
 
 import { useEffect, useState } from "react";
 import ImagePicker from "@/app/ui/ImagePicker";
+import { useToast } from "@/app/ui/Toast";
 
 
 // Describes what a Category object looks like
@@ -68,8 +69,11 @@ function AddItemModal({ isOpen, onClose, onCreated }: AddItemModalProps) {
   // Tracks whether the form is currently being submitted
   const [submitting, setSubmitting] = useState(false);
 
-  // Stores an error message to display to the user
-  const [error, setError] = useState("");
+  const { success, error: showError } = useToast();
+
+  // "Regular" size (oz === null && temperature === null) is for snacks only.
+  // Default to drink mode (Regular disabled). User can toggle if adding a snack.
+  const [isDrink, setIsDrink] = useState(true);
 
 
   // useEffect runs when the component opens
@@ -123,7 +127,6 @@ function AddItemModal({ isOpen, onClose, onCreated }: AddItemModalProps) {
     setIsAvailable(true);
     setSelectedSizes({});
     setPrices({});
-    setError("");
   };
 
 
@@ -152,9 +155,6 @@ function AddItemModal({ isOpen, onClose, onCreated }: AddItemModalProps) {
     // Prevent the browser from refreshing the page
     e.preventDefault();
 
-    // Remove any previous error message
-    setError("");
-
 
     // Create the list of selected sizes and their prices
     const sizes = sizeOptions
@@ -167,7 +167,7 @@ function AddItemModal({ isOpen, onClose, onCreated }: AddItemModalProps) {
 
     // Check if the required information was provided
     if (!name || !categoryId || sizes.length === 0) {
-      setError(
+      showError(
         "Please fill in the item name, category, and at least one size with a price."
       );
       return;
@@ -225,6 +225,9 @@ function AddItemModal({ isOpen, onClose, onCreated }: AddItemModalProps) {
       // Tell the parent component that an item was created
       onCreated();
 
+      // Show success toast
+      success("Menu item created successfully!");
+
       // Close the modal after successful creation
       handleClose();
 
@@ -235,7 +238,7 @@ function AddItemModal({ isOpen, onClose, onCreated }: AddItemModalProps) {
       console.error(err);
 
       // Display the error message to the user
-      setError(
+      showError(
         err instanceof Error
           ? err.message
           : "Failed to create item"
@@ -281,15 +284,6 @@ function AddItemModal({ isOpen, onClose, onCreated }: AddItemModalProps) {
             ×
           </button>
         </div>
-
-
-        {/* Display an error message if there is one */}
-        {error && (
-          <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-2 rounded-lg text-sm mb-4">
-            {error}
-          </div>
-        )}
-
 
         {/* Main form */}
         <form
@@ -367,66 +361,59 @@ function AddItemModal({ isOpen, onClose, onCreated }: AddItemModalProps) {
               Available Sizes & Prices
             </label>
 
+            <div className="flex items-center gap-2 mb-2">
+              <label className="flex items-center gap-1 text-sm text-gray-600">
+                <input
+                  type="checkbox"
+                  checked={!isDrink}
+                  onChange={(e) => setIsDrink(!e.target.checked)}
+                  className="w-4 h-4 text-amber-600 border-gray-300 rounded focus:ring-amber-500"
+                />
+                <span>Snack item (enable Regular size)</span>
+              </label>
+            </div>
+
             <div className="space-y-2">
 
               {/* Create a row for every available size */}
-              {sizeOptions.map((s) => (
+              {sizeOptions.map((s) => {
+                const isRegular = s.oz === null && s.temperature === null;
+                const disabled = isRegular && isDrink;
 
-                <div
-                  key={s.id}
-                  className="flex items-center gap-2"
-                >
-
-                  {/* Checkbox for selecting the size */}
-                  <input
-                    type="checkbox"
-
-                    // Check if this size is selected
-                    checked={!!selectedSizes[s.id]}
-
-                    // Select/unselect the size
-                    onChange={() => toggleSize(s.id)}
-
-                    className="w-4 h-4 text-amber-600 border-gray-300 rounded focus:ring-amber-500"
-                  />
-
-
-                  {/* Display size information */}
-                  <span className="text-sm text-gray-700 w-32">
-                    {s.label}
-                    {s.oz
-                      ? ` (${s.oz}oz ${s.temperature ?? ''})`
-                      : ''}
-                  </span>
-
-
-                  {/* Only show price input if the size is selected */}
-                  {selectedSizes[s.id] && (
-
+                return (
+                  <div key={s.id} className="flex items-center gap-2">
                     <input
-                      type="number"
-                      min="0"
-                      step="0.01"
-
-                      // Show the price for this size
-                      value={prices[s.id] ?? ''}
-
-                      // Update the price when the user types
-                      onChange={(e) =>
-                        setPrices(prev => ({
-                          ...prev,
-                          [s.id]: e.target.value
-                        }))
-                      }
-
-                      placeholder="Price"
-
-                      className="flex-1 px-2 py-1 border border-gray-300 rounded-lg text-sm"
+                      type="checkbox"
+                      checked={!!selectedSizes[s.id]}
+                      onChange={() => !disabled && toggleSize(s.id)}
+                      disabled={disabled}
+                      className={`w-4 h-4 text-amber-600 border-gray-300 rounded focus:ring-amber-500 ${
+                        disabled ? "opacity-40 cursor-not-allowed" : ""
+                      }`}
                     />
-                  )}
 
-                </div>
-              ))}
+                    <span className="text-sm text-gray-700 w-32">
+                      {s.label}
+                      {s.oz ? ` (${s.oz}oz ${s.temperature ?? ''})` : ''}
+                      {disabled && " (snacks only)"}
+                    </span>
+
+                    {selectedSizes[s.id] && (
+                      <input
+                        type="number"
+                        min="0"
+                        step="0.01"
+                        value={prices[s.id] ?? ''}
+                        onChange={(e) =>
+                          setPrices(prev => ({ ...prev, [s.id]: e.target.value }))
+                        }
+                        placeholder="Price"
+                        className="flex-1 px-2 py-1 border border-gray-300 rounded-lg text-sm"
+                      />
+                    )}
+                  </div>
+                );
+              })}
 
             </div>
           </div>

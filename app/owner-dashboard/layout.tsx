@@ -3,6 +3,7 @@
 import { useEffect } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import { useAuth } from "@/app/lib/auth/AuthContext";
+import { ToastProvider } from "@/app/ui/Toast";
 
 export default function OwnerDashboardLayout({
   children,
@@ -31,5 +32,10 @@ export default function OwnerDashboardLayout({
     return null;
   }
 
-  return <>{children}</>;
+  return (
+    <>
+      {children}
+      <ToastProvider />
+    </>
+  );
 }

@@ -16,6 +16,7 @@ import MenuItemCard from "./ui/MenuItemCard";
 import RecipeModal from "./ui/RecipeModal";
 import FilterBar from "./ui/FilterBar";
 import ConfirmModal from "@/app/ui/ConfirmModal";
+import { useToast } from "@/app/ui/Toast";
 
 // MenuItem is the TypeScript type that describes a menu item
 import type { MenuItem } from "@/app/lib/types";
@@ -79,6 +80,8 @@ export default function MenuManagement() {
   // shown on the page instead of in a browser alert
   const [actionError, setActionError] = useState("");
 
+
+  const { error: showError } = useToast();
 
   // Function used to get menu items from the API
 const fetchMenu = useCallback(async () => {
@@ -163,9 +166,11 @@ const fetchMenu = useCallback(async () => {
       body: JSON.stringify({ isAvailable: checked }),
     });
     if (!res.ok) throw new Error("PATCH failed");
+    showError(`${checked ? "Item is now available" : "Item is now unavailable"}`, { type: checked ? 'success' : 'error' });
   } catch (error) {
     console.error("Failed to update availability:", error);
     setItemAvailability(prev => ({ ...prev, [itemId]: !checked })); // revert
+    showError("Failed to update availability");
   }
 };
 
@@ -183,6 +188,7 @@ const handleDelete = async (item: MenuItem) => {
 
     setDeletingItem(null);
     fetchMenu();
+    showError(`${item.itemName} deleted successfully`, { type: 'error' });
   } catch (error) {
     console.error("Failed to delete menu item:", error);
     setActionError(
@@ -191,20 +197,40 @@ const handleDelete = async (item: MenuItem) => {
   }
 }
 
-  // If the menu is still loading,
-  // show a loading message instead of the menu.
-  if (loading) {
-    return (
-      <p className="text-center py-10 text-dark-brown">
-        Loading menu...
-      </p>
-    );
-  }
-
-
   // The actual page UI
   return (
-    <section className="min-h-screen">
+    <section className="min-h-screen bg-cream">
+
+      {loading ? (
+        // Loading skeleton
+        <div className="min-h-[60vh] flex flex-col items-center justify-center p-8">
+          <div className="relative w-20 h-20 mb-6">
+            <div className="absolute inset-0 border-4 border-amber-200 rounded-full animate-spin" />
+            <div className="absolute inset-0 border-4 border-amber-600 rounded-full border-t-transparent animate-spin" />
+            <div className="absolute inset-2 border-4 border-amber-100 rounded-full border-b-transparent animate-spin reverse" style={{ animationDuration: '1.5s' }} />
+          </div>
+          <p className="text-dark-brown font-roboto-slab text-xl font-medium">Loading menu items...</p>
+          <p className="text-dark-brown/50 text-sm mt-1">Fetching your delicious items</p>
+          
+          {/* Skeleton cards */}
+          <div className="w-full max-w-4xl mt-8 space-y-4 px-4">
+            {[1, 2, 3, 4].map((i) => (
+              <div key={i} className="bg-white rounded-2xl p-4 animate-pulse shadow-sm">
+                <div className="flex items-center gap-4">
+                  <div className="w-16 h-16 bg-amber-100 rounded-xl" />
+                  <div className="flex-1 space-y-2">
+                    <div className="h-6 bg-amber-100 rounded w-3/4" />
+                    <div className="h-4 bg-amber-100 rounded w-1/2" />
+                    <div className="h-4 bg-amber-100 rounded w-1/3" />
+                  </div>
+                  <div className="w-20 h-10 bg-amber-100 rounded-lg" />
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      ) : (
+        <>
 
       {/* Header at the top of the menu management page */}
       <OwnerHeader title="MENU MANAGEMENT" />
@@ -405,6 +431,8 @@ const handleDelete = async (item: MenuItem) => {
         onCancel={() => setDeletingItem(null)}
         onConfirm={() => deletingItem && handleDelete(deletingItem)}
       />
+        </>
+      )}
 
     </section>
   );

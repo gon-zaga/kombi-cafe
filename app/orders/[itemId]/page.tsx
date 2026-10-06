@@ -41,7 +41,7 @@ export default function OrderPage({ params }: { params: Promise<{ itemId: number
           setSelectedSize(null);
         }
       } catch (error) {
-        console.error('Failed to fetch menu item:', error);
+        console.error(' Failed to fetch menu item:', error);
         if (isMounted) {
           setItem(null);
           setSelectedSize(null);

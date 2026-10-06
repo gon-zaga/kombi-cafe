@@ -4,6 +4,7 @@
 // Stock is deliberately NOT editable here: the only way to change stock is
 // Restock, which sends a delta, so a stale screen value can't overwrite real stock.
 import { useState } from "react";
+import { useToast } from "@/app/ui/Toast";
 
 type EditableIngredient = {
   id: number;
@@ -67,14 +68,13 @@ function EditIngredientForm({
     String(ingredient.restockThreshold)
   );
   const [saving, setSaving] = useState(false);
-  const [error, setError] = useState("");
+  const { success, error: showError } = useToast();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError("");
 
     if (!name.trim() || !unit || restockThreshold === "") {
-      setError("Please fill in all fields.");
+      showError("Please fill in all fields.");
       return;
     }
 
@@ -100,10 +100,11 @@ function EditIngredientForm({
       }
 
       onUpdated();
+      success("Ingredient updated successfully!");
       onClose();
     } catch (err) {
       console.error(err);
-      setError(
+      showError(
         err instanceof Error ? err.message : "Failed to update ingredient"
       );
     } finally {
@@ -129,12 +130,6 @@ function EditIngredientForm({
             ×
           </button>
         </div>
-
-        {error && (
-          <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-2 rounded-lg text-sm mb-4">
-            {error}
-          </div>
-        )}
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>

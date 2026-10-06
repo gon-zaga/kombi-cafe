@@ -3,6 +3,7 @@
 // Lets the owner add an amount to an ingredient's stock; sends stockDelta so the
 // database adds it to the current value instead of overwriting it
 import { useState } from "react";
+import { useToast } from "@/app/ui/Toast";
 
 interface RestockModalProps {
   // The ingredient being restocked, or null when the modal is closed
@@ -27,8 +28,7 @@ function RestockModal({ ingredient, onClose, onRestocked }: RestockModalProps) {
   // Tracks whether the PATCH is in flight, to disable the button
   const [submitting, setSubmitting] = useState(false);
 
-  // Holds any validation or server error to show inside the modal
-  const [error, setError] = useState("");
+  const { success, error: showError } = useToast();
 
   if (!ingredient) return null;
 
@@ -38,7 +38,7 @@ function RestockModal({ ingredient, onClose, onRestocked }: RestockModalProps) {
     const parsed = Number(amount);
 
     if (amount.trim() === "" || isNaN(parsed) || parsed <= 0) {
-      setError("Enter an amount greater than 0.");
+      showError("Enter an amount greater than 0.");
       return null;
     }
 
@@ -47,13 +47,11 @@ function RestockModal({ ingredient, onClose, onRestocked }: RestockModalProps) {
 
   const handleClose = () => {
     setAmount("");
-    setError("");
     onClose();
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError("");
 
     const delta = parseAmount();
     if (delta === null) return;
@@ -76,10 +74,11 @@ function RestockModal({ ingredient, onClose, onRestocked }: RestockModalProps) {
       }
 
       onRestocked();
+      success("Stock updated successfully!");
       handleClose();
     } catch (err) {
       console.error(err);
-      setError(
+      showError(
         err instanceof Error ? err.message : "Failed to restock ingredient"
       );
     } finally {
@@ -109,12 +108,6 @@ function RestockModal({ ingredient, onClose, onRestocked }: RestockModalProps) {
         <p className="text-sm text-gray-500 mb-4">
           {ingredient.name} · currently {ingredient.stockQty} {ingredient.unit}
         </p>
-
-        {error && (
-          <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-2 rounded-lg text-sm mb-4">
-            {error}
-          </div>
-        )}
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>

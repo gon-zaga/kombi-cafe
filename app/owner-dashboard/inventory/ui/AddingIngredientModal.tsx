@@ -3,6 +3,7 @@
 
 // useState is used to store the values entered in the form
 import { useState } from "react";
+import { useToast } from "@/app/ui/Toast";
 
 
 // Props are information/functions that this component receives
@@ -44,6 +45,8 @@ function AddingIngredientModal({
 
   // Stores an error message if something goes wrong
   const [error, setError] = useState("");
+
+  const { success, error: showError } = useToast();
 
 
   // If the modal is not supposed to be open,
@@ -149,6 +152,8 @@ function AddingIngredientModal({
       // The parent can use this to refresh the ingredient list.
       onAdded();
 
+      // Show success toast
+      success("Ingredient added successfully!");
 
       // Clear the form and close the modal
       handleClose();
@@ -159,8 +164,8 @@ function AddingIngredientModal({
       // Show the error in the browser console
       console.error(err);
 
-      // Display the error message in the modal
-      setError(
+      // Display the error message as toast
+      showError(
         err instanceof Error
           ? err.message
           : "Failed to add ingredient"
@@ -224,18 +229,9 @@ function AddingIngredientModal({
           Display an error message if the error state
           contains something.
         */}
-        {error && (
-          <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-2 rounded-lg text-sm mb-4">
-            {error}
-          </div>
-        )}
-
 
         {/* 
           Form for entering the ingredient information.
-
-          When the form is submitted,
-          handleSubmit() is called.
         */}
         <form
           onSubmit={handleSubmit}
