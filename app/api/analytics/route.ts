@@ -86,12 +86,6 @@ export async function GET(request: Request) {
     to = resolved.to;
   }
 
-  const dateFilter = from ? `AND o.order_date >= $1` : "";
-  const dateFilterTo = to ? `AND o.order_date <= $2` : "";
-  const params: (string | null)[] = [];
-  if (from) params.push(from);
-  if (to) params.push(to);
-
   try {
     const results = await Promise.all([
       // 1. Revenue by Category

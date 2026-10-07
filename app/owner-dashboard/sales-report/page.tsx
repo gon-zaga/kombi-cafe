@@ -4,28 +4,23 @@
 import { useEffect, useMemo, useState } from "react";
 import OwnerHeader from "../ui/OwnerHeader";
 import DateFilterBar from "@/app/ui/DateFilterBar";
+import { downloadCsv, exportTimestamp } from "@/app/lib/csv";
 import type { CustomRange, DateFilter } from "@/app/lib/dateFilter";
-import { buildOrdersQuery, describeRange } from "@/app/lib/dateFilter";
+import { buildOrdersQuery, describeRange, rangeSlug } from "@/app/lib/dateFilter";
 import type { OrderSummary } from "@/app/lib/types";
 
 export default function SalesReport() {
-  // 1) State FIRST: the filter must exist before the effect below reads it
   const [dateFilter, setDateFilter] = useState<DateFilter>("today");
   const [orders, setOrders] = useState<OrderSummary[]>([]);
   const [loadError, setLoadError] = useState("");
 
-  // The custom window that's been applied. The typed fields live inside
-  // DateFilterBar, so nothing refetches until Apply is pressed
   const [customRange, setCustomRange] = useState<CustomRange | null>(null);
 
-  // 2) The query string to fetch. Null while a custom filter has no applied
-  //    dates yet, which makes the effect below skip the fetch entirely
   const query = useMemo(
     () => buildOrdersQuery(dateFilter, customRange),
     [dateFilter, customRange]
   );
 
-  // 3) Refetch whenever the query changes; the server does the date filtering
   useEffect(() => {
     if (!query) return;
 
@@ -33,8 +28,6 @@ export default function SalesReport() {
 
     fetch(`/api/orders${query}`)
       .then((r) => {
-        // Check the status before parsing: a failing route returns an
-        // { error } object, not an array
         if (!r.ok) throw new Error(`Request failed (${r.status})`);
         return r.json();
       })
@@ -52,18 +45,15 @@ export default function SalesReport() {
     };
   }, [query]);
 
-  // Picking a preset clears any load error so a stale message can't linger
   const handleSelectFilter = (f: DateFilter) => {
     setLoadError("");
     setDateFilter(f);
   };
 
-  // 4) Aggregates
   const totalSales = orders.reduce((acc, o) => acc + o.total, 0);
   const totalOrders = orders.length;
   const averageOrder = totalOrders > 0 ? totalSales / totalOrders : 0;
 
-  // Item with the highest total quantity sold in the selected range
   const topSellingItem = useMemo(() => {
     const counts: Record<string, number> = {};
     for (const order of orders) {
@@ -75,14 +65,36 @@ export default function SalesReport() {
     return sorted[0]?.[0] ?? "—";
   }, [orders]);
 
-  // Orders arrive newest-first from the API, so the first 5 are the most recent
   const recentOrders = orders.slice(0, 5);
+
+  const [menuOpen, setMenuOpen] = useState(false);
+
+  const stamp = exportTimestamp();
+  const slug = rangeSlug(dateFilter, customRange);
+
+  const exportSales = () => {
+    downloadCsv(`sales-report-${slug}-${stamp}.csv`, orders, [
+      { header: "Order Ref", value: (o) => o.orderReference },
+      {
+        header: "Time",
+        value: (o) => new Date(o.createdAt).toLocaleString("en-PH"),
+      },
+      { header: "Date", value: (o) => o.createdAt.slice(0, 10) },
+      { header: "Status", value: (o) => o.status },
+      { header: "Item Count", value: (o) => o.items.length },
+      { header: "Total", value: (o) => o.total.toFixed(2) },
+    ]);
+    setMenuOpen(false);
+  };
+
+  const exportOptions = [
+    { label: "Sales & orders", hint: "One row per order", action: exportSales },
+  ];
 
   return (
     <section className="min-h-screen bg-cream">
       <OwnerHeader title="SALES REPORT" />
 
-      {/* Date filter chips + custom range panel, shared with the dashboard */}
       <div className="px-4 mb-4">
         <DateFilterBar
           filter={dateFilter}
@@ -92,9 +104,8 @@ export default function SalesReport() {
             setLoadError("");
             setCustomRange(range);
           }}
-/>
+        />
 
-        {/* Names the period the numbers below cover */}
         <p className="text-sm text-gray-600 mt-3">
           Report for {describeRange(dateFilter, customRange)}
         </p>
@@ -104,6 +115,63 @@ export default function SalesReport() {
             {loadError}
           </div>
         )}
+      </div>
+
+      <div className="flex flex-wrap items-center justify-between gap-3 px-4 mb-4">
+        <span className="text-sm text-gray-600">
+          Showing {describeRange(dateFilter, customRange)} · {orders.length} order
+          {orders.length === 1 ? "" : "s"}
+        </span>
+
+        <div className="relative">
+          {menuOpen && (
+            <button
+              aria-label="Close export menu"
+              onClick={() => setMenuOpen(false)}
+              className="fixed inset-0 z-20 cursor-default"
+            />
+          )}
+
+          <button
+            onClick={() => setMenuOpen((open) => !open)}
+            aria-expanded={menuOpen}
+            className="relative z-30 flex items-center gap-2 bg-amber-800 text-white text-sm font-medium px-4 py-2 rounded-lg hover:bg-amber-700 transition-colors"
+          >
+            <svg
+              className="w-4 h-4"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth={2}
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                d="M4 16v2a2 2 0 002 2h12a2 2 0 002-2v-2M7 10l5 5m0 0l5-5m-5 5V4"
+              />
+            </svg>
+            Export CSV
+          </button>
+
+          {menuOpen && (
+            <div className="absolute right-0 mt-2 w-56 bg-white rounded-xl shadow-lg border border-gray-100 py-1 z-30">
+              {exportOptions.map((option) => (
+                <button
+                  key={option.label}
+                  onClick={option.action}
+                  className="w-full text-left px-4 py-2 hover:bg-gray-50 transition-colors"
+                >
+                  <span className="block text-sm font-medium text-gray-800">
+                    {option.label}
+                  </span>
+                  <span className="block text-xs text-gray-500">
+                    {option.hint}
+                  </span>
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Sales statistics */}
