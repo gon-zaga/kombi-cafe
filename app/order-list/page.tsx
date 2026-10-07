@@ -8,18 +8,22 @@ import { useOrderStore } from '@/store/OrderListStore';
 import PlaceOrderButton from './_ui/PlaceOrderButton';
 import EmptyOrder from './_ui/EmptyOrder';
 import { useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
+import { useTableStore } from '@/store/TableStore';
 import type { AddOn } from "@/app/api/add-ons/route";
 
 function OrdersLists() {
   const [addOns, setAddOns] = useState<AddOn[]>([]);
   const { orders, removeOrder } = useOrderStore();
+  const { selectedTable } = useTableStore();
+  const router = useRouter();
   // Cart grand total including add-ons, matching the server's calculation
-const grandtotal = orders.reduce((acc, order) => {
-  const addOnTotal = addOns
-    .filter(a => order.selectedAddOn.includes(a.addOnsId))
-    .reduce((sum, a) => sum + a.price, 0);
-  return acc + (order.selectedSize.price + addOnTotal) * order.quantity;
-}, 0);
+  const grandtotal = orders.reduce((acc, order) => {
+    const addOnTotal = addOns
+      .filter(a => order.selectedAddOn.includes(a.addOnsId))
+      .reduce((sum, a) => sum + a.price, 0);
+    return acc + (order.selectedSize.price + addOnTotal) * order.quantity;
+  }, 0);
   const [hydrated, setHydrated] = useState(false);
 
   // Waits for Zustand's persisted store to finish loading from localStorage before rendering,
@@ -36,6 +40,13 @@ const grandtotal = orders.reduce((acc, order) => {
 
     return () => unsub();
   }, []);
+
+  // Redirect to table selection if no table is selected
+  useEffect(() => {
+    if (hydrated && selectedTable === null) {
+      router.push('/table-select');
+    }
+  }, [hydrated, selectedTable, router]);
 
   // Fetches the current list of available add-ons from the database,
   // so OrderCard can show real add-on names instead of mock data
@@ -68,20 +79,35 @@ const grandtotal = orders.reduce((acc, order) => {
     <div className='min-h-screen'>
       <Header />
 
+      {/* Table indicator */}
+      {selectedTable !== null && (
+        <div className="bg-amber-100 border-b border-amber-300 px-4 py-2 flex items-center justify-between">
+          <span className="text-sm font-roboto-condensed tracking-wide text-amber-900">
+            TABLE {selectedTable}
+          </span>
+          <button
+            onClick={() => router.push('/table-select')}
+            className="text-xs text-amber-900 hover:underline"
+          >
+            Change table
+          </button>
+        </div>
+      )}
+
       {orders.length === 0
 
         ? <EmptyOrder />
 
-: orders.map((order) => (
-  // itemId + sizeId + add-ons must all be in the key, because those
-  // three fields are what make a cart line unique in the store
-  <OrderCard
-    key={`${order.itemId}-${order.selectedSize.sizeId}-${JSON.stringify(order.selectedAddOn)}`}
-    order={order}
-    addOns={addOns}
-    onDelete={() => removeOrder(order)}
-  />
-))
+        : orders.map((order) => (
+          // itemId + sizeId + add-ons must all be in the key, because those
+          // three fields are what make a cart line unique in the store
+          <OrderCard
+            key={`${order.itemId}-${order.selectedSize.sizeId}-${JSON.stringify(order.selectedAddOn)}`}
+            order={order}
+            addOns={addOns}
+            onDelete={() => removeOrder(order)}
+          />
+        ))
       }
 
       {

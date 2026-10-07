@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import OwnerHeader from "../ui/OwnerHeader";
 import DateFilterBar from "@/app/ui/DateFilterBar";
 import type { CustomRange, DateFilter } from "@/app/lib/dateFilter";
-import { buildOrdersQuery, describeRange, rangeSlug } from "@/app/lib/dateFilter";
+import { buildOrdersQuery, describeRange } from "@/app/lib/dateFilter";
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
   LineChart, Line, PieChart, Pie, Cell, Legend,
@@ -42,24 +42,28 @@ export default function AnalyticsDashboard() {
     if (!query) return;
 
     let isMounted = true;
-    setLoading(true);
-    setError("");
 
-    fetch(`/api/analytics${query}`)
-      .then((r) => {
-        if (!r.ok) throw new Error(`Request failed (${r.status})`);
-        return r.json();
-      })
-      .then((d) => {
-        if (isMounted) setData(d);
-      })
-      .catch((err) => {
+    // State updates happen inside the async callback, not
+    // synchronously in the effect body, so this reads as a
+    // subscription to the analytics API rather than a cascade
+    async function loadAnalytics() {
+      try {
+        const response = await fetch(`/api/analytics${query}`);
+        if (!response.ok) throw new Error(`Request failed (${response.status})`);
+        const d: AnalyticsData = await response.json();
+        if (isMounted) {
+          setData(d);
+          setError("");
+        }
+      } catch (err) {
         console.error("Failed to fetch analytics:", err);
         if (isMounted) setError("Could not load analytics for this range.");
-      })
-      .finally(() => {
+      } finally {
         if (isMounted) setLoading(false);
-      });
+      }
+    }
+
+    loadAnalytics();
 
     return () => { isMounted = false; };
   }, [query]);
@@ -184,7 +188,7 @@ export default function AnalyticsDashboard() {
                 <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
                 <XAxis dataKey="name" tick={{ fontSize: 12 }} />
                 <YAxis tick={{ fontSize: 12 }} tickFormatter={(v) => `₱${v}`} />
-                <Tooltip formatter={(v: number) => [`₱${v.toFixed(2)}`, "Revenue"]} />
+                <Tooltip />
                 <Bar dataKey="revenue" name="Revenue" radius={[4, 4, 0, 0]}>
                   {categoryData.map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
                 </Bar>
@@ -202,7 +206,7 @@ export default function AnalyticsDashboard() {
                 <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
                 <XAxis dataKey="hour" tick={{ fontSize: 12 }} />
                 <YAxis tick={{ fontSize: 12 }} tickFormatter={(v) => `₱${v}`} />
-                <Tooltip formatter={(v: number) => [`₱${v.toFixed(2)}`, "Revenue"]} />
+                <Tooltip />
                 <Line type="monotone" dataKey="revenue" stroke="#8B4513" strokeWidth={2} dot={{ r: 4 }} />
               </LineChart>
             </ResponsiveContainer>
@@ -219,10 +223,7 @@ export default function AnalyticsDashboard() {
                   <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
                   <XAxis dataKey="date" tick={{ fontSize: 12 }} />
                   <YAxis tick={{ fontSize: 12 }} tickFormatter={(v) => `₱${v}`} />
-                  <Tooltip formatter={(v: number, name: string) => {
-                    if (name === "revenue") return [`₱${v.toFixed(2)}`, "Revenue"];
-                    return [`${v}`, "Orders"];
-                  }} />
+                  <Tooltip />
                   <Line type="monotone" dataKey="revenue" stroke="#8B4513" strokeWidth={2} name="Revenue" dot={{ r: 3 }} />
                   <Line type="monotone" dataKey="orders" stroke="#D2691E" strokeWidth={2} name="Orders" dot={{ r: 3 }} yAxisId="right" />
                 </LineChart>
@@ -246,12 +247,12 @@ export default function AnalyticsDashboard() {
                     outerRadius={100}
                     dataKey="revenue"
                     nameKey="name"
-                    label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
+                    label={({ name, percent }) => `${name} ${percent !== undefined ? (percent * 100).toFixed(0) : 0}%`}
                     labelLine={false}
                   >
                     {categoryData.map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
                   </Pie>
-                  <Tooltip formatter={(v: number) => [`₱${v.toFixed(2)}`, "Revenue"]} />
+                  <Tooltip />
                 </PieChart>
               </ResponsiveContainer>
               <Legend width="40%" />

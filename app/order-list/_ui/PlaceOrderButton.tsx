@@ -14,6 +14,8 @@ import { useRouter } from "next/navigation";
 
 // Get the order data and functions from the Zustand order store.
 import { useOrderStore } from "@/store/OrderListStore";
+// Get the table number from the table store
+import { useTableStore } from "@/store/TableStore";
 
 function PlaceOrderButton({ grandtotal }: { grandtotal: number }) {
 
@@ -25,6 +27,9 @@ function PlaceOrderButton({ grandtotal }: { grandtotal: number }) {
 
   // Get the function that clears the cart.
   const clearOrder = useOrderStore(state => state.clearOrder);
+
+  // Get the selected table number
+  const selectedTable = useTableStore(state => state.selectedTable);
 
   // Keeps track of whether the order is currently being submitted.
   // It starts as false because the user has not clicked the button yet.
@@ -43,6 +48,13 @@ function PlaceOrderButton({ grandtotal }: { grandtotal: number }) {
     // Clear any previous error message.
     setError("");
 
+    // Make sure a table has been selected
+    if (selectedTable === null) {
+      setError("Please select a table first.");
+      setIsSubmitting(false);
+      return;
+    }
+
     try {
 
       // Send the cart data to the orders API.
@@ -54,6 +66,7 @@ function PlaceOrderButton({ grandtotal }: { grandtotal: number }) {
 
         // Convert the cart information into JSON.
         body: JSON.stringify({
+          table_number: selectedTable,
 
           // Send every cart item to the server.
           items: orders.map(o => ({
@@ -88,7 +101,7 @@ function PlaceOrderButton({ grandtotal }: { grandtotal: number }) {
       // Use the reference number and total calculated by the server
       // to build the confirmation page URL.
       router.push(
-        `/order-confirmation?ref=${data.orderReference}&total=${data.total}`
+        `/order-confirmation?ref=${data.orderReference}&total=${data.total}&table=${data.table_number}`
       );
 
       // Clear the cart after navigation starts.
@@ -118,6 +131,13 @@ function PlaceOrderButton({ grandtotal }: { grandtotal: number }) {
       {error && (
         <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-2 rounded-lg text-sm mb-2">
           {error}
+        </div>
+      )}
+
+      {/* Show the selected table number */}
+      {selectedTable !== null && (
+        <div className="bg-amber-50 border border-amber-200 text-amber-800 px-4 py-2 rounded-lg text-sm mb-2">
+          Ordering from Table {selectedTable}
         </div>
       )}
 

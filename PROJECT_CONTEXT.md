@@ -1,6 +1,6 @@
 # Coffee Shop App: Project Context & Roadmap
 
-*Last updated after the reporting + confirmation work: `GET /api/orders` now accepts `?from=&to=` for an exact window alongside the existing named ranges; the owner dashboard and sales report share one date-range component (Today / Yesterday / This Week / This Month / This Year / All Time / Custom); the dashboard was restyled into a card grid with a Best Seller card and per-section CSV export; and every destructive action goes through a shared `ConfirmModal` with a 3-second button lock. `npx eslint` + `npx tsc --noEmit` pass on `app/`. Section "Open items" lists what is still missing.*
+*Last updated after the table-based ordering work: customers pick one of 7 tables before the menu (`/table-select`, persisted in `TableStore`), the table number rides with the order through `POST /api/orders` (validated as an integer 1–7) into `orders.table_number`, and it shows on the menu/order-list indicator bars, the barista queue rows, the order detail modal, and the confirmation page. Also fixed the `next build` prerender failure (`useSearchParams` pages now wrapped in Suspense) and the analytics page's `set-state-in-effect` lint error. `npm run lint` (0 errors, 6 pre-existing warnings), `npx tsc --noEmit`, and `npm run build` all pass. Section "Open items" lists what is still missing.*
 
 **Toolchain note:** Next.js 16 + React 19.2. `npm run lint` is `eslint` (flat config, no path). Two rules bite in practice and are **errors, not warnings**:
 - `react-hooks/set-state-in-effect` — derived state computed in a `useEffect` is rejected. Use `useMemo` during render instead.
@@ -29,7 +29,7 @@ All 11 tables plus `daily_counters` are live in Neon. `latest_schema.sql` has th
 | `ingredients` | Inventory master list, **seeded by the owner**. `unit` is free-text `VARCHAR(20)`; UI offers g, kg, ml, L, pcs, packs, pumps, scoops. **No `expires_at` column** — expiry tracking was built and then reverted. |
 | `recipes` | Item → ingredient quantities. **Now in use.** `size_id` is **nullable and live in Neon**: `NULL` = applies to every size, non-null = that size only and overrides the general row |
 | `add_ons` | Universal extras. `id`, `name`, `price NUMERIC(10,2)`, `is_available BOOLEAN DEFAULT TRUE`, `image_url VARCHAR(255)` (nullable) |
-| `orders` | daily_number + order_date + status + total |
+| `orders` | daily_number + order_date + status + total + **table_number** (nullable INT, 1–7; the table the order belongs to). Migration `migrations/002_add_table_number.sql` adds the column + `idx_orders_table_number`; **already applied in Neon** |
 | `order_items` | menu_item_id + size_id + quantity + **unit_price** (price snapshot) |
 | `order_item_addons` | add-ons per order item, with quantity + **price** (price snapshot) |
 | `daily_counters` | Helper table: one row per `order_date` (PK), `last_number INT NOT NULL DEFAULT 0`. Generates `orders.daily_number` safely under concurrency |
@@ -224,8 +224,24 @@ All 11 tables plus `daily_counters` are live in Neon. `latest_schema.sql` has th
 - **Image name**: `slugifyImageName("Kombi Cappuccino")` → `kombi_cappuccino.webp`, shown in the picker. ⚠️ It is a **label, not a path** — no file is written to disk, because the bytes are in the database. If storage ever moves to files, the intended filename is already decided.
 - *Untested.* No upload has been run; the WebP fallback path and the 600px resize are unverified in a real browser.
 
+**Step 16: table-based ordering — ✅ BUILT (needs a live test)**
+- **Flow**: `/table-select` (7 clickable table cards, `TOTAL_TABLES = 7`) → `TableStore` (persisted zustand, `selectedTable: number | null`) → menu `/` → cart `/order-list` → `POST /api/orders` with `table_number` → confirmation page shows the table. The menu, cart and VIEW ORDER bar all redirect to `/table-select` when no table is selected, and show an amber "TABLE N" indicator bar with a "Change table" link.
+- **Schema**: `migrations/002_add_table_number.sql` — `orders.table_number INTEGER` (nullable) + `idx_orders_table_number`. **Already applied in Neon by hand.**
+- **API**: `POST /api/orders` validates `table_number` is an integer 1–7 (400 otherwise — matches the 7 physical tables), stores it in the `orders` insert, and returns it in the 201 response. `GET /api/orders` selects `o.table_number` → `OrderSummary.tableNumber` (`number | null`, optional in the type).
+- **Barista board**: a neutral "Table N" pill sits next to the reference on each queue row, and the detail modal shows the table under the reference. The customer-facing `/order-queue` board deliberately still shows reference numbers only (the reference is what customers verify at the counter).
+- **Design decisions**:
+  - **The table persists across orders** — the cart clears on success but the table stays, because a table orders repeatedly in one sitting. `TableStore.clearTable()` exists but nothing calls it yet.
+  - **`/table-select` never auto-redirects.** It originally bounced to `/` whenever a table was already selected, which made the menu's "Change table" button impossible to use (you'd be sent straight back). The grid now always renders; the require-a-table guard lives on the menu/cart pages instead.
+- *Untested end-to-end*: the redirect chain, a placed order carrying its table into the barista queue, and the 1–7 validation rejecting a bad number have not been run against the live DB.
+
+**Step 17: build + lint fixes — ✅ APPLIED (verified by build/lint/tsc)**
+- **`/login` and `/login/barista`**: both read `useSearchParams()` with no Suspense boundary, which made `next build` fail prerendering `/login/barista` ("useSearchParams() should be wrapped in a suspense boundary"). Both now follow the `order-confirmation` pattern: the page component is renamed and wrapped in `<Suspense>` by a new default export. Build now prerenders both as static pages.
+- **`owner-dashboard/analytics/page.tsx`**: `setLoading(true)` / `setError("")` were called synchronously in the effect body (`react-hooks/set-state-in-effect`, an **error** under this repo's flat config). Rewritten as an async `loadAnalytics()` callback with all setState calls after `await` (the same pattern `Dashboard.tsx` uses); also dropped the unused `rangeSlug` import. `npm run lint` is now **0 errors** (6 pre-existing unused-vars warnings remain, all documented as known).
+
 ## Open items / gaps
 - **The whole order→deduct path is untested.** Recipes and deduction are built but never run against real data. Until it's verified, treat Phases 3–5 as "code complete, behaviour unconfirmed". The one-line check that matters most: a **failed** (409) order must not consume a `daily_number`.
+- **Table-based ordering is untested end-to-end** (Step 16): the menu→table-select redirect chain, a placed order carrying its table into the barista queue, and the 1–7 validation rejecting a bad table number.
+- `orders.table_number` is stored but **not used in any owner report yet** — per-table sales would need a `GROUP BY table_number` endpoint (the analytics API already aggregates by hour/category/staff, so this is a small addition when wanted).
 - **No auth** on any owner route or page (NextAuth not implemented; `?all=true` and all mutations are open). Biggest structural risk left, and the reason this must be done **before any public deploy** — while it's on localhost it costs nothing to defer.
 - **The `expires_at` column does not exist in Neon**, and no code references it. Nothing to clean up; just be aware the earlier session built and reverted that feature.
 - **`idx_ingredients_name_unique` may not exist in Neon yet.** `POST /api/ingredients` uses `ON CONFLICT (LOWER(TRIM(name)))`, which **errors if the index is missing**. If adding a duplicate-named ingredient throws a 500 mentioning no matching constraint, run `CREATE UNIQUE INDEX idx_ingredients_name_unique ON ingredients (LOWER(TRIM(name)));`.
@@ -239,7 +255,7 @@ All 11 tables plus `daily_counters` are live in Neon. `latest_schema.sql` has th
 - **`best-sellers` revenue understates** by excluding add-ons (see Step 12). Fixing it properly means the API returning add-on prices per item, not a client-side calculation.
 - Owner modals fetch categories/sizes inline on every open; could be cached.
 - `SideNav.tsx` © 2025 → 2026.
-- `orders/[itemId]/page.tsx` has an unused `setQuantity` (the one remaining lint warning) and types its local add-ons as `imgUrl: string` while the API's `AddOn.imgUrl` is nullable. Harmless (the `??` fallback covers it) but both are wrong.
+- `orders/[itemId]/page.tsx` has an unused `setQuantity` (one of the 6 remaining unused-vars lint warnings) and types its local add-ons as `imgUrl: string` while the API's `AddOn.imgUrl` is nullable. Harmless (the `??` fallback covers it) but both are wrong.
 - Consider whether Delete should be hidden in favor of "unavailable" for items with order history (currently it 409s with a message).
 - Scaling: `?range=today` re-sends every order including all of day's `ready` ones, every 3s. Fine at café volume; if it drags, use `?status=pending` plus a second fetch for `preparing` rather than filtering a growing array client-side.
 

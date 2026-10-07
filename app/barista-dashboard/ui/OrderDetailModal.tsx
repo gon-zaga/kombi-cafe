@@ -56,6 +56,11 @@ function OrderDetailModal({ order, onClose, onUpdateStatus }: OrderDetailModalPr
         <div className="bg-gray-50 rounded-lg p-3 mb-4">
           <p className="text-sm text-gray-500">Order Reference</p>
           <p className="text-2xl font-mono font-bold text-gray-900">{order.orderReference}</p>
+          {order.tableNumber != null && (
+            <p className="text-sm text-gray-600 mt-1">
+              Table <span className="font-semibold text-gray-900">{order.tableNumber}</span>
+            </p>
+          )}
         </div>
 
         <div className="mb-4">

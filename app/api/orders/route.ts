@@ -7,6 +7,7 @@ import type { PoolClient } from "pg";
 import type { OrderSummary } from "@/app/lib/types";
 
 interface PlaceOrderPayload {
+  table_number: number;
   items: {
     itemId: number;
     sizeId: number;
@@ -192,6 +193,7 @@ export async function GET(request: Request) {
         o.id,
         o.daily_number,
         o.status,
+        o.table_number,
         -- created_at is stored as UTC without a zone; tag it so JS reads the right moment
         (o.created_at AT TIME ZONE 'UTC') AS created_at,
         o.total,
@@ -229,6 +231,7 @@ export async function GET(request: Request) {
       id: row.id,
       orderReference: String(row.daily_number).padStart(4, "0"),
       status: row.status,
+      tableNumber: row.table_number,
       createdAt: new Date(row.created_at).toISOString(),
       total: Number(row.total),
       items: row.items,
@@ -248,6 +251,15 @@ export async function POST(request: Request) {
     if (!body.items || body.items.length === 0) {
       return NextResponse.json(
         { error: "Order must contain at least one item" },
+        { status: 400 }
+      );
+    }
+
+    // The café has 7 tables (see app/table-select/page.tsx), so a valid
+    // table number is a whole number in that range
+    if (!Number.isInteger(body.table_number) || body.table_number < 1 || body.table_number > 7) {
+      return NextResponse.json(
+        { error: "A table number between 1 and 7 is required" },
         { status: 400 }
       );
     }
@@ -272,11 +284,11 @@ export async function POST(request: Request) {
       // step 2: insert the order with a placeholder total of 0
       const orderResult = await client.query(
         `
-          INSERT INTO orders (daily_number, order_date, total, status)
-          VALUES ($1, (NOW() AT TIME ZONE 'Asia/Manila')::date, 0, 'pending')
+          INSERT INTO orders (daily_number, order_date, total, status, table_number)
+          VALUES ($1, (NOW() AT TIME ZONE 'Asia/Manila')::date, 0, 'pending', $2)
           RETURNING id;
           `,
-        [dailyNumber]
+        [dailyNumber, body.table_number]
       );
 
       const orderId = orderResult.rows[0].id;
@@ -372,6 +384,7 @@ export async function POST(request: Request) {
           message: "Order placed successfully",
           order_id: orderId,
           orderReference,
+          table_number: body.table_number,
           status: 'pending',
           total: runningTotal
         },

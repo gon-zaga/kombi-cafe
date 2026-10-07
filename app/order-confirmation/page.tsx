@@ -8,6 +8,7 @@ function ConfirmOrder() {
   const router = useRouter();
   const ref = confirmParam.get('ref');
   const total = confirmParam.get('total');
+  const table = confirmParam.get('table');
 
   return (
     <section className="bg-cream flex min-h-screen items-center justify-center">
@@ -29,6 +30,12 @@ function ConfirmOrder() {
           <span className="text-sm tracking-widest font-mono">REFERENCE NUMBER</span>
           <p className="text-3xl font-bold font-mono mt-1">{ref}</p>
         </div>
+
+        {table && (
+          <div className="mt-2 bg-amber-50 border border-amber-200 text-amber-800 px-4 py-2 rounded-lg text-sm">
+            Table {table}
+          </div>
+        )}
 
         <hr className="w-full border-dark-brown/20 my-2" />
 

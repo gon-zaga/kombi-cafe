@@ -36,9 +36,10 @@ export type MenuItem = {
 export type OrderSummary = {
   id: number;
   orderReference: string;
+  tableNumber?: number | null;
   // 'completed' means the customer collected it. The order row is kept; the
-// status only controls whether the barista board still shows it.
-status: "pending" | "preparing" | "ready" | "completed";
+  // status only controls whether the barista board still shows it.
+  status: "pending" | "preparing" | "ready" | "completed";
   createdAt: string;
   total: number;
   items: {

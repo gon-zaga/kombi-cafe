@@ -230,9 +230,16 @@ export default function BaristaPage() {
             >
               <div className="flex items-start justify-between gap-2">
                 <div>
-                  <p className="font-mono text-sm font-medium text-gray-900">
-                    {order.orderReference}
-                  </p>
+                  <div className="flex items-center gap-2">
+                    <p className="font-mono text-sm font-medium text-gray-900">
+                      {order.orderReference}
+                    </p>
+                    {order.tableNumber != null && (
+                      <span className="text-xs font-medium bg-gray-100 text-gray-700 border border-gray-200 rounded-full px-2.5 py-0.5">
+                        Table {order.tableNumber}
+                      </span>
+                    )}
+                  </div>
                   <p className="text-xs text-gray-500 mt-0.5">
                     {order.items.map((item) => `${item.size} ${item.name}`).join(' · ')}
                   </p>
