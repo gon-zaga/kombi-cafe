@@ -206,7 +206,10 @@ export default function BaristaPage() {
       </div>
 
       <div className="px-4 pb-6 flex flex-col gap-2">
-        {orders.map((order) => {
+        {orders
+          .slice()
+          .sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime())
+          .map((order) => {
           // Finished orders fade back so the barista's attention stays on what's
           // still being worked. Skipped orders stay full opacity: they were set
           // aside on purpose and still need to be clickable.
