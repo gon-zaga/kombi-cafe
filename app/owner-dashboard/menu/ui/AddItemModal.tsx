@@ -72,7 +72,7 @@ function AddItemModal({ isOpen, onClose, onCreated }: AddItemModalProps) {
   const { success, error: showError } = useToast();
 
   // "Regular" size (oz === null && temperature === null) is for snacks only.
-  // Default to drink mode (Regular disabled). User can toggle if adding a snack.
+  // Default to drink mode (Regular disabled). Auto-toggle based on category.
   const [isDrink, setIsDrink] = useState(true);
 
 
@@ -113,6 +113,16 @@ function AddItemModal({ isOpen, onClose, onCreated }: AddItemModalProps) {
 
   // Run this effect whenever isOpen changes
   }, [isOpen]);
+
+  // Auto-update isDrink when category changes: Regular size only for snacks
+  useEffect(() => {
+    if (!categoryId) return;
+    const cat = categories.find(c => c.id === Number(categoryId));
+    if (cat) {
+      const isSnackCategory = cat.name.toLowerCase().includes('snack');
+      setIsDrink(!isSnackCategory);
+    }
+  }, [categoryId, categories]);
 
 
   // If the modal isn't open, don't display anything
@@ -361,24 +371,14 @@ function AddItemModal({ isOpen, onClose, onCreated }: AddItemModalProps) {
               Available Sizes & Prices
             </label>
 
-            <div className="flex items-center gap-2 mb-2">
-              <label className="flex items-center gap-1 text-sm text-gray-600">
-                <input
-                  type="checkbox"
-                  checked={!isDrink}
-                  onChange={(e) => setIsDrink(!e.target.checked)}
-                  className="w-4 h-4 text-amber-600 border-gray-300 rounded focus:ring-amber-500"
-                />
-                <span>Snack item (enable Regular size)</span>
-              </label>
-            </div>
-
             <div className="space-y-2">
 
               {/* Create a row for every available size */}
               {sizeOptions.map((s) => {
                 const isRegular = s.oz === null && s.temperature === null;
-                const disabled = isRegular && isDrink;
+                const isDrinkSize = s.oz !== null;
+                // Snacks: only Regular enabled. Drinks: only drink sizes enabled.
+                const disabled = isDrink ? isRegular : isDrinkSize;
 
                 return (
                   <div key={s.id} className="flex items-center gap-2">
@@ -395,7 +395,7 @@ function AddItemModal({ isOpen, onClose, onCreated }: AddItemModalProps) {
                     <span className="text-sm text-gray-700 w-32">
                       {s.label}
                       {s.oz ? ` (${s.oz}oz ${s.temperature ?? ''})` : ''}
-                      {disabled && " (snacks only)"}
+                      {disabled && (isDrink ? " (drinks only)" : " (snacks only)")}
                     </span>
 
                     {selectedSizes[s.id] && (

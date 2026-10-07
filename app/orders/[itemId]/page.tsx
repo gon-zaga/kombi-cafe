@@ -20,6 +20,13 @@ export default function OrderPage({ params }: { params: Promise<{ itemId: number
   const [selectedSize, setSelectedSize] = useState<Size | null>(null);
   const [loading, setLoading] = useState(true);
 
+  // Calculate total price (base + add-ons) * quantity
+  const addOnsTotal = addOns
+    .filter((a) => selectedAddOn.includes(a.addOnsId))
+    .reduce((sum, a) => sum + a.price, 0);
+  const basePrice = selectedSize?.price ?? 0;
+  const totalPrice = (basePrice + addOnsTotal) * quantity;
+
   useEffect(() => {
     let isMounted = true;
 
@@ -148,6 +155,9 @@ export default function OrderPage({ params }: { params: Promise<{ itemId: number
           selectedSize={selectedSize}
           selectedAddOn={selectedAddOn}
           quantity={quantity}
+          totalPrice={totalPrice}
+          addOnsTotal={addOnsTotal}
+          basePrice={basePrice}
         />
       </div>
     </section>

@@ -48,7 +48,16 @@ export default function Home() {
     : [];
 
   if (loading) {
-    return <p className="text-center py-10">Loading menu...</p>;
+    return (
+      <div className="min-h-screen bg-cream flex flex-col items-center justify-center p-8">
+        <div className="relative w-20 h-20 mb-6">
+          <div className="absolute inset-0 border-4 border-amber-200 rounded-full animate-spin" />
+          <div className="absolute inset-0 border-4 border-amber-600 rounded-full border-t-transparent animate-spin" />
+          <div className="absolute inset-2 border-4 border-amber-100 rounded-full border-b-transparent animate-spin reverse" style={{ animationDuration: '1.5s' }} />
+        </div>
+        <p className="text-dark-brown font-roboto-slab text-xl font-medium">Loading menu...</p>
+      </div>
+    );
   }
 
   const searching = search.trim().length > 0;

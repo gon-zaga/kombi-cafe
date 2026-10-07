@@ -44,8 +44,8 @@ function EditItemModal({ isOpen, onClose, item, onUpdated }: EditItemModalProps)
   const { success, error: showError } = useToast();
 
   // "Regular" size (oz === null && temperature === null) is for snacks only.
-  // Disable it when the item has any drink sizes (oz != null).
-  const isDrink = item ? item.sizes.some(s => s.oz !== null) : false;
+  // Determine from category: snacks category enables Regular, others disable it.
+  const [isDrink, setIsDrink] = useState(true);
 
   // Runs when the modal opens or the item changes
   useEffect(() => {
@@ -74,6 +74,12 @@ function EditItemModal({ isOpen, onClose, item, onUpdated }: EditItemModalProps)
         const matchedCat = cats.find(c => c.name === item!.category);
         setCategoryId(matchedCat ? String(matchedCat.id) : "");
 
+        // Initialize isDrink based on category: snacks enable Regular
+        if (matchedCat) {
+          const isSnackCategory = matchedCat.name.toLowerCase().includes('snack');
+          setIsDrink(!isSnackCategory);
+        }
+
         const sel: Record<number, boolean> = {};
         const pr: Record<number, string> = {};
 
@@ -94,6 +100,16 @@ function EditItemModal({ isOpen, onClose, item, onUpdated }: EditItemModalProps)
 
     loadOptionsAndPrefill();
   }, [isOpen, item]);
+
+  // Auto-update isDrink when category changes: Regular size only for snacks
+  useEffect(() => {
+    if (!categoryId) return;
+    const cat = categories.find(c => c.id === Number(categoryId));
+    if (cat) {
+      const isSnackCategory = cat.name.toLowerCase().includes('snack');
+      setIsDrink(!isSnackCategory);
+    }
+  }, [categoryId, categories]);
 
   if (!isOpen || !item) return null;
 
@@ -212,7 +228,9 @@ function EditItemModal({ isOpen, onClose, item, onUpdated }: EditItemModalProps)
             <div className="space-y-2">
               {sizeOptions.map((s) => {
                 const isRegular = s.oz === null && s.temperature === null;
-                const disabled = isRegular && isDrink;
+                const isDrinkSize = s.oz !== null;
+                // Snacks: only Regular enabled. Drinks: only drink sizes enabled.
+                const disabled = isDrink ? isRegular : isDrinkSize;
 
                 return (
                   <div key={s.id} className="flex items-center gap-2">
@@ -229,7 +247,7 @@ function EditItemModal({ isOpen, onClose, item, onUpdated }: EditItemModalProps)
                     <span className="text-sm text-gray-700 w-32">
                       {s.label}
                       {s.oz ? ` (${s.oz}oz ${s.temperature ?? ''})` : ''}
-                      {disabled && " (snacks only)"}
+                      {disabled && (isDrink ? " (drinks only)" : " (snacks only)")}
                     </span>
 
                     {selectedSizes[s.id] && (

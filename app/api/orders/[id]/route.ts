@@ -2,12 +2,30 @@
 // the barista dashboard
 import pool from "@/app/lib/db";
 import { NextRequest, NextResponse } from "next/server";
+import { jwtVerify } from "jose";
+import { cookies } from "next/headers";
 
 // Must stay in sync with the CHECK constraint on orders.status. 'completed' is
 // the terminal state: the customer has the drink, and the row is kept for
 // sales history rather than deleted.
 const VALID_STATUSES = ["pending", "preparing", "ready", "completed"] as const;
 type OrderStatus = (typeof VALID_STATUSES)[number];
+
+const JWT_SECRET = new TextEncoder().encode(
+  process.env.JWT_SECRET || "your-super-secret-jwt-key-change-in-production"
+);
+
+async function getCurrentUserId(): Promise<number | null> {
+  try {
+    const cookieStore = await cookies();
+    const token = cookieStore.get("auth_token")?.value;
+    if (!token) return null;
+    const { payload } = await jwtVerify(token, JWT_SECRET);
+    return Number(payload.userId);
+  } catch {
+    return null;
+  }
+}
 
 export async function PATCH(
   request: NextRequest,
@@ -38,13 +56,17 @@ export async function PATCH(
     );
   }
 
+  // When marking as completed, record which barista processed it
+  const processedBy = status === "completed" ? await getCurrentUserId() : null;
+
   try {
     const result = await pool.query(
       `UPDATE orders
-       SET status = $1
-       WHERE id = $2
-       RETURNING id, daily_number, status, total`,
-      [status, orderId]
+       SET status = $1,
+           processed_by = COALESCE($2, processed_by)
+       WHERE id = $3
+       RETURNING id, daily_number, status, total, processed_by`,
+      [status, processedBy, orderId]
     );
 
     if (result.rows.length === 0) {
@@ -58,6 +80,7 @@ export async function PATCH(
       orderReference: String(row.daily_number).padStart(4, "0"),
       status: row.status,
       total: Number(row.total),
+      processedBy: row.processed_by,
     });
   } catch (error) {
     console.error("Failed to update order status:", error);

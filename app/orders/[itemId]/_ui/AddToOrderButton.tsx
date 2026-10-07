@@ -1,18 +1,21 @@
 'use client'
 
-// Sticky "Add to Cart" button: builds one OrderItem and pushes it into the Zustand cart
+// Sticky "Add to Cart" button with total price on the button
 import { useOrderStore } from "@/store/OrderListStore";
 import { useRouter } from "next/navigation";
 import { Size } from "./SizeSelector";
 
 type AddToOrderButtonProps = {
-  itemId: number,
-  itemName: string,
-  itemImg: string,
-  selectedSize: Size,
-  selectedAddOn: number[],
-  quantity: number,
-}
+  itemId: number;
+  itemName: string;
+  itemImg: string;
+  selectedSize: Size;
+  selectedAddOn: number[];
+  quantity: number;
+  totalPrice: number;
+  addOnsTotal: number;
+  basePrice: number;
+};
 
 function AddToOrderButton({
   itemId,
@@ -21,6 +24,9 @@ function AddToOrderButton({
   selectedSize,
   selectedAddOn,
   quantity,
+  totalPrice,
+  addOnsTotal,
+  basePrice,
 }: AddToOrderButtonProps) {
   const { addToOrder } = useOrderStore();
   const router = useRouter();
@@ -32,19 +38,20 @@ function AddToOrderButton({
     selectedSize,
     selectedAddOn,
     quantity,
-  }
+  };
 
   return (
-    <div className="sticky bottom-0 w-full shadow-md">
-      <div className="flex flex-col items-center px-4 py-2">
+    <div className="sticky bottom-0 w-full shadow-xl">
+      <div className="bg-cream border-t-2 border-amber-300 px-5 py-3">
         <button
-          className="bg-dark-brown w-full text-white flex items-center justify-center py-3 rounded-lg"
+          className="bg-dark-brown w-full text-white flex items-center justify-between py-4 rounded-xl font-semibold text-lg hover:bg-dark-brown/90 transition-all shadow-lg hover:shadow-xl"
           onClick={() => {
             addToOrder(orderItem);
             router.push('/');
           }}
         >
-          Add to Cart
+          <span className="flex-1 text-center">Add to Cart</span>
+          <span className="text-2xl font-extrabold text-amber-100 ml-4 pr-4">₱{totalPrice}</span>
         </button>
       </div>
     </div>
