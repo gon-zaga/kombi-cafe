@@ -352,8 +352,13 @@ export default function SalesReport() {
                </div>
                <div className="p-6">
                  {orders.length > 0 ? (
-                   <div className="space-y-4">
-                      {orders.map((order) => (
+                   <div
+                     className="space-y-4 pr-2"
+                     style={{ maxHeight: '480px', overflowY: 'auto' }}
+                   >
+                      {[...orders]
+                        .sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime())
+                        .map((order) => (
                         <div key={order.id} className="border border-brown-800 rounded-lg p-4 mb-4 last:mb-0">
                           <div className="flex items-start justify-between">
                             <div className="flex-1 min-w-0">
