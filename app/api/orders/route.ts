@@ -285,14 +285,12 @@ export async function POST(request: Request) {
     // staff still handles the actual payment at the counter, so nothing
     // is charged here, but the reference is what they check against.
     const paymentMethod = body.payment_method === 'gcash' ? 'gcash' : 'counter';
-    const gcashReference =
-      paymentMethod === 'gcash'
-        ? (body.gcash_reference ?? '').trim()
-        : null;
+    const trimmed = (body.gcash_reference ?? '').trim();
+    const gcashReference = paymentMethod === 'gcash' ? trimmed : null;
 
-    if (paymentMethod === 'gcash' && (gcashReference ?? '').length === 0) {
+    if (paymentMethod === 'gcash' && !/^\d{13}$/.test(trimmed)) {
       return NextResponse.json(
-        { error: "A GCash reference number is required" },
+        { error: "GCash reference number must be exactly 13 digits." },
         { status: 400 }
       );
     }

@@ -7,7 +7,7 @@
 // stays disabled until the change has been computed, so no order
 // starts without the transaction being counted out first.
 // Status buttons call the parent PATCH handler
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import { getRelativeTime } from "@/app/lib/utils";
 import ConfirmModal from "@/app/ui/ConfirmModal";
 import ChangeCalculator from "@/app/ui/ChangeCalculator";
@@ -38,6 +38,12 @@ function OrderDetailModal({ order, onClose, onUpdateStatus }: OrderDetailModalPr
   } | null>(null);
   const changeComputed =
     order !== null && changeState?.orderId === order.id && changeState.computed;
+
+  const handleComputedChange = useCallback((computed) => {
+    if (order) {
+      setChangeState({ orderId: order.id, computed });
+    }
+  }, [order?.id]);
 
   if (!order) return null;
 
@@ -189,14 +195,12 @@ function OrderDetailModal({ order, onClose, onUpdateStatus }: OrderDetailModalPr
                 handed over and reads the change back before preparing.
                 Nothing is stored -- the order record above is the receipt. */}
             <div className="mb-4">
-              <ChangeCalculator
-                key={order.id}
-                total={Number(order.total)}
-                gate={order.status === 'pending'}
-                onComputedChange={(computed) =>
-                  setChangeState({ orderId: order.id, computed })
-                }
-              />
+             <ChangeCalculator
+                 key={order.id}
+                 total={Number(order.total)}
+                 gate={order.status === 'pending'}
+                 onComputedChange={handleComputedChange}
+               />
             </div>
 
             <div className="space-y-2">

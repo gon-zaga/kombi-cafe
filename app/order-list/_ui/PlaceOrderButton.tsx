@@ -43,8 +43,9 @@ function PlaceOrderButton({ grandtotal }: { grandtotal: number }) {
     // A GCash order must carry a reference number the customer reads
     // from their GCash app. Block the submit here so the field is
     // visibly required rather than a server round-trip.
-    if (paymentMethod === "gcash" && gcashReference.trim().length === 0) {
-      setGcashError("A GCash reference number is required.");
+    const trimmed = gcashReference.trim();
+    if (paymentMethod === "gcash" && !/^\d{13}$/.test(trimmed)) {
+      setGcashError("GCash reference number must be exactly 13 digits.");
       setIsSubmitting(false);
       return;
     }
