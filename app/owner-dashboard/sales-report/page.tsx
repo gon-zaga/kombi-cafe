@@ -97,8 +97,13 @@ export default function SalesReport() {
   useEffect(() => {
     if (!query) return;
 
-    setIsLoading(true);
     let isMounted = true;
+
+    Promise.resolve().then(() => {
+      if (isMounted) {
+        setIsLoading(true);
+      }
+    });
 
     fetch(`/api/orders${query}`)
       .then((r) => {
