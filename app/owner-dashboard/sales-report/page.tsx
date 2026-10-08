@@ -174,7 +174,7 @@ export default function SalesReport() {
     downloadCsv(`sales-report-${slug}-${stamp}.csv`, orders, [
       { header: "Order Ref", value: (o) => o.orderReference },
       { header: "Time", value: (o) => new Date(o.createdAt).toLocaleString("en-PH") },
-      { header: "Date", value: (o) => o.createdAt.slice(0, 10) },
+       { header: "Date", value: (o) => `'${o.createdAt.slice(0, 10)}` },
       { header: "Status", value: (o) => o.status },
       { header: "Item Count", value: (o) => (o.items || []).length },
       {
