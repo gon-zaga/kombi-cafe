@@ -1,14 +1,26 @@
+
 'use client'
 
 import { useEffect, useMemo, useState } from "react";
+
 import OwnerHeader from "./ui/OwnerHeader";
 import StatsCard from "./ui/StatsCard";
 import DateFilterBar from "@/app/ui/DateFilterBar";
+
 import type { CustomRange, DateFilter } from "@/app/lib/dateFilter";
 import { buildOrdersQuery, describeRange } from "@/app/lib/dateFilter";
+
 import {
-  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
-  LineChart, Line, PieCart, Pie, Cell, Legend,
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer,
+  LineChart,
+  Line,
+  Cell,
 } from "recharts";
 
 interface AnalyticsData {
@@ -19,18 +31,39 @@ interface AnalyticsData {
     avg_order_value: number;
     completed_orders: number;
   };
-  revenueByCategory: { category: string; revenue: string; order_count: string }[];
-  revenueByHour: { hour: number; orders: string; revenue: string }[];
+  revenueByCategory: {
+    category: string;
+    revenue: string;
+    order_count: string;
+  }[];
+  revenueByHour: {
+    hour: number;
+    orders: string;
+    revenue: string;
+  }[];
   avgItemsPerOrder: number;
   addonAttachmentRate: number;
-  staffPerformance: { user_id: number; username: string; first_name: string; last_name: string; orders_completed: string; avg_order_value: string; total_revenue: string }[];
-  dailyTrend: { order_date: string; orders: string; revenue: string }[];
+  staffPerformance: {
+    user_id: number;
+    username: string;
+    first_name: string;
+    last_name: string;
+    orders_completed: string;
+    avg_order_value: string;
+    total_revenue: string;
+  }[];
+  dailyTrend: {
+    order_date: string;
+    orders: string;
+    revenue: string;
+  }[];
 }
 
 export default function OwnerDashboard() {
   const [dateFilter, setDateFilter] = useState<DateFilter>("today");
   const [customRange, setCustomRange] = useState<CustomRange | null>(null);
-  const [analyticsData, setAnalyticsData] = useState<AnalyticsData | null>(null);
+  const [analyticsData, setAnalyticsData] =
+    useState<AnalyticsData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
@@ -47,23 +80,35 @@ export default function OwnerDashboard() {
     async function loadAnalytics() {
       try {
         const response = await fetch(`/api/analytics${query}`);
-        if (!response.ok) throw new Error(`Request failed (${response.status})`);
+
+        if (!response.ok) {
+          throw new Error(`Request failed (${response.status})`);
+        }
+
         const d: AnalyticsData = await response.json();
+
         if (isMounted) {
           setAnalyticsData(d);
           setError("");
         }
       } catch (err) {
         console.error("Failed to fetch analytics:", err);
-        if (isMounted) setError("Could not load analytics for this range.");
+
+        if (isMounted) {
+          setError("Could not load analytics for this range.");
+        }
       } finally {
-        if (isMounted) setLoading(false);
+        if (isMounted) {
+          setLoading(false);
+        }
       }
     }
 
     loadAnalytics();
 
-    return () => { isMounted = false; };
+    return () => {
+      isMounted = false;
+    };
   }, [query]);
 
   const handleSelectFilter = (f: DateFilter) => {
@@ -71,10 +116,30 @@ export default function OwnerDashboard() {
     setDateFilter(f);
   };
 
-  const COLORS = ["#8B4513", "#D2691E", "#CD853F", "#DEB887", "#F5DEB3", "#8B7355"];
+  const COLORS = [
+    "#8B4513",
+    "#D2691E",
+    "#CD853F",
+    "#DEB887",
+    "#F5DEB3",
+    "#8B7355",
+  ];
 
-  const { summary, revenueByCategory, revenueByHour, avgItemsPerOrder, addonAttachmentRate, staffPerformance, dailyTrend } = analyticsData || {
-    summary: { total_orders: 0, total_revenue: 0, avg_order_value: 0, completed_orders: 0 },
+  const {
+    summary,
+    revenueByCategory,
+    revenueByHour,
+    avgItemsPerOrder,
+    addonAttachmentRate,
+    staffPerformance,
+    dailyTrend,
+  } = analyticsData || {
+    summary: {
+      total_orders: 0,
+      total_revenue: 0,
+      avg_order_value: 0,
+      completed_orders: 0,
+    },
     revenueByCategory: [],
     revenueByHour: [],
     avgItemsPerOrder: 0,
@@ -89,16 +154,6 @@ export default function OwnerDashboard() {
     orders: Number(item.order_count),
     fill: COLORS[i % COLORS.length],
   }));
-
-  const shareData = useMemo(() => {
-    if (categoryData.length === 0) return [];
-    const totalRevenue = categoryData.reduce((sum, item) => sum + item.revenue, 0);
-    return categoryData.map(item => ({
-      name: item.name,
-      share: totalRevenue > 0 ? (item.revenue / totalRevenue) * 100 : 0,
-      fill: item.fill,
-    }));
-  }, [categoryData]);
 
   const hourData = revenueByHour.map((h) => ({
     hour: `${h.hour}:00`,
@@ -122,16 +177,15 @@ export default function OwnerDashboard() {
   return (
     <section className="min-h-screen bg-card-cream">
       <OwnerHeader title="DASHBOARD" />
+
       <StatsCard />
 
-      {/* Loading spinner */}
       {loading && !analyticsData && (
         <section className="min-h-screen bg-cream flex items-center justify-center">
           <div className="animate-spin rounded-full h-12 w-12 border-4 border-amber-800 border-t-transparent" />
         </section>
       )}
 
-      {/* Main content (show when not loading) */}
       {!loading && (
         <>
           <div className="px-4 mb-4">
@@ -144,9 +198,11 @@ export default function OwnerDashboard() {
                 setCustomRange(range);
               }}
             />
+
             <p className="text-sm text-gray-600 mt-3">
               Report for {describeRange(dateFilter, customRange)}
             </p>
+
             {error && (
               <div className="mt-3 bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm">
                 {error}
@@ -154,80 +210,140 @@ export default function OwnerDashboard() {
             )}
           </div>
 
-          {/* Charts Grid */}
           <div className="px-4 space-y-6 pb-10">
-            {/* Revenue by Category - Bar Chart */}
-            <div className="bg-cream rounded-lg p-4 shadow">
-              <h3 className="text-lg font-semibold text-gray-900 mb-4">Revenue by Category</h3>
-              <div className="h-64">
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={categoryData}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-                    <XAxis dataKey="name" tick={{ fontSize: 12 }} />
-                    <YAxis tick={{ fontSize: 12 }} tickFormatter={(v) => `₱${v}`} />
-                    <Tooltip />
-                    <Bar dataKey="revenue" name="Revenue" radius={[4, 4, 0, 0]}>
-                      {categoryData.map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
-                    </Bar>
-                  </BarChart>
-                </ResponsiveContainer>
-              </div>
-            </div>
 
-            {/* Revenue by Hour - Line Chart */}
-            <div className="bg-white rounded-lg p-4 shadow">
-              <h3 className="text-lg font-semibold text-gray-900 mb-4">Peak Hours (Revenue by Hour)</h3>
-              <div className="h-64">
-                <ResponsiveContainer width="100%" height="100%">
-                  <LineChart data={hourData}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-                    <XAxis dataKey="hour" tick={{ fontSize: 12 }} />
-                    <YAxis tick={{ fontSize: 12 }} tickFormatter={(v) => `₱${v}`} />
-                    <Tooltip />
-                    <Line type="monotone" dataKey="revenue" stroke="#8B4513" strokeWidth={2} dot={{ r: 4 }} />
-                  </LineChart>
-                </ResponsiveContainer>
-              </div>
-            </div>
+            {/* Revenue by Category + Peak Hours */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
 
-            {/* Daily Trend - Line Chart */}
-            {dailyData.length > 1 && (
-              <div className="bg-white rounded-lg p-4 shadow">
-                <h3 className="text-lg font-semibold text-gray-900 mb-4">Daily Trend</h3>
+              {/* Revenue by Category */}
+              <div className="bg-cream rounded-lg p-4 shadow">
+                <h3 className="text-lg font-semibold text-gray-900 mb-4">
+                  Revenue by Category
+                </h3>
+
                 <div className="h-64">
                   <ResponsiveContainer width="100%" height="100%">
-                    <LineChart data={dailyData}>
-                      <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-                      <XAxis dataKey="date" tick={{ fontSize: 12 }} />
-                      <YAxis tick={{ fontSize: 12 }} tickFormatter={(v) => `₱${v}`} />
+                    <BarChart data={categoryData}>
+                      <CartesianGrid
+                        strokeDasharray="3 3"
+                        stroke="#f0f0f0"
+                      />
+
+                      <XAxis
+                        dataKey="name"
+                        tick={{ fontSize: 12 }}
+                      />
+
+                      <YAxis
+                        tick={{ fontSize: 12 }}
+                        tickFormatter={(v) => `₱${v}`}
+                      />
+
                       <Tooltip />
-                      <Line type="monotone" dataKey="revenue" stroke="#8B4513" strokeWidth={2} name="Revenue" dot={{ r: 3 }} />
-                      <Line type="monotone" dataKey="orders" stroke="#D2691E" strokeWidth={2} name="Orders" dot={{ r: 3 }} yAxisId="right" />
+
+                      <Bar
+                        dataKey="revenue"
+                        name="Revenue"
+                        radius={[4, 4, 0, 0]}
+                      >
+                        {categoryData.map((_, i) => (
+                          <Cell
+                            key={i}
+                            fill={COLORS[i % COLORS.length]}
+                          />
+                        ))}
+                      </Bar>
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+              </div>
+
+              {/* Peak Hours */}
+              <div className="bg-white rounded-lg p-4 shadow">
+                <h3 className="text-lg font-semibold text-gray-900 mb-4">
+                  Peak Hours (Revenue by Hour)
+                </h3>
+
+                <div className="h-64">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <LineChart data={hourData}>
+                      <CartesianGrid
+                        strokeDasharray="3 3"
+                        stroke="#f0f0f0"
+                      />
+
+                      <XAxis
+                        dataKey="hour"
+                        tick={{ fontSize: 12 }}
+                      />
+
+                      <YAxis
+                        tick={{ fontSize: 12 }}
+                        tickFormatter={(v) => `₱${v}`}
+                      />
+
+                      <Tooltip />
+
+                      <Line
+                        type="monotone"
+                        dataKey="revenue"
+                        stroke="#8B4513"
+                        strokeWidth={2}
+                        dot={{ r: 4 }}
+                      />
                     </LineChart>
                   </ResponsiveContainer>
                 </div>
               </div>
-            )}
 
-            {/* Category Revenue Share - Bar Chart */}
-            {categoryData.length > 0 && (
+            </div>
+
+            {/* Daily Trend */}
+            {dailyData.length > 1 && (
               <div className="bg-white rounded-lg p-4 shadow">
-                <h3 className="text-lg font-semibold text-gray-900 mb-4">Category Revenue Share</h3>
+                <h3 className="text-lg font-semibold text-gray-900 mb-4">
+                  Daily Trend
+                </h3>
+
                 <div className="h-64">
                   <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={shareData}>
-                      <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-                      <XAxis dataKey="name" tick={{ fontSize: 12 }} />
-                       <YAxis 
-                         tick={{ fontSize: 12 }} 
-                          tickFormatter={(v) => (typeof v === 'number' ? v.toFixed(2) : '0') + '%'} 
-                         domain={[0, 100]}
-                       />
-                        <Tooltip formatter={(value) => (typeof value === 'number' ? value.toFixed(2) : '0') + '%'} />
-                      <Bar dataKey="share" name="Share" radius={[4, 4, 0, 0]}>
-                        {shareData.map((_, i) => <Cell key={i} fill={shareData[i].fill} />)}
-                      </Bar>
-                    </BarChart>
+                    <LineChart data={dailyData}>
+                      <CartesianGrid
+                        strokeDasharray="3 3"
+                        stroke="#f0f0f0"
+                      />
+
+                      <XAxis
+                        dataKey="date"
+                        tick={{ fontSize: 12 }}
+                      />
+
+                      <YAxis
+                        tick={{ fontSize: 12 }}
+                        tickFormatter={(v) => `₱${v}`}
+                      />
+
+                      <Tooltip />
+
+                      <Line
+                        type="monotone"
+                        dataKey="revenue"
+                        stroke="#8B4513"
+                        strokeWidth={2}
+                        name="Revenue"
+                        dot={{ r: 3 }}
+                      />
+
+                      <Line
+                        type="monotone"
+                        dataKey="orders"
+                        stroke="#D2691E"
+                        strokeWidth={2}
+                        name="Orders"
+                        dot={{ r: 3 }}
+                        yAxisId="right"
+                      />
+                    </LineChart>
                   </ResponsiveContainer>
                 </div>
               </div>
@@ -236,24 +352,48 @@ export default function OwnerDashboard() {
             {/* Staff Performance Table */}
             {staffPerformance.length > 0 && (
               <div className="bg-white rounded-lg p-4 shadow">
-                <h3 className="text-lg font-semibold text-gray-900 mb-4">Staff Performance</h3>
+                <h3 className="text-lg font-semibold text-gray-900 mb-4">
+                  Staff Performance
+                </h3>
+
                 <div className="overflow-x-auto">
                   <table className="w-full text-sm">
                     <thead>
                       <tr className="border-b border-gray-200 text-left text-gray-500">
                         <th className="pb-2 pr-4">Staff</th>
-                        <th className="pb-2 pr-4 text-right">Orders</th>
-                        <th className="pb-2 pr-4 text-right">Revenue</th>
-                        <th className="pb-2 pr-4 text-right">Avg Order</th>
+                        <th className="pb-2 pr-4 text-right">
+                          Orders
+                        </th>
+                        <th className="pb-2 pr-4 text-right">
+                          Revenue
+                        </th>
+                        <th className="pb-2 pr-4 text-right">
+                          Avg Order
+                        </th>
                       </tr>
                     </thead>
+
                     <tbody>
                       {staffData.map((s, i) => (
-                        <tr key={i} className="border-b border-gray-100 hover:bg-gray-50">
-                          <td className="py-2 pr-4 font-medium text-gray-900">{s.name}</td>
-                          <td className="py-2 pr-4 text-right text-gray-700">{s.orders}</td>
-                          <td className="py-2 pr-4 text-right text-gray-700">₱{s.revenue.toFixed(2)}</td>
-                          <td className="py-2 pr-4 text-right text-gray-700">₱{s.avgOrder.toFixed(2)}</td>
+                        <tr
+                          key={i}
+                          className="border-b border-gray-100 hover:bg-gray-50"
+                        >
+                          <td className="py-2 pr-4 font-medium text-gray-900">
+                            {s.name}
+                          </td>
+
+                          <td className="py-2 pr-4 text-right text-gray-700">
+                            {s.orders}
+                          </td>
+
+                          <td className="py-2 pr-4 text-right text-gray-700">
+                            ₱{s.revenue.toFixed(2)}
+                          </td>
+
+                          <td className="py-2 pr-4 text-right text-gray-700">
+                            ₱{s.avgOrder.toFixed(2)}
+                          </td>
                         </tr>
                       ))}
                     </tbody>
@@ -265,27 +405,56 @@ export default function OwnerDashboard() {
             {/* Category Breakdown Table */}
             {categoryData.length > 0 && (
               <div className="bg-white rounded-lg p-4 shadow">
-                <h3 className="text-lg font-semibold text-gray-900 mb-4">Category Breakdown</h3>
+                <h3 className="text-lg font-semibold text-gray-900 mb-4">
+                  Category Breakdown
+                </h3>
+
                 <div className="overflow-x-auto">
                   <table className="w-full text-sm">
                     <thead>
                       <tr className="border-b border-gray-200 text-left text-gray-500">
                         <th className="pb-2 pr-4">Category</th>
-                        <th className="pb-2 pr-4 text-right">Revenue</th>
-                        <th className="pb-2 pr-4 text-right">Orders</th>
-                        <th className="pb-2 pr-4 text-right">Avg/Order</th>
+                        <th className="pb-2 pr-4 text-right">
+                          Revenue
+                        </th>
+                        <th className="pb-2 pr-4 text-right">
+                          Orders
+                        </th>
+                        <th className="pb-2 pr-4 text-right">
+                          Avg/Order
+                        </th>
                       </tr>
                     </thead>
+
                     <tbody>
                       {categoryData.map((c, i) => (
-                        <tr key={i} className="border-b border-gray-100 hover:bg-gray-50">
+                        <tr
+                          key={i}
+                          className="border-b border-gray-100 hover:bg-gray-50"
+                        >
                           <td className="py-2 pr-4 font-medium text-gray-900 flex items-center gap-2">
-                            <span className="w-3 h-3 rounded" style={{ background: c.fill }} />
+                            <span
+                              className="w-3 h-3 rounded"
+                              style={{ background: c.fill }}
+                            />
+
                             {c.name}
                           </td>
-                          <td className="py-2 pr-4 text-right text-gray-700">₱{c.revenue.toFixed(2)}</td>
-                          <td className="py-2 pr-4 text-right text-gray-700">{c.orders}</td>
-                          <td className="py-2 pr-4 text-right text-gray-700">₱{c.orders > 0 ? (c.revenue / c.orders).toFixed(2) : "0.00"}</td>
+
+                          <td className="py-2 pr-4 text-right text-gray-700">
+                            ₱{c.revenue.toFixed(2)}
+                          </td>
+
+                          <td className="py-2 pr-4 text-right text-gray-700">
+                            {c.orders}
+                          </td>
+
+                          <td className="py-2 pr-4 text-right text-gray-700">
+                            ₱
+                            {c.orders > 0
+                              ? (c.revenue / c.orders).toFixed(2)
+                              : "0.00"}
+                          </td>
                         </tr>
                       ))}
                     </tbody>
@@ -293,9 +462,11 @@ export default function OwnerDashboard() {
                 </div>
               </div>
             )}
+
           </div>
         </>
       )}
     </section>
   );
 }
+
