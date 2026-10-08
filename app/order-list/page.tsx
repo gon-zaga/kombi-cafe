@@ -7,6 +7,7 @@ import Header from '../ui/Header';
 import { useOrderStore } from '@/store/OrderListStore';
 import PlaceOrderButton from './_ui/PlaceOrderButton';
 import EmptyOrder from './_ui/EmptyOrder';
+import ChangeTableModal from '../ui/ChangeTableModal';
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useTableStore } from '@/store/TableStore';
@@ -16,6 +17,7 @@ function OrdersLists() {
   const [addOns, setAddOns] = useState<AddOn[]>([]);
   const { orders, removeOrder } = useOrderStore();
   const { selectedTable } = useTableStore();
+  const [tableModalOpen, setTableModalOpen] = useState(false);
   const router = useRouter();
   // Cart grand total including add-ons, matching the server's calculation
   const grandtotal = orders.reduce((acc, order) => {
@@ -86,13 +88,18 @@ function OrdersLists() {
             TABLE {selectedTable}
           </span>
           <button
-            onClick={() => router.push('/table-select')}
-            className="text-xs text-amber-900 hover:underline"
+            onClick={() => setTableModalOpen(true)}
+            className="text-xs text-amber-900 hover:underline cursor-pointer"
           >
             Change table
           </button>
         </div>
       )}
+
+      <ChangeTableModal
+        isOpen={tableModalOpen}
+        onClose={() => setTableModalOpen(false)}
+      />
 
       {orders.length === 0
 

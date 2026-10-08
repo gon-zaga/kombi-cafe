@@ -82,6 +82,19 @@ export default function SalesReport() {
       { header: "Date", value: (o) => o.createdAt.slice(0, 10) },
       { header: "Status", value: (o) => o.status },
       { header: "Item Count", value: (o) => o.items.length },
+      // Add-on revenue per order, so the export reconciles
+      // with the receipt lines (items + add-ons = total)
+      {
+        header: "Add-ons",
+        value: (o) =>
+          o.items
+            .reduce(
+              (sum, item) =>
+                sum + item.addOns.reduce((s, a) => s + a.price * a.quantity, 0),
+              0
+            )
+            .toFixed(2),
+      },
       { header: "Total", value: (o) => o.total.toFixed(2) },
     ]);
     setMenuOpen(false);

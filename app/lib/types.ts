@@ -33,6 +33,14 @@ export type MenuItem = {
   }[]
 }
 
+// One add-on attached to an order line, as it was charged:
+// price and quantity are the snapshots stored in order_item_addons
+export type OrderAddOn = {
+  name: string;
+  price: number;
+  quantity: number;
+};
+
 export type OrderSummary = {
   id: number;
   orderReference: string;
@@ -47,6 +55,6 @@ export type OrderSummary = {
     size: string;
     quantity: number;
     unitPrice: number;
-    addOns: string[];
+    addOns: OrderAddOn[];
   }[];
 }

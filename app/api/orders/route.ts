@@ -205,7 +205,14 @@ export async function GET(request: Request) {
               'quantity', oi.quantity,
               'unitPrice', oi.unit_price,
               'addOns', (
-                SELECT COALESCE(json_agg(a.name), '[]'::json)
+                SELECT COALESCE(json_agg(
+                  json_build_object(
+                    'name', a.name,
+                    -- oia.price is the snapshot charged at order time
+                    'price', oia.price,
+                    'quantity', oia.quantity
+                  ) ORDER BY oia.id
+                ), '[]'::json)
                 FROM order_item_addons oia
                 JOIN add_ons a ON a.id = oia.add_on_id
                 WHERE oia.order_item_id = oi.id

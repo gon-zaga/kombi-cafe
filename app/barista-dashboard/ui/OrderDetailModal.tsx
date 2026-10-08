@@ -1,9 +1,13 @@
 'use client'
 
-// Detail overlay for one barista order; status buttons call the parent PATCH handler
+// Detail overlay for one barista order; shows a receipt-style
+// breakdown (line totals with add-on amounts) so the price on
+// screen reconciles with the order total, plus a cash calculator
+// for counting change back. Status buttons call the parent PATCH handler
 import { useState } from "react";
 import { getRelativeTime } from "@/app/lib/utils";
 import ConfirmModal from "@/app/ui/ConfirmModal";
+import ChangeCalculator from "@/app/ui/ChangeCalculator";
 import type { OrderSummary } from "@/app/lib/types";
 
 interface OrderDetailModalProps {
@@ -84,29 +88,41 @@ function OrderDetailModal({ order, onClose, onUpdateStatus }: OrderDetailModalPr
         <div className="mb-4">
           <h3 className="font-semibold text-gray-900 mb-2">Items:</h3>
           <div className="space-y-3">
-            {order.items.map((item, index) => (
-              <div key={index} className="bg-gray-50 rounded-lg p-3">
-                <div className="flex justify-between items-start mb-1">
-                  <p className="font-medium text-gray-900">{item.name}</p>
-                  <p className="font-semibold text-gray-900">₱{Number(item.unitPrice).toFixed(2)}</p>
-                </div>
-                <p className="text-sm text-gray-600">
-                  {item.size} · Qty: {item.quantity}
-                </p>
-                {item.addOns.length > 0 && (
-                  <div className="mt-2">
-                    <p className="text-xs text-gray-500 mb-1">Add-ons:</p>
-                    <div className="flex flex-wrap gap-1">
+            {order.items.map((item, index) => {
+              // Add-ons count once per drink, matching how the
+              // order total was priced server-side
+              const addOnTotal = item.addOns.reduce(
+                (sum, a) => sum + a.price * a.quantity,
+                0
+              );
+              const lineTotal = (Number(item.unitPrice) + addOnTotal) * item.quantity;
+
+              return (
+                <div key={index} className="bg-gray-50 rounded-lg p-3">
+                  <div className="flex justify-between items-start mb-1">
+                    <p className="font-medium text-gray-900">{item.name}</p>
+                    <p className="font-semibold text-gray-900">₱{lineTotal.toFixed(2)}</p>
+                  </div>
+                  <p className="text-sm text-gray-600">
+                    {item.size} · Qty: {item.quantity} × ₱{Number(item.unitPrice).toFixed(2)}
+                  </p>
+                  {item.addOns.length > 0 && (
+                    <div className="mt-2 space-y-1">
+                      <p className="text-xs text-gray-500">Add-ons:</p>
                       {item.addOns.map((addon, i) => (
-                        <span key={i} className="text-xs bg-white border border-gray-200 rounded px-2 py-0.5">
-                          {addon}
-                        </span>
+                        <div
+                          key={i}
+                          className="flex justify-between text-xs bg-white border border-gray-200 rounded px-2 py-1"
+                        >
+                          <span>+ {addon.name} × {addon.quantity}</span>
+                          <span className="font-mono">₱{(addon.price * addon.quantity).toFixed(2)}</span>
+                        </div>
                       ))}
                     </div>
-                  </div>
-                )}
-              </div>
-            ))}
+                  )}
+                </div>
+              );
+            })}
           </div>
         </div>
 
@@ -119,6 +135,13 @@ function OrderDetailModal({ order, onClose, onUpdateStatus }: OrderDetailModalPr
             <span className="text-gray-900">Total:</span>
             <span className="text-gray-900">₱{Number(order.total).toFixed(2)}</span>
           </div>
+        </div>
+
+        {/* Cash calculator: the barista keys in what the customer
+            handed over and reads the change back before preparing.
+            Nothing is stored -- the order record above is the receipt. */}
+        <div className="mb-4">
+          <ChangeCalculator total={Number(order.total)} />
         </div>
 
         <div className="space-y-2">

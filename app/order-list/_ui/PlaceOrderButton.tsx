@@ -99,9 +99,10 @@ function PlaceOrderButton({ grandtotal }: { grandtotal: number }) {
 
       // The server successfully created the order.
       // Use the reference number and total calculated by the server
-      // to build the confirmation page URL.
+      // to build the confirmation page URL. order_id lets the
+      // confirmation page read the full receipt from the record.
       router.push(
-        `/order-confirmation?ref=${data.orderReference}&total=${data.total}&table=${data.table_number}`
+        `/order-confirmation?ref=${data.orderReference}&total=${data.total}&table=${data.table_number}&id=${data.order_id}`
       );
 
       // Clear the cart after navigation starts.

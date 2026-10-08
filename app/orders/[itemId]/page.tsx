@@ -7,6 +7,9 @@ import ItemInfo from "./_ui/ItemInfo";
 import SizeSelector from "./_ui/SizeSelector";
 import AddOns from "./_ui/AddOns";
 import AddToOrderButton from "./_ui/AddToOrderButton";
+import QuantitySelector from "./_ui/QuantitySelector";
+import ChangeTableModal from "../../ui/ChangeTableModal";
+import { useTableStore } from "@/store/TableStore";
 import { MenuItem } from "@/app/lib/types";
 import type { Size } from "./_ui/SizeSelector";
 
@@ -19,6 +22,15 @@ export default function OrderPage({ params }: { params: Promise<{ itemId: number
   const [quantity, setQuantity] = useState(1);
   const [selectedSize, setSelectedSize] = useState<Size | null>(null);
   const [loading, setLoading] = useState(true);
+  const [tableModalOpen, setTableModalOpen] = useState(false);
+  const selectedTable = useTableStore(state => state.selectedTable);
+
+  // Ordering requires a table; bounce back to the grid if none is set
+  useEffect(() => {
+    if (selectedTable === null) {
+      window.location.href = '/table-select';
+    }
+  }, [selectedTable]);
 
   // Calculate total price (base + add-ons) * quantity
   const addOnsTotal = addOns
@@ -122,6 +134,27 @@ export default function OrderPage({ params }: { params: Promise<{ itemId: number
           itemName={item.itemName}
           itemId={item.itemId}
         />
+
+        {/* Table indicator bar */}
+        {selectedTable !== null && (
+          <div className="bg-amber-100 border-b border-amber-300 px-4 py-2 flex items-center justify-between">
+            <span className="text-sm font-roboto-condensed tracking-wide text-amber-900">
+              TABLE {selectedTable}
+            </span>
+            <button
+              onClick={() => setTableModalOpen(true)}
+              className="text-xs text-amber-900 hover:underline cursor-pointer"
+            >
+              Change table
+            </button>
+          </div>
+        )}
+
+        <ChangeTableModal
+          isOpen={tableModalOpen}
+          onClose={() => setTableModalOpen(false)}
+        />
+
         <ItemInfo
           itemName={item.itemName}
           price={selectedSize.price}
@@ -139,6 +172,10 @@ export default function OrderPage({ params }: { params: Promise<{ itemId: number
           sizes={item.sizes}
           selectedSize={selectedSize}
           onSelect={setSelectedSize}
+        />
+        <QuantitySelector
+          quantity={quantity}
+          onChange={setQuantity}
         />
         <AddOns
           selectedAddOn={selectedAddOn}

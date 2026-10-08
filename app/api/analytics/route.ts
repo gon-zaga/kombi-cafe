@@ -89,15 +89,26 @@ export async function GET(request: Request) {
   try {
     const results = await Promise.all([
       // 1. Revenue by Category
+      // Add-on revenue is included via the order_item_addons
+      // snapshots, so category totals reconcile with the
+      // per-line receipt amounts (item + add-ons = order total)
       pool.query(
         `
-        SELECT c.name AS category, 
-               COALESCE(SUM(oi.quantity * oi.unit_price), 0) AS revenue,
+        SELECT c.name AS category,
+               COALESCE(
+                 SUM(oi.quantity * oi.unit_price + COALESCE(oa.addon_revenue, 0)),
+                 0
+               ) AS revenue,
                COUNT(DISTINCT o.id) AS order_count
         FROM order_items oi
         JOIN menu_items mi ON mi.id = oi.menu_item_id
         JOIN categories c ON c.id = mi.category_id
         JOIN orders o ON o.id = oi.order_id
+        LEFT JOIN (
+          SELECT order_item_id, SUM(quantity * price) AS addon_revenue
+          FROM order_item_addons
+          GROUP BY order_item_id
+        ) oa ON oa.order_item_id = oi.id
         WHERE ($1::date IS NULL OR o.order_date >= $1::date)
           AND ($2::date IS NULL OR o.order_date <= $2::date)
         GROUP BY c.name

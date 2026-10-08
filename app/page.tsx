@@ -15,6 +15,7 @@ import CategoryBar from './ui/CategoryBar';
 import MenuItem from './ui/MenuItem';
 import ProductCard from './ui/ProductCard';
 import ViewOrderBar from './ui/ViewOrderBar';
+import ChangeTableModal from './ui/ChangeTableModal';
 import { useTableStore } from '@/store/TableStore';
 import type { MenuItem as MenuItemType } from "@/app/lib/types";
 
@@ -23,6 +24,7 @@ export default function Home() {
   const [menuItems, setMenuItems] = useState<MenuItemType[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
+  const [tableModalOpen, setTableModalOpen] = useState(false);
   const router = useRouter();
   const selectedTable = useTableStore(state => state.selectedTable);
 
@@ -107,6 +109,21 @@ const searching = search.trim().length > 0;
       <div className="absolute top-4/5 right-1/6 w-[200px] h-[200px] rounded-full bg-[#D2691E]/13 -translate-x-1/2 blur-[40px]" />
       <div className="absolute top-5/6 left-1/4 w-[180px] h-[180px] rounded-full bg-[#CD853F]/11 -translate-x-1/2 blur-[40px]" />
       <div className="absolute top-5/6 right-1/4 w-[180px] h-[180px] rounded-full bg-[#DEB887]/13 -translate-x-1/2 blur-[40px]" />
+      {/* More smudges for richer texture when All category */}
+      <div className="absolute top-3/4 left-1/6 w-[180px] h-[180px] rounded-full bg-[#8B4513]/10 -translate-x-1/2 -translate-y-1/2 blur-[35px]" />
+      <div className="absolute top-3/4 right-1/6 w-[180px] h-[180px] rounded-full bg-[#D2691E]/12 -translate-x-1/2 -translate-y-1/2 blur-[35px]" />
+      <div className="absolute top-4/5 left-1/3 w-[170px] h-[170px] rounded-full bg-[#CD853F]/10 -translate-x-1/2 -translate-y-1/2 blur-[35px]" />
+      <div className="absolute top-4/5 right-1/3 w-[170px] h-[170px] rounded-full bg-[#DEB887]/12 -translate-x-1/2 -translate-y-1/2 blur-[35px]" />
+      <div className="absolute top-5/6 left-1/6 w-[160px] h-[160px] rounded-full bg-[#8B4513]/10 -translate-x-1/2 blur-[30px]" />
+      <div className="absolute top-5/6 right-1/6 w-[160px] h-[160px] rounded-full bg-[#D2691E]/12 -translate-x-1/2 blur-[30px]" />
+      <div className="absolute bottom-1/3 left-1/2 w-[200px] h-[200px] rounded-full bg-[#CD853F]/10 -translate-x-1/2 blur-[35px]" />
+      <div className="absolute bottom-1/4 right-1/2 w-[200px] h-[200px] rounded-full bg-[#DEB887]/12 -translate-x-1/2 blur-[35px]" />
+      <div className="absolute top-7/8 left-1/4 w-[150px] h-[150px] rounded-full bg-[#8B4513]/9 blur-[25px]" />
+      <div className="absolute top-7/8 right-1/4 w-[150px] h-[150px] rounded-full bg-[#D2691E]/11 blur-[25px]" />
+      <div className="absolute top-7/8 left-1/2 w-[140px] h-[140px] rounded-full bg-[#CD853F]/9 -translate-x-1/2 blur-[25px]" />
+      <div className="absolute top-7/8 right-1/2 w-[140px] h-[140px] rounded-full bg-[#DEB887]/11 -translate-x-1/2 blur-[25px]" />
+      <div className="absolute top-7/8 left-3/4 w-[130px] h-[130px] rounded-full bg-[#8B4513]/9 blur-[25px]" />
+      <div className="absolute top-7/8 right-3/4 w-[130px] h-[130px] rounded-full bg-[#D2691E]/11 blur-[25px]" />
     </>
   ) : null;
 
@@ -126,12 +143,17 @@ const searching = search.trim().length > 0;
           TABLE {selectedTable}
         </span>
         <button
-          onClick={() => router.push('/table-select')}
-          className="text-xs text-amber-900 hover:underline"
+          onClick={() => setTableModalOpen(true)}
+          className="text-xs text-amber-900 hover:underline cursor-pointer"
         >
           Change table
         </button>
       </div>
+
+      <ChangeTableModal
+        isOpen={tableModalOpen}
+        onClose={() => setTableModalOpen(false)}
+      />
 
       <h2 className='font-roboto-slab text-2xl text-center mb-1 flex items-center justify-center'>
         MENU
