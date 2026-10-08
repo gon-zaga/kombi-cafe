@@ -109,15 +109,14 @@ function ConfirmOrder() {
                 </span>
               </p>
               <p className="text-xs text-emerald-700 mt-1">
-                Show this reference to the staff when you collect your order.
-                They will check it against your GCash payment at the counter.
+                The barista will verify the reference order before preparing your order
               </p>
             </div>
           ) : (
             <div className="mt-3 bg-amber-50 border border-amber-200 text-amber-800 px-4 py-3 rounded-lg text-sm w-full">
               <p className="font-semibold">Payment: Counter</p>
               <p className="text-xs text-amber-700 mt-1">
-                Pay cash at the counter when you collect your order.
+                Pay cash at the counter for the order to be prepared.
               </p>
             </div>
           );

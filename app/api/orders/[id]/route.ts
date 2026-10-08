@@ -192,3 +192,57 @@ export async function PATCH(
     );
   }
 }
+
+export async function DELETE(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  const { id } = await params;
+  const orderId = Number(id);
+
+  if (isNaN(orderId)) {
+    return NextResponse.json({ error: "Invalid order id" }, { status: 400 });
+  }
+
+  const userId = await getCurrentUserId();
+  if (!userId) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  try {
+    await pool.query('BEGIN');
+
+    // Delete from order_item_addons first
+    await pool.query(
+      `DELETE FROM order_item_addons oia USING order_items oi WHERE oia.order_item_id = oi.id AND oi.order_id = $1`,
+      [orderId]
+    );
+
+    // Delete from order_items
+    await pool.query(
+      `DELETE FROM order_items WHERE order_id = $1`,
+      [orderId]
+    );
+
+    // Delete from orders
+    const result = await pool.query(
+      `DELETE FROM orders WHERE id = $1 RETURNING id`,
+      [orderId]
+    );
+
+    if (result.rows.length === 0) {
+      await pool.query('ROLLBACK');
+      return NextResponse.json({ error: "Order not found" }, { status: 404 });
+    }
+
+    await pool.query('COMMIT');
+    return NextResponse.json({ success: true }, { status: 200 });
+  } catch (error) {
+    await pool.query('ROLLBACK');
+    console.error("Failed to delete order:", error);
+    return NextResponse.json(
+      { error: "Failed to delete order" },
+      { status: 500 }
+    );
+  }
+}

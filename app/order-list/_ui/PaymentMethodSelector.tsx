@@ -86,8 +86,7 @@ export default function PaymentMethodSelector({
             aria-invalid={Boolean(error)}
           />
           <p className="text-xs text-gray-500 mt-1">
-            Read this number from your GCash app and enter it here. The
-            staff will check it against your payment at the counter.
+            The barista will verify the reference number
           </p>
           {error && (
             <p className="text-xs text-red-600 mt-1" role="alert">
