@@ -95,6 +95,10 @@ CREATE TABLE IF NOT EXISTS orders (
   -- 'completed' = handed to the customer. The row is kept (sales history lives
   -- here); only the barista board hides it. See PROJECT_CONTEXT Step 13.
   status VARCHAR(20) DEFAULT 'pending' CHECK (status IN ('pending', 'preparing', 'ready', 'completed')),
+  -- 'counter' = pay cash at the counter; 'gcash' = pay via GCash.
+  -- gcash_reference is required when payment_method is 'gcash'.
+  payment_method VARCHAR(20) DEFAULT 'counter' CHECK (payment_method IN ('counter', 'gcash')),
+  gcash_reference VARCHAR(50),
   created_at TIMESTAMP DEFAULT NOW(),
   UNIQUE (daily_number, order_date)
 );

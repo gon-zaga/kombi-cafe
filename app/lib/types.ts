@@ -57,4 +57,10 @@ export type OrderSummary = {
     unitPrice: number;
     addOns: OrderAddOn[];
   }[];
+  // How the customer intends to pay. 'counter' = cash at the counter,
+  // 'gcash' = GCash (no payment is taken here; the staff handles it).
+  paymentMethod?: "counter" | "gcash" | null;
+  // Required when paymentMethod is 'gcash': the reference number the
+  // customer reads from their GCash app, for the staff to check against.
+  gcashReference?: string | null;
 }

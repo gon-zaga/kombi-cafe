@@ -14,6 +14,11 @@ interface PlaceOrderPayload {
     quantity: number;
     addOnIds: number[];
   }[];
+  // How the customer intends to pay. 'gcash' requires a reference number;
+  // the server rejects a GCash order without one. No payment is actually
+  // taken -- the staff handles the payment at the counter.
+  payment_method?: 'counter' | 'gcash';
+  gcash_reference?: string | null;
 }
 
 // Which recipe rows apply to a given item + size, and how much each costs.
@@ -197,6 +202,8 @@ export async function GET(request: Request) {
         -- created_at is stored as UTC without a zone; tag it so JS reads the right moment
         (o.created_at AT TIME ZONE 'UTC') AS created_at,
         o.total,
+        o.payment_method,
+        o.gcash_reference,
         COALESCE(
           json_agg(
             json_build_object(
@@ -241,6 +248,8 @@ export async function GET(request: Request) {
       tableNumber: row.table_number,
       createdAt: new Date(row.created_at).toISOString(),
       total: Number(row.total),
+      paymentMethod: row.payment_method,
+      gcashReference: row.gcash_reference,
       items: row.items,
     }));
 
@@ -271,6 +280,23 @@ export async function POST(request: Request) {
       );
     }
 
+    // Payment method is counter cash or GCash. A GCash order must carry a
+    // reference number the customer reads from their GCash app -- the
+    // staff still handles the actual payment at the counter, so nothing
+    // is charged here, but the reference is what they check against.
+    const paymentMethod = body.payment_method === 'gcash' ? 'gcash' : 'counter';
+    const gcashReference =
+      paymentMethod === 'gcash'
+        ? (body.gcash_reference ?? '').trim()
+        : null;
+
+    if (paymentMethod === 'gcash' && (gcashReference ?? '').length === 0) {
+      return NextResponse.json(
+        { error: "A GCash reference number is required" },
+        { status: 400 }
+      );
+    }
+
     // One client so BEGIN/COMMIT/ROLLBACK all run on the same connection
     const client = await pool.connect();
 
@@ -291,11 +317,11 @@ export async function POST(request: Request) {
       // step 2: insert the order with a placeholder total of 0
       const orderResult = await client.query(
         `
-          INSERT INTO orders (daily_number, order_date, total, status, table_number)
-          VALUES ($1, (NOW() AT TIME ZONE 'Asia/Manila')::date, 0, 'pending', $2)
+          INSERT INTO orders (daily_number, order_date, total, status, table_number, payment_method, gcash_reference)
+          VALUES ($1, (NOW() AT TIME ZONE 'Asia/Manila')::date, 0, 'pending', $2, $3, $4)
           RETURNING id;
           `,
-        [dailyNumber, body.table_number]
+        [dailyNumber, body.table_number, paymentMethod, gcashReference]
       );
 
       const orderId = orderResult.rows[0].id;
@@ -393,7 +419,9 @@ export async function POST(request: Request) {
           orderReference,
           table_number: body.table_number,
           status: 'pending',
-          total: runningTotal
+          total: runningTotal,
+          payment_method: paymentMethod,
+          gcash_reference: gcashReference
         },
         { status: 201 }
       );

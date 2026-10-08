@@ -4,7 +4,7 @@
 // customer handed over and it shows the change due against the
 // order total. Purely a counter tool -- nothing is stored; the
 // order record itself is the receipt.
-import { useState } from "react";
+import { useState, useEffect } from "react";
 
 // Peso bills a barista most commonly counts back with
 const BILL_KEYS = [20, 50, 100, 200, 500, 1000];
@@ -17,9 +17,13 @@ function round2(value: number): number {
 
 interface ChangeCalculatorProps {
   total: number;
+  /** True when the barista is not allowed to proceed until the
+      change has been computed, e.g. before marking an order preparing. */
+  gate?: boolean;
+  onComputedChange?: (computed: boolean) => void;
 }
 
-function ChangeCalculator({ total }: ChangeCalculatorProps) {
+function ChangeCalculator({ total, gate = false, onComputedChange }: ChangeCalculatorProps) {
   const [cashText, setCashText] = useState("");
 
   const cash = parseFloat(cashText);
@@ -29,6 +33,14 @@ function ChangeCalculator({ total }: ChangeCalculatorProps) {
   const isShort = hasCash && change < 0;
   const isExact = hasCash && change === 0;
 
+  // A "computed" order is one where the barista has entered a cash
+  // amount, so the change is known. When gating, the parent uses this
+  // to keep the action button disabled until then.
+  const isComputed = hasCash;
+  useEffect(() => {
+    if (onComputedChange) onComputedChange(isComputed);
+  }, [isComputed, onComputedChange]);
+
   // Tapping a bill adds it on top of what was already keyed in,
   // the same way a register totals the notes in the tray
   const addBill = (bill: number) => {
@@ -37,7 +49,15 @@ function ChangeCalculator({ total }: ChangeCalculatorProps) {
   };
 
   return (
-    <div className="bg-amber-50 border border-amber-200 rounded-xl p-3">
+    <div
+      className={`border rounded-xl p-3 ${
+        gate && !isComputed
+          ? "bg-amber-50 border-amber-300"
+          : gate && isComputed
+          ? "bg-emerald-50 border-emerald-300"
+          : "bg-amber-50 border-amber-200"
+      }`}
+    >
       <div className="flex justify-between text-sm mb-2">
         <span className="text-gray-600">Order total</span>
         <span className="font-semibold text-gray-900">₱{total.toFixed(2)}</span>
@@ -82,6 +102,20 @@ function ChangeCalculator({ total }: ChangeCalculatorProps) {
           {!hasCash ? "—" : isExact ? "EXACT" : `₱${Math.abs(change).toFixed(2)}`}
         </span>
       </div>
+
+      {gate && !isComputed && (
+        <p className="mt-2 text-xs font-medium text-amber-800">
+          Enter the cash the customer handed over before marking this order.
+        </p>
+      )}
+      {gate && isComputed && isShort && (
+        <p className="mt-2 text-xs font-medium text-red-700">
+          Customer is still short ₱{Math.abs(change).toFixed(2)}.
+        </p>
+      )}
+      {gate && isComputed && !isShort && (
+        <p className="mt-2 text-xs font-medium text-emerald-700">Change computed ✓</p>
+      )}
 
       {cashText !== "" && (
         <button

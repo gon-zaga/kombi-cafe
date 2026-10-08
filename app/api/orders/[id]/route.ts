@@ -53,6 +53,8 @@ export async function GET(
         -- created_at is stored as UTC without a zone; tag it so JS reads the right moment
         (o.created_at AT TIME ZONE 'UTC') AS created_at,
         o.total,
+        o.payment_method,
+        o.gcash_reference,
         COALESCE(
           json_agg(
             json_build_object(
@@ -99,6 +101,8 @@ export async function GET(
       tableNumber: row.table_number,
       createdAt: new Date(row.created_at).toISOString(),
       total: Number(row.total),
+      paymentMethod: row.payment_method,
+      gcashReference: row.gcash_reference,
       items: row.items,
     });
   } catch (error) {

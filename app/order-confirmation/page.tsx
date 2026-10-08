@@ -1,17 +1,31 @@
 'use client'
 
-// Order confirmation: shows the reference number, then a
-// receipt-style breakdown of the placed order (each line with
-// its add-on amounts) read back from the stored order record,
-// plus a grocery-style change calculator for counting back
-// cash at the counter.
+// Order confirmation: shows the reference number, the payment
+// method the customer chose, and the order total. The receipt
+// breakdown and the cash change calculator live on the barista
+// dashboard, where staff count back money at the counter.
 import { useSearchParams, useRouter } from "next/navigation";
 import { Suspense, useEffect, useState } from "react";
 import Image from "next/image";
 import ChangeTableModal from "../ui/ChangeTableModal";
-import ChangeCalculator from "../ui/ChangeCalculator";
 import { useTableStore } from "@/store/TableStore";
 import type { OrderSummary } from "@/app/lib/types";
+
+// Resolves the payment method shown on the confirmation screen. The order
+// record is the source of truth; the URL value is only a fallback so the
+// screen still shows the method if the record read fails.
+function resolvePayment(order: OrderSummary | null, urlMethod: string | null) {
+  if (order?.paymentMethod === "counter" || order?.paymentMethod === "gcash") {
+    return {
+      method: order.paymentMethod as "counter" | "gcash",
+      reference: order.gcashReference ?? null,
+    };
+  }
+  if (urlMethod === "gcash") {
+    return { method: "gcash" as const, reference: null };
+  }
+  return { method: "counter" as const, reference: null };
+}
 
 function ConfirmOrder() {
   const confirmParam = useSearchParams();
@@ -20,6 +34,11 @@ function ConfirmOrder() {
   const total = confirmParam.get('total');
   const table = confirmParam.get('table');
   const orderId = confirmParam.get('id');
+  // The payment method and GCash reference ride along on the URL so the
+  // confirmation screen can show them even if the order record read
+  // fails. The order record itself also carries them.
+  const method = confirmParam.get('method');
+  const gref = confirmParam.get('gref');
   const [order, setOrder] = useState<OrderSummary | null>(null);
   const [tableModalOpen, setTableModalOpen] = useState(false);
   const { clearTable } = useTableStore();
@@ -76,6 +95,34 @@ function ConfirmOrder() {
           <p className="text-3xl font-bold font-mono mt-1">{ref}</p>
         </div>
 
+        {/* How the customer intends to pay. The staff handles the actual
+            payment at the counter -- nothing is charged here. */}
+        {(() => {
+          const payment = resolvePayment(order, method);
+          return payment.method === "gcash" ? (
+            <div className="mt-3 bg-emerald-50 border border-emerald-200 text-emerald-800 px-4 py-3 rounded-lg text-sm w-full">
+              <p className="font-semibold">Payment: GCash</p>
+              <p className="mt-1">
+                Reference number{" "}
+                <span className="font-mono font-semibold">
+                  {gref || payment.reference || "—"}
+                </span>
+              </p>
+              <p className="text-xs text-emerald-700 mt-1">
+                Show this reference to the staff when you collect your order.
+                They will check it against your GCash payment at the counter.
+              </p>
+            </div>
+          ) : (
+            <div className="mt-3 bg-amber-50 border border-amber-200 text-amber-800 px-4 py-3 rounded-lg text-sm w-full">
+              <p className="font-semibold">Payment: Counter</p>
+              <p className="text-xs text-amber-700 mt-1">
+                Pay cash at the counter when you collect your order.
+              </p>
+            </div>
+          );
+        })()}
+
         {table && (
           <div className="mt-2 bg-amber-50 border border-amber-200 text-amber-800 px-4 py-2 rounded-lg text-sm">
             Table {table}
@@ -85,56 +132,9 @@ function ConfirmOrder() {
         <hr className="w-full border-dark-brown/20 my-2" />
 
         {order ? (
-          <>
-            {/* Receipt: line items with add-on amounts, mirroring
-                the stored order_items / order_item_addons rows */}
-            <div className="w-full bg-white border-2 border-dark-brown/20 rounded-2xl p-4 font-mono text-sm text-dark-brown">
-              <div className="text-center border-b border-dashed border-dark-brown/30 pb-2 mb-2">
-                <p className="text-xs tracking-[0.2em]">KOMBI CAFE RECEIPT</p>
-                <p className="text-xs text-gray-500">REF #{order.orderReference}</p>
-                {order.tableNumber != null && (
-                  <p className="text-xs text-gray-500">TABLE {order.tableNumber}</p>
-                )}
-              </div>
-
-              {order.items.map((item, index) => {
-                const addOnTotal = item.addOns.reduce(
-                  (sum, a) => sum + a.price * a.quantity,
-                  0
-                );
-                const lineTotal = (Number(item.unitPrice) + addOnTotal) * item.quantity;
-
-                return (
-                  <div key={index} className="mb-2">
-                    <div className="flex justify-between gap-2">
-                      <span>{item.quantity}x {item.name} ({item.size})</span>
-                      <span className="shrink-0">₱{lineTotal.toFixed(2)}</span>
-                    </div>
-                    {item.addOns.map((addOn, addOnIndex) => (
-                      <div
-                        key={addOnIndex}
-                        className="flex justify-between gap-2 pl-3 text-xs text-gray-600"
-                      >
-                        <span>+ {addOn.name} x{addOn.quantity}</span>
-                        <span className="shrink-0">₱{(addOn.price * addOn.quantity).toFixed(2)}</span>
-                      </div>
-                    ))}
-                  </div>
-                );
-              })}
-
-              <div className="border-t border-dashed border-dark-brown/30 mt-2 pt-2 flex justify-between font-bold">
-                <span>TOTAL</span>
-                <span>₱{Number(order.total).toFixed(2)}</span>
-              </div>
-            </div>
-
-            {/* Change calculator: counts back cash at the counter.
-                Nothing is stored -- the order record is the receipt. */}
-            <div className="w-full mt-2">
-              <ChangeCalculator total={Number(order.total)} />
-            </div>
-          </>
+          <p className="text-lg font-medium">
+            Total: ₱{Number(order.total).toFixed(2)}
+          </p>
         ) : (
           <span className="text-lg font-medium">
             Total: ₱{Number(total).toFixed(2)}

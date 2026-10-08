@@ -242,6 +242,11 @@ export default function BaristaPage() {
                         Table {order.tableNumber}
                       </span>
                     )}
+                    {order.paymentMethod === "gcash" && (
+                      <span className="text-xs font-medium bg-emerald-50 text-emerald-800 border border-emerald-200 rounded-full px-2.5 py-0.5">
+                        GCash
+                      </span>
+                    )}
                   </div>
                   <p className="text-xs text-gray-500 mt-0.5">
                     {order.items.map((item) => `${item.size} ${item.name}`).join(' · ')}
