@@ -82,13 +82,13 @@ export default function ImagePicker({
         </button>
 
         <div className="flex-1 min-w-0">
-          <input
-            type="file"
-            accept="image/*"
-            ref={inputRef}
-            onChange={(e) => handleFile(e.target.files?.[0])}
-            className="hidden"
-          />
+           <input
+             type="file"
+             accept=".jpg,.jpeg,.png,.svg,image/jpeg,image/png,image/svg+xml"
+             ref={inputRef}
+             onChange={(e) => handleFile(e.target.files?.[0])}
+             className="hidden"
+           />
 
           <input
             type="text"

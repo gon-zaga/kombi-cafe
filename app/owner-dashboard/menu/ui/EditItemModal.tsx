@@ -131,10 +131,10 @@ function EditItemModal({ isOpen, onClose, item, onUpdated }: EditItemModalProps)
         price: Number(prices[s.id] || 0)
       }));
 
-    if (!name || !categoryId || sizes.length === 0) {
-      showError("Please fill in the item name, category, and at least one size with a price.");
-      return;
-    }
+     if (!name || !categoryId || !imageUrl || sizes.length === 0) {
+       showError("Please fill in the item name, category, image, and at least one size with a price.");
+       return;
+     }
 
     setSubmitting(true);
 

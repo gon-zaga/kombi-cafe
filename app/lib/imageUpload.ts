@@ -74,8 +74,18 @@ function loadImageSource(file: File): Promise<ImageBitmap | HTMLImageElement> {
 
 // Reads a File and returns a downscaled data URL.
 export async function fileToDataUrl(file: File): Promise<string> {
-  if (!file.type.startsWith("image/")) {
-    throw new Error("That file is not an image.");
+  // Validate file type: only allow JPEG, PNG, SVG
+  const allowedTypes = ['image/jpeg', 'image/png', 'image/svg+xml'];
+  if (!allowedTypes.includes(file.type)) {
+    throw new Error("Only JPG, JPEG, PNG, and SVG images are allowed.");
+  }
+
+  // Additionally validate file extension
+  const allowedExtensions = ['.jpg', '.jpeg', '.png', '.svg'];
+  const fileNameLower = file.name.toLowerCase();
+  const hasAllowedExtension = allowedExtensions.some(ext => fileNameLower.endsWith(ext));
+  if (!hasAllowedExtension) {
+    throw new Error("Image file must have a .jpg, .jpeg, .png, or .svg extension.");
   }
 
   if (file.size > MAX_INPUT_BYTES) {

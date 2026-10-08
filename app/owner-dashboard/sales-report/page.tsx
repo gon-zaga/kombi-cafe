@@ -3,7 +3,8 @@
 import { useEffect, useMemo, useState } from "react";
 import OwnerHeader from "../ui/OwnerHeader";
 import DateFilterBar from "@/app/ui/DateFilterBar";
-import { downloadCsv, exportTimestamp } from "@/app/lib/csv";
+import { exportTimestamp } from "@/app/lib/csv";
+import { downloadXlsx } from "@/app/lib/xlsx";
 import type { CustomRange, DateFilter } from "@/app/lib/dateFilter";
 import { buildOrdersQuery, describeRange, rangeSlug } from "@/app/lib/dateFilter";
 import type { OrderSummary } from "@/app/lib/types";
@@ -170,28 +171,30 @@ export default function SalesReport() {
   const stamp = exportTimestamp();
   const slug = rangeSlug(dateFilter, customRange);
 
-  const exportSales = () => {
-    downloadCsv(`sales-report-${slug}-${stamp}.csv`, orders, [
-      { header: "Order Ref", value: (o) => o.orderReference },
-      { header: "Time", value: (o) => new Date(o.createdAt).toLocaleString("en-PH") },
-       { header: "Date", value: (o) => `'${o.createdAt.slice(0, 10)}` },
-      { header: "Status", value: (o) => o.status },
-      { header: "Item Count", value: (o) => (o.items || []).length },
-      {
-        header: "Add-ons Total",
-        value: (o) =>
-          (o.items || [])
-            .reduce(
-              (sum, item) =>
-                sum + (item.addOns || []).reduce((s, a) => s + a.price * a.quantity, 0),
-              0
-            )
-            .toFixed(2),
-      },
-      { header: "Total", value: (o) => o.total.toFixed(2) },
-    ]);
-    setMenuOpen(false);
-  };
+   const exportSales = () => {
+     const columns = [
+       { header: "Order Ref", value: (o: OrderSummary) => o.orderReference, width: 12 },
+       { header: "Time", value: (o: OrderSummary) => new Date(o.createdAt).toLocaleString("en-PH"), width: 20 },
+       { header: "Date", value: (o: OrderSummary) => o.createdAt.slice(0, 10), width: 15 },
+       { header: "Status", value: (o: OrderSummary) => o.status, width: 12 },
+       { header: "Item Count", value: (o: OrderSummary) => (o.items || []).length, width: 12 },
+       {
+         header: "Add-ons Total",
+         value: (o: OrderSummary) =>
+           (o.items || [])
+             .reduce(
+               (sum, item) =>
+                 sum + (item.addOns || []).reduce((s, a) => s + a.price * a.quantity, 0),
+               0
+             )
+             .toFixed(2),
+         width: 15,
+       },
+       { header: "Total", value: (o: OrderSummary) => o.total.toFixed(2), width: 12 },
+     ];
+     downloadXlsx(`sales-report-${slug}-${stamp}.xlsx`, orders, columns);
+     setMenuOpen(false);
+   };
 
   const exportOptions = [
     { label: "Sales & orders", hint: "One row per order with add-on breakdown", action: exportSales },
@@ -242,7 +245,7 @@ export default function SalesReport() {
               <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v2a2 2 0 002 2h12a2 2 0 002-2v-2M7 10l5 5m0 0l5-5m-5 5V4" />
               </svg>
-              Export CSV
+               Export Excel
             </button>
 
             {menuOpen && (

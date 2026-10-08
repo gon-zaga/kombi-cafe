@@ -175,13 +175,13 @@ function AddItemModal({ isOpen, onClose, onCreated }: AddItemModalProps) {
       }));
 
 
-    // Check if the required information was provided
-    if (!name || !categoryId || sizes.length === 0) {
-      showError(
-        "Please fill in the item name, category, and at least one size with a price."
-      );
-      return;
-    }
+     // Check if the required information was provided
+     if (!name || !categoryId || !imageUrl || sizes.length === 0) {
+       showError(
+         "Please fill in the item name, category, image, and at least one size with a price."
+       );
+       return;
+     }
 
 
     // Tell the UI that the form is being submitted
