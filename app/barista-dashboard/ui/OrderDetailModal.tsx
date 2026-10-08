@@ -24,7 +24,8 @@ function OrderDetailModal({ order, onClose, onUpdateStatus }: OrderDetailModalPr
   // in-app confirm first, using the shared ConfirmModal so no native dialog is
   // used. delayMs is 0 because a revert is itself reversible (mark ready again)
   // and baristas do it often; the 3s lock is for irreversible deletes.
-  const [confirmingRevert, setConfirmingRevert] = useState(false);
+   const [confirmingRevert, setConfirmingRevert] = useState(false);
+   const [deletingOrder, setDeletingOrder] = useState<OrderSummary | null>(null);
 
   // Whether the barista has computed the change for this order.
   // 'preparing' is blocked until this is true, so the transaction
@@ -55,10 +56,25 @@ function OrderDetailModal({ order, onClose, onUpdateStatus }: OrderDetailModalPr
     onUpdateStatus(order.id, status);
   };
 
-  const handleRevert = () => {
-    onUpdateStatus(order.id, 'preparing');
-    setConfirmingRevert(false);
-  };
+   const handleRevert = () => {
+     onUpdateStatus(order.id, 'preparing');
+     setConfirmingRevert(false);
+   };
+
+   const handleDeleteOrder = async () => {
+     if (!order) return;
+     try {
+       const res = await fetch(`/api/orders/${order.id}`, { method: 'DELETE' });
+       if (!res.ok) {
+         const data = await res.json().catch(() => ({}));
+         throw new Error(data.error || 'Failed to delete order');
+       }
+       setDeletingOrder(null);
+       onClose();
+     } catch (error) {
+       console.error('Failed to delete order:', error);
+     }
+   };
 
   const canStartPreparing = changeComputed;
 
@@ -204,20 +220,26 @@ function OrderDetailModal({ order, onClose, onUpdateStatus }: OrderDetailModalPr
             </div>
 
             <div className="space-y-2">
-              {order.status === 'pending' && (
-                <button
-                  onClick={() => handleUpdateStatus('preparing')}
-                  disabled={!canStartPreparing}
-                  title={canStartPreparing ? undefined : "Compute the customer's change first"}
-                  className={`w-full text-sm font-medium rounded-lg py-3 transition-transform active:scale-95 ${
-                    canStartPreparing
-                      ? "bg-blue-50 border border-blue-200 text-blue-800 hover:bg-blue-100"
-                      : "bg-gray-100 border border-gray-200 text-gray-400 cursor-not-allowed"
-                  }`}
-                >
-                  Mark as Preparing
-                </button>
-              )}
+               {order.status === 'pending' && (
+                 <>
+                   <button
+                     onClick={() => handleUpdateStatus('preparing')}
+                     disabled={!canStartPreparing}
+                     title={canStartPreparing ? undefined : "Compute the customer's change first"}
+                     className={`w-full text-sm font-medium rounded-lg py-3 transition-transform active:scale-95 ${canStartPreparing ? "bg-blue-50 border border-blue-200 text-blue-800 hover:bg-blue-100" : "bg-gray-100 border border-gray-200 text-gray-400 cursor-not-allowed"}`}
+                   >
+                     Mark as Preparing
+                   </button>
+                   <button
+                     onClick={() => {
+                       setDeletingOrder(order);
+                     }}
+                     className="w-full text-sm font-medium bg-red-50 border border-red-200 text-red-800 rounded-lg py-3 hover:bg-red-100 active:scale-95 transition-transform"
+                   >
+                     Delete Order
+                   </button>
+                 </>
+               )}
 
               {order.status === 'preparing' && (
                 <button
@@ -262,16 +284,25 @@ function OrderDetailModal({ order, onClose, onUpdateStatus }: OrderDetailModalPr
 
       {/* Revert confirmation: a second overlay stacked above the detail card,
           so it reads as its own modal rather than part of the order card */}
-      <ConfirmModal
-        isOpen={confirmingRevert}
-        title="Move Back to Preparing?"
-        message={`Order #${order.orderReference} will go back to Preparing and be counted in the queue again.`}
-        confirmLabel="Yes, Move It Back"
-        tone="primary"
-        delayMs={0}
-        onCancel={() => setConfirmingRevert(false)}
-        onConfirm={handleRevert}
-      />
+       <ConfirmModal
+         isOpen={confirmingRevert}
+         title="Move Back to Preparing?"
+         message={`Order #${order.orderReference} will go back to Preparing and be counted in the queue again.`}
+         confirmLabel="Yes, Move It Back"
+         tone="primary"
+         delayMs={0}
+         onCancel={() => setConfirmingRevert(false)}
+         onConfirm={handleRevert}
+       />
+       <ConfirmModal
+         isOpen={deletingOrder !== null}
+         title="Delete order?"
+         message={deletingOrder ? `"${deletingOrder.orderReference}" will be deleted permanently.` : ""}
+         confirmLabel="Delete"
+         tone="danger"
+         onCancel={() => setDeletingOrder(null)}
+         onConfirm={handleDeleteOrder}
+       />
     </div>
   );
 }
