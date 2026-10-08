@@ -9,6 +9,22 @@ import { useState, useEffect } from "react";
 // Peso bills a barista most commonly counts back with
 const BILL_KEYS = [20, 50, 100, 200, 500, 1000];
 
+// Calculator keypad layout: 0-9, decimal, clear, plus quick-bill keys
+const CALC_KEYS = [
+  { key: '7', action: 'digit' },
+  { key: '8', action: 'digit' },
+  { key: '9', action: 'digit' },
+  { key: '4', action: 'digit' },
+  { key: '5', action: 'digit' },
+  { key: '6', action: 'digit' },
+  { key: '1', action: 'digit' },
+  { key: '2', action: 'digit' },
+  { key: '3', action: 'digit' },
+  { key: 'C', action: 'clear' },
+  { key: '0', action: 'digit' },
+  { key: '.', action: 'decimal' },
+];
+
 // Money only ever has two decimals; rounding keeps float noise
 // from turning a 380.00 change into 379.99999999
 function round2(value: number): number {
@@ -41,8 +57,20 @@ function ChangeCalculator({ total, gate = false, onComputedChange }: ChangeCalcu
     if (onComputedChange) onComputedChange(isComputed);
   }, [isComputed, onComputedChange]);
 
-  // Tapping a bill adds it on top of what was already keyed in,
-  // the same way a register totals the notes in the tray
+  const appendDigit = (digit: string) => {
+    // Prevent multiple decimals
+    if (digit === '.' && cashText.includes('.')) return;
+    // Prevent leading zeros (except for "0.")
+    if (cashText === '0' && digit !== '.') return;
+    if (cashText === '' && digit === '.') {
+      setCashText('0.');
+      return;
+    }
+    setCashText(cashText + digit);
+  };
+
+  const clear = () => setCashText("");
+
   const addBill = (bill: number) => {
     const current = Number.isNaN(cash) ? 0 : cash;
     setCashText(String(round2(current + bill)));
@@ -77,13 +105,30 @@ function ChangeCalculator({ total, gate = false, onComputedChange }: ChangeCalcu
         aria-label="Cash given"
       />
 
+      {/* Calculator keypad: 0-9, decimal, clear */}
+      <div className="grid grid-cols-3 gap-1.5 mt-2">
+        {CALC_KEYS.map(({ key, action }) => (
+          <button
+            key={key}
+            type="button"
+            onClick={() =>
+              action === 'digit' ? appendDigit(key) : action === 'decimal' ? appendDigit('.') : clear()
+            }
+            className="bg-white border border-amber-300 rounded-lg py-2 font-mono text-base font-semibold text-amber-900 hover:bg-amber-100 active:scale-95 transition-transform"
+          >
+            {key}
+          </button>
+        ))}
+      </div>
+
+      {/* Quick bill buttons */}
       <div className="grid grid-cols-3 gap-1.5 mt-2">
         {BILL_KEYS.map((bill) => (
           <button
-            key={bill}
+            key={`bill-${bill}`}
             type="button"
             onClick={() => addBill(bill)}
-            className="bg-white border border-amber-300 rounded-lg py-1.5 font-mono text-sm font-semibold text-amber-900 hover:bg-amber-100 active:scale-95 transition-transform"
+            className="bg-amber-50 border border-amber-300 rounded-lg py-1.5 font-mono text-sm font-semibold text-amber-900 hover:bg-amber-100 active:scale-95 transition-transform"
           >
             ₱{bill}
           </button>
@@ -120,7 +165,7 @@ function ChangeCalculator({ total, gate = false, onComputedChange }: ChangeCalcu
       {cashText !== "" && (
         <button
           type="button"
-          onClick={() => setCashText("")}
+          onClick={clear}
           className="mt-2 w-full text-xs text-amber-800 hover:underline"
         >
           Clear
