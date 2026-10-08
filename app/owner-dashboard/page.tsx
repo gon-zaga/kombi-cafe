@@ -8,7 +8,7 @@ import type { CustomRange, DateFilter } from "@/app/lib/dateFilter";
 import { buildOrdersQuery, describeRange } from "@/app/lib/dateFilter";
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
-  LineChart, Line, PieChart, Pie, Cell, Legend,
+  LineChart, Line, PieCart, Pie, Cell, Legend,
 } from "recharts";
 
 interface AnalyticsData {
@@ -218,12 +218,12 @@ export default function OwnerDashboard() {
                     <BarChart data={shareData}>
                       <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
                       <XAxis dataKey="name" tick={{ fontSize: 12 }} />
-                      <YAxis 
-                        tick={{ fontSize: 12 }} 
-                         tickFormatter={(v) => `${v.toFixed(2)}%`} 
-                        domain={[0, 100]}
-                      />
-                       <Tooltip formatter={(value) => `${value.toFixed(2)}%`} />
+                       <YAxis 
+                         tick={{ fontSize: 12 }} 
+                          tickFormatter={(v) => (typeof v === 'number' ? v.toFixed(2) : '0') + '%'} 
+                         domain={[0, 100]}
+                       />
+                        <Tooltip formatter={(value) => (typeof value === 'number' ? value.toFixed(2) : '0') + '%'} />
                       <Bar dataKey="share" name="Share" radius={[4, 4, 0, 0]}>
                         {shareData.map((_, i) => <Cell key={i} fill={shareData[i].fill} />)}
                       </Bar>
