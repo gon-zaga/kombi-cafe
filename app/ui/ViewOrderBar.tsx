@@ -1,6 +1,8 @@
 'use client'
 
-// Sticky bar on the menu: jump to the cart with a live item count
+// Floating bar at the bottom of the viewport: jump to the cart with a live item count.
+// Fixed (not sticky) so it follows the scroll in both directions; the page adds
+// pb-24 in app/page.tsx so the last menu item isn't hidden behind it.
 import { useRouter } from "next/navigation";
 import { useOrderStore } from "@/store/OrderListStore";
 import { useTableStore } from "@/store/TableStore";
@@ -21,9 +23,9 @@ function ViewOrderBar() {
   };
 
   return (
-    <div className="flex flex-row items justify-center sticky bottom-0 my-2.5">
+    <div className="fixed bottom-0 left-0 right-0 flex justify-center pb-4 pointer-events-none">
       <button
-        className="text-white p-2 w-3xs flex flex-row justify-center border rounded-2xl bg-dark-brown"
+        className="pointer-events-auto text-white p-2 w-3xs flex flex-row justify-center border rounded-2xl bg-dark-brown"
         onClick={handleClick}
       >
         VIEW ORDER

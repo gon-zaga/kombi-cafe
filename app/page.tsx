@@ -72,10 +72,52 @@ export default function Home() {
     );
   }
 
-  const searching = search.trim().length > 0;
+const searching = search.trim().length > 0;
+  const isAllCategory = active === "All";
+
+  // Base smudges - always visible, positioned behind the MenuItem grid area only
+  const baseSmudges = (
+    <>
+      <div className="absolute top-2/3 left-1/4 w-[400px] h-[400px] rounded-full bg-[#8B4513]/15 blur-[60px] -translate-x-1/2 -translate-y-1/2" />
+      <div className="absolute top-2/3 right-1/4 w-[380px] h-[380px] rounded-full bg-[#D2691E]/18 blur-[60px] -translate-x-1/2 -translate-y-1/2" />
+      <div className="absolute bottom-1/3 left-1/3 w-[350px] h-[350px] rounded-full bg-[#CD853F]/15 blur-[50px] -translate-x-1/2 -translate-y-1/2" />
+      <div className="absolute bottom-1/4 right-1/3 w-[320px] h-[320px] rounded-full bg-[#DEB887]/18 blur-[50px] -translate-x-1/2 -translate-y-1/2" />
+    </>
+  );
+
+  // Extra smudges - only when "All" category is selected
+  const extraSmudges = isAllCategory && !searching ? (
+    <>
+      {/* Medium smudges behind cards */}
+      <div className="absolute top-3/4 left-1/2 w-[300px] h-[300px] rounded-full bg-[#8B4513]/14 -translate-x-1/2 -translate-y-1/2 blur-[50px]" />
+      <div className="absolute top-4/5 right-1/2 w-[280px] h-[280px] rounded-full bg-[#D2691E]/16 -translate-x-1/2 -translate-y-1/2 blur-[50px]" />
+      <div className="absolute top-5/6 right-1/2 w-[260px] h-[260px] rounded-full bg-[#CD853F]/14 -translate-x-1/2 -translate-y-1/2 blur-[50px]" />
+      {/* Center smudges behind card grid */}
+      <div className="absolute top-3/4 left-1/2 w-[240px] h-[240px] rounded-full bg-[#8B4513]/12 -translate-x-1/2 blur-[40px]" />
+      <div className="absolute top-4/5 left-1/2 w-[220px] h-[220px] rounded-full bg-[#D2691E]/14 -translate-x-1/2 -translate-y-1/2 blur-[40px]" />
+      <div className="absolute top-5/6 left-1/3 w-[200px] h-[200px] rounded-full bg-[#CD853F]/12 -translate-y-1/2 blur-[40px]" />
+      <div className="absolute top-5/6 right-1/3 w-[200px] h-[200px] rounded-full bg-[#DEB887]/14 -translate-y-1/2 blur-[40px]" />
+      {/* Additional smudges in the card grid area */}
+      <div className="absolute top-3/4 left-1/4 w-[180px] h-[180px] rounded-full bg-[#8B4513]/11 -translate-x-1/2 -translate-y-1/2 blur-[30px]" />
+      <div className="absolute top-3/4 right-1/4 w-[180px] h-[180px] rounded-full bg-[#D2691E]/13 -translate-x-1/2 -translate-y-1/2 blur-[30px]" />
+      <div className="absolute top-4/5 left-1/4 w-[160px] h-[160px] rounded-full bg-[#CD853F]/11 -translate-x-1/2 blur-[30px]" />
+      <div className="absolute top-4/5 right-1/4 w-[160px] h-[160px] rounded-full bg-[#DEB887]/13 -translate-x-1/2 blur-[30px]" />
+      {/* Extra smudges - denser coverage */}
+      <div className="absolute top-4/5 left-1/6 w-[200px] h-[200px] rounded-full bg-[#8B4513]/11 -translate-x-1/2 blur-[40px]" />
+      <div className="absolute top-4/5 right-1/6 w-[200px] h-[200px] rounded-full bg-[#D2691E]/13 -translate-x-1/2 blur-[40px]" />
+      <div className="absolute top-5/6 left-1/4 w-[180px] h-[180px] rounded-full bg-[#CD853F]/11 -translate-x-1/2 blur-[40px]" />
+      <div className="absolute top-5/6 right-1/4 w-[180px] h-[180px] rounded-full bg-[#DEB887]/13 -translate-x-1/2 blur-[40px]" />
+    </>
+  ) : null;
 
   return (
-    <div className='bg-cream min-h-screen'>
+    <div className='bg-cream min-h-screen relative overflow-hidden pb-24'>
+      {/* Paint smudge background - strictly behind MenuItem grid */}
+      <div className="absolute inset-0 pointer-events-none overflow-hidden" aria-hidden="true">
+        {baseSmudges}
+        {extraSmudges}
+      </div>
+
       <Header />
 
       {/* Table indicator bar */}

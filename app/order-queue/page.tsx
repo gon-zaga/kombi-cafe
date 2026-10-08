@@ -1,12 +1,12 @@
 'use client';
 
-// Customer-facing queue board: polls today's real orders and lists reference numbers
-// under PREPARING and READY so customers can see when their number is called.
-// 'pending' and 'completed' are excluded by the two filters below, so a collected
-// order disappears off the customer board as soon as the barista completes it.
+// Customer-facing queue board: polls today's real orders and lists, per order, the
+// reference number (the large figure customers verify at the counter) plus a smaller
+// line with the table number and the database orderId. 'pending' and 'completed'
+// are excluded by the two filters below, so a collected order disappears off the
+// customer board as soon as the barista completes it.
 // The two states sit side by side with a vertical divider between them, so the
-// split is the same shape on every screen, and the numbers are the only thing on
-// the page that is not a label.
+// split is the same shape on every screen.
 import { useCallback, useEffect, useState } from "react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
@@ -77,12 +77,17 @@ export default function OrderQueue() {
               <p className="text-2xl text-dark-brown/30">-</p>
             ) : (
               preparing.map((order) => (
-                <span
+                <div
                   key={order.id}
-                  className="font-roboto-mono text-3xl sm:text-4xl text-dark-brown"
+                  className="flex flex-col items-center"
                 >
-                  #{order.orderReference}
-                </span>
+                  <span className="font-roboto-mono text-3xl sm:text-4xl text-dark-brown">
+                    #{order.orderReference}
+                  </span>
+                  <span className="font-roboto-mono text-xs text-dark-brown/60 mt-0.5">
+                    Table {order.tableNumber ?? '-'} · #{order.id}
+                  </span>
+                </div>
               ))
             )}
           </div>
@@ -101,12 +106,17 @@ export default function OrderQueue() {
               <p className="text-2xl text-dark-brown/30">-</p>
             ) : (
               ready.map((order) => (
-                <span
+                <div
                   key={order.id}
-                  className="font-roboto-mono text-3xl sm:text-4xl text-green-700"
+                  className="flex flex-col items-center"
                 >
-                  #{order.orderReference}
-                </span>
+                  <span className="font-roboto-mono text-3xl sm:text-4xl text-green-700">
+                    #{order.orderReference}
+                  </span>
+                  <span className="font-roboto-mono text-xs text-green-700/60 mt-0.5">
+                    Table {order.tableNumber ?? '-'} · #{order.id}
+                  </span>
+                </div>
               ))
             )}
           </div>
