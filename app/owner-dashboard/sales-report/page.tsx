@@ -298,54 +298,111 @@ export default function SalesReport() {
             </p>
           </div>
         ) : (
-          /* Data State */
-          <div className="space-y-6">
-            {/* KPI Cards */}
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-              <KPICard 
-                title="Total Sales" 
-                value={formatCurrency(totalSales)} 
-                icon={
-                  <svg className="w-6 h-6 text-emerald-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                  </svg>
-                }
-              />
-              <KPICard 
-                title="Total Orders" 
-                value={totalOrders.toLocaleString('en-PH')} 
-                icon={
-                  <svg className="w-6 h-6 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
-                  </svg>
-                }
-              />
-              <KPICard 
-                title="Average Order" 
-                value={formatCurrency(averageOrder)} 
-                icon={
-                  <svg className="w-6 h-6 text-purple-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-                  </svg>
-                }
-              />
-            </div>
+           /* Data State */
+           <div className="space-y-6">
+             {/* KPI Cards */}
+             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+               <KPICard 
+                 title="Total Sales" 
+                 value={formatCurrency(totalSales)} 
+                 icon={
+                   <svg className="w-6 h-6 text-emerald-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                   </svg>
+                 }
+               />
+               <KPICard 
+                 title="Total Orders" 
+                 value={totalOrders.toLocaleString('en-PH')} 
+                 icon={
+                   <svg className="w-6 h-6 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
+                   </svg>
+                 }
+               />
+               <KPICard 
+                 title="Average Order" 
+                 value={formatCurrency(averageOrder)} 
+                 icon={
+                   <svg className="w-6 h-6 text-purple-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                   </svg>
+                 }
+               />
+             </div>
 
-            {/* Top Items & Add-ons Lists */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              <TopListCard 
-                title="Top 5 Selling Items" 
-                data={topSellingItems} 
-                emptyMessage="No items sold in this period." 
-              />
-              <TopListCard 
-                title="Top 5 Most Chosen Add-ons" 
-                data={topAddons} 
-                emptyMessage="No add-ons selected in this period." 
-              />
-            </div>
-          </div>
-        )}
+             {/* Top Items & Add-ons Lists */}
+             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+               <TopListCard 
+                 title="Top 5 Selling Items" 
+                 data={topSellingItems} 
+                 emptyMessage="No items sold in this period." 
+               />
+               <TopListCard 
+                 title="Top 5 Most Chosen Add-ons" 
+                 data={topAddons} 
+                 emptyMessage="No add-ons selected in this period." 
+               />
+             </div>
+
+             {/* Orders List */}
+             <div className="bg-gray-50 rounded-xl shadow-sm border border-gray-100">
+               <div className="px-6 py-4 border-b border-gray-100">
+                 <h3 className="text-base font-semibold text-gray-900">Completed Orders</h3>
+               </div>
+               <div className="p-6">
+                 {orders.length > 0 ? (
+                   <div className="space-y-4">
+                     {orders.map((order) => (
+                       <div key={order.id} className="border-b border-gray-100 pb-4 last:border-b-0 last:pb-0">
+                         <div className="flex items-start justify-between">
+                           <div className="flex-1 min-w-0">
+                             <p className="font-medium text-gray-900">Order #{order.orderReference}</p>
+                             <p className="text-sm text-gray-500">
+                               {new Date(order.createdAt).toLocaleString('en-PH', { 
+                                 hour: 'numeric', 
+                                 minute: '2-digit',
+                                 hour12: true 
+                               })} • {order.items.length} item{(order.items.length !== 1) ? 's' : ''}
+                             </p>
+                             {order.items.map((item, index) => (
+                               <div key={`${order.id}-item-${index}`} className="mt-1 text-sm text-gray-700 pl-2">
+                                 • {item.quantity}x {item.name}{item.size ? ` (${item.size})` : ''}
+                                 {item.addOns.length > 0 && (
+                                   <span className="text-xs text-gray-500 ml-1">
+                                     (+{item.addOns.reduce((sum, addon) => sum + addon.quantity, 0)} add-on{(item.addOns.reduce((sum, addon) => sum + addon.quantity, 0) !== 1) ? 's' : ''})
+                                   </span>
+                                 )}
+                               </div>
+                             ))}
+                           </div>
+                           <div className="text-right ml-4">
+                             <p className="font-bold text-gray-900">{formatCurrency(order.total)}</p>
+                             <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${
+                               order.status === 'completed' 
+                                 ? 'bg-green-100 text-green-800' 
+                                 : order.status === 'ready' 
+                                   ? 'bg-yellow-100 text-yellow-800' 
+                                   : order.status === 'preparing' 
+                                     ? 'bg-blue-100 text-blue-800' 
+                                     : 'bg-gray-100 text-gray-800'
+                             }`}>
+                               {order.status.charAt(0).toUpperCase() + order.status.slice(1)}
+                             </span>
+                           </div>
+                         </div>
+                       </div>
+                     ))}
+                   </div>
+                 ) : (
+                   <div className="flex flex-col items-center justify-center py-8 text-center">
+                     <p className="text-sm text-gray-500">No completed orders in this period.</p>
+                   </div>
+                 )}
+               </div>
+             </div>
+           </div>
+         )}
       </div>
     </section>
   );
