@@ -6,13 +6,15 @@ type ItemInfoProps = {
 }
 
 function ItemInfo({itemName, price, ingredients}: ItemInfoProps) {
-  return(
-      <div className="flex flex-col gap-4 p-4"> 
-      <div className="text-md font-bold">{itemName}</div>
-      <div className="text-md font-bold">₱{price}</div>
-      <div className="text-sm">{ingredients.join(". ")}</div>
-      </div>
-  );
-}
+   return(
+       <div className="flex flex-col gap-4 p-4"> 
+       <div className="text-md font-bold">{itemName}</div>
+       <div className="text-md font-bold">₱{price}</div>
+       <div className="text-sm">
+         {ingredients.length > 0 ? ingredients.join(". ") : "none"}
+       </div>
+       </div>
+   );
+ }
 
 export default ItemInfo

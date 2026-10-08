@@ -56,6 +56,7 @@ export type OrderSummary = {
     quantity: number;
     unitPrice: number;
     addOns: OrderAddOn[];
+    ingredients: string[];
   }[];
   // How the customer intends to pay. 'counter' = cash at the counter,
   // 'gcash' = GCash (no payment is taken here; the staff handles it).

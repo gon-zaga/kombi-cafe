@@ -16,68 +16,76 @@ export async function GET(request: Request) {
 
   // $1 true = owner view (no availability filter), $2 true = customer view that
   // wants unavailable items shown too
-  const result = await pool.query(
-    `
-    SELECT
-      mi.id AS item_id,
-      mi.name AS item_name,
-      mi.image_url AS item_img,
-      mi.is_available AS is_available,
-      c.name AS category,
-      s.id AS size_id,
-      s.label AS size,
-      s.oz AS oz,
-      s.temperature AS temperature,
-       mis.price AS price,
+   const result = await pool.query(
+     `
+     SELECT
+       mi.id AS item_id,
+       mi.name AS item_name,
+       mi.image_url AS item_img,
+       mi.is_available AS is_available,
+       c.name AS category,
+       s.id AS size_id,
+       s.label AS size,
+       s.oz AS oz,
+       s.temperature AS temperature,
+        mis.price AS price,
 
-       -- Low stock = at least ONE ingredient in the item's recipe is at or below
-      -- its restock threshold. Size-specific recipe rows are counted too, so an
-      -- item can read as low because of one size only; this is a warning, not a
-      -- block. The order API is what actually refuses an order on a shortage.
-      -- An item with no recipe rows at all is never "low" -- there is nothing to
-      -- be short of.
-      EXISTS (
-        SELECT 1
-        FROM recipes r
-        JOIN ingredients ing ON ing.id = r.ingredient_id
-        WHERE r.menu_item_id = mi.id
-          AND ing.stock_qty <= ing.restock_threshold
-      ) AS is_low_stock
-    FROM menu_items AS mi
-    JOIN categories AS c ON mi.category_id = c.id
-    JOIN menu_item_sizes AS mis ON mi.id = mis.menu_item_id
-    JOIN sizes AS s ON mis.size_id = s.id
-    WHERE ($1::boolean OR $2::boolean OR mi.is_available = TRUE)
-    ORDER BY mi.id, s.id
-    `,
-    [all, includeUnavailable]
-  );
+        -- Low stock = at least ONE ingredient in the item's recipe is at or below
+       -- its restock threshold. Size-specific recipe rows are counted too, so an
+       -- item can read as low because of one size only; this is a warning, not a
+       -- block. The order API is what actually refuses an order on a shortage.
+       -- An item with no recipe rows at all is never "low" -- there is nothing to
+       -- be short of.
+       EXISTS (
+         SELECT 1
+         FROM recipes r
+         JOIN ingredients ing ON ing.id = r.ingredient_id
+         WHERE r.menu_item_id = mi.id
+           AND ing.stock_qty <= ing.restock_threshold
+       ) AS is_low_stock,
+        -- Get ingredient names for this menu item
+        COALESCE(
+          json_agg(ing.name) FILTER (WHERE ing.id IS NOT NULL),
+          '[]'::json
+        ) AS ingredients
+     FROM menu_items AS mi
+     JOIN categories AS c ON mi.category_id = c.id
+     JOIN menu_item_sizes AS mis ON mi.id = mis.menu_item_id
+     JOIN sizes AS s ON mis.size_id = s.id
+     LEFT JOIN recipes r ON r.menu_item_id = mi.id
+     LEFT JOIN ingredients ing ON ing.id = r.ingredient_id
+     WHERE ($1::boolean OR $2::boolean OR mi.is_available = TRUE)
+     GROUP BY mi.id, mi.name, mi.image_url, mi.is_available, c.name, s.id, s.label, s.oz, s.temperature, mis.price
+     ORDER BY mi.id, s.id
+     `,
+     [all, includeUnavailable]
+   );
   const rows: MenuRow[] = result.rows;
 
-  const grouped: Record<number, MenuItem> = {};
+   const grouped: Record<number, MenuItem> = {};
 
-  for (const row of rows) {
-    if (!grouped[row.item_id]) {
-      grouped[row.item_id] = {
-        itemId: row.item_id,
-        itemName: row.item_name,
-        itemImg: row.item_img,
-        category: row.category,
-        isAvailable: row.is_available,
-        isLowStock: row.is_low_stock,
-        ingredients: [],
-        sizes: [],
-      };
-    }
+   for (const row of rows) {
+     if (!grouped[row.item_id]) {
+       grouped[row.item_id] = {
+         itemId: row.item_id,
+         itemName: row.item_name,
+         itemImg: row.item_img,
+         category: row.category,
+         isAvailable: row.is_available,
+         isLowStock: row.is_low_stock,
+         ingredients: row.ingredients ?? [],
+         sizes: [],
+       };
+     }
 
-    grouped[row.item_id].sizes.push({
-      sizeId: row.size_id,
-      size: row.size,
-      oz: row.oz === null ? null : Number(row.oz),
-      temperature: row.temperature,
-      price: Number(row.price),
-    });
-  }
+     grouped[row.item_id].sizes.push({
+       sizeId: row.size_id,
+       size: row.size,
+       oz: row.oz === null ? null : Number(row.oz),
+       temperature: row.temperature,
+       price: Number(row.price),
+     });
+   }
 
   return Response.json(Object.values(grouped));
 }

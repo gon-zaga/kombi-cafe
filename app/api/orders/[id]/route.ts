@@ -43,50 +43,56 @@ export async function GET(
   }
 
   try {
-    const result = await pool.query(
-      `
-      SELECT
-        o.id,
-        o.daily_number,
-        o.status,
-        o.table_number,
-        -- created_at is stored as UTC without a zone; tag it so JS reads the right moment
-        (o.created_at AT TIME ZONE 'UTC') AS created_at,
-        o.total,
-        o.payment_method,
-        o.gcash_reference,
-        COALESCE(
-          json_agg(
-            json_build_object(
-              'name', mi.name,
-              'size', s.label,
-              'quantity', oi.quantity,
-              'unitPrice', oi.unit_price,
-              'addOns', (
-                SELECT COALESCE(json_agg(
-                  json_build_object(
-                    'name', a.name,
-                    'price', oia.price,
-                    'quantity', oia.quantity
-                  ) ORDER BY oia.id
-                ), '[]'::json)
-                FROM order_item_addons oia
-                JOIN add_ons a ON a.id = oia.add_on_id
-                WHERE oia.order_item_id = oi.id
-              )
-            ) ORDER BY oi.id
-          ) FILTER (WHERE oi.id IS NOT NULL),
-          '[]'::json
-        ) AS items
-      FROM orders o
-      LEFT JOIN order_items oi ON oi.order_id = o.id
-      LEFT JOIN menu_items mi ON mi.id = oi.menu_item_id
-      LEFT JOIN sizes s ON s.id = oi.size_id
-      WHERE o.id = $1
-      GROUP BY o.id
-      `,
-      [orderId]
-    );
+     const result = await pool.query(
+       `
+       SELECT
+         o.id,
+         o.daily_number,
+         o.status,
+         o.table_number,
+         -- created_at is stored as UTC without a zone; tag it so JS reads the right moment
+         (o.created_at AT TIME ZONE 'UTC') AS created_at,
+         o.total,
+         o.payment_method,
+         o.gcash_reference,
+         COALESCE(
+           json_agg(
+             json_build_object(
+               'name', mi.name,
+               'size', s.label,
+               'quantity', oi.quantity,
+               'unitPrice', oi.unit_price,
+               'addOns', (
+                 SELECT COALESCE(json_agg(
+                   json_build_object(
+                     'name', a.name,
+                     'price', oia.price,
+                     'quantity', oia.quantity
+                   ) ORDER BY oia.id
+                 ), '[]'::json)
+                 FROM order_item_addons oia
+                 JOIN add_ons a ON a.id = oia.add_on_id
+                 WHERE oia.order_item_id = oi.id
+               ),
+               'ingredients', (
+                 SELECT COALESCE(json_agg(ing.name ORDER BY ing.id), '[]'::json)
+                 FROM recipes r
+                 JOIN ingredients ing ON ing.id = r.ingredient_id
+                 WHERE r.menu_item_id = mi.id
+               )
+             ) ORDER BY oi.id
+           ) FILTER (WHERE oi.id IS NOT NULL),
+           '[]'::json
+         ) AS items
+       FROM orders o
+       LEFT JOIN order_items oi ON oi.order_id = o.id
+       LEFT JOIN menu_items mi ON mi.id = oi.menu_item_id
+       LEFT JOIN sizes s ON s.id = oi.size_id
+       WHERE o.id = $1
+       GROUP BY o.id
+       `,
+       [orderId]
+     );
 
     if (result.rows.length === 0) {
       return NextResponse.json({ error: "Order not found" }, { status: 404 });

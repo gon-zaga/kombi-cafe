@@ -152,41 +152,50 @@ function OrderDetailModal({ order, onClose, onUpdateStatus }: OrderDetailModalPr
             <div className="mb-4">
               <h3 className="font-semibold text-gray-900 mb-2">Items:</h3>
               <div className="space-y-3">
-                {order.items.map((item, index) => {
-                  // Add-ons count once per drink, matching how the
-                  // order total was priced server-side
-                  const addOnTotal = item.addOns.reduce(
-                    (sum, a) => sum + a.price * a.quantity,
-                    0
-                  );
-                  const lineTotal = (Number(item.unitPrice) + addOnTotal) * item.quantity;
+                 {order.items.map((item, index) => {
+                   // Add-ons count once per drink, matching how the
+                   // order total was priced server-side
+                   const addOnTotal = item.addOns.reduce(
+                     (sum, a) => sum + a.price * a.quantity,
+                     0
+                   );
+                   const lineTotal = (Number(item.unitPrice) + addOnTotal) * item.quantity;
 
-                  return (
-                    <div key={index} className="bg-gray-50 rounded-lg p-3">
-                      <div className="flex justify-between items-start mb-1">
-                        <p className="font-medium text-gray-900">{item.name}</p>
-                        <p className="font-semibold text-gray-900">₱{lineTotal.toFixed(2)}</p>
-                      </div>
-                      <p className="text-sm text-gray-600">
-                        {item.size} · Qty: {item.quantity} × ₱{Number(item.unitPrice).toFixed(2)}
-                      </p>
-                      {item.addOns.length > 0 && (
-                        <div className="mt-2 space-y-1">
-                          <p className="text-xs text-gray-500">Add-ons:</p>
-                          {item.addOns.map((addon, i) => (
-                            <div
-                              key={i}
-                              className="flex justify-between text-xs bg-white border border-gray-200 rounded px-2 py-1"
-                            >
-                              <span>+ {addon.name} × {addon.quantity}</span>
-                              <span className="font-mono">₱{(addon.price * addon.quantity).toFixed(2)}</span>
-                            </div>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                  );
-                })}
+                   return (
+                     <div key={index} className="bg-gray-50 rounded-lg p-3">
+                       <div className="flex justify-between items-start mb-1">
+                         <p className="font-medium text-gray-900">{item.name}</p>
+                         <p className="font-semibold text-gray-900">₱{lineTotal.toFixed(2)}</p>
+                       </div>
+                       <p className="text-sm text-gray-600">
+                         {item.size} · Qty: {item.quantity} × ₱{Number(item.unitPrice).toFixed(2)}
+                       </p>
+                        {Array.isArray(item.ingredients) && item.ingredients.length > 0 ? (
+                          <p className="text-sm text-gray-600">
+                            Ingredients: {item.ingredients.join(', ')}
+                          </p>
+                        ) : (
+                          <p className="text-sm text-gray-600">
+                            Ingredients: none
+                          </p>
+                        )}
+                       {item.addOns.length > 0 && (
+                         <div className="mt-2 space-y-1">
+                           <p className="text-xs text-gray-500">Add-ons:</p>
+                           {item.addOns.map((addon, i) => (
+                             <div
+                               key={i}
+                               className="flex justify-between text-xs bg-white border border-gray-200 rounded px-2 py-1"
+                             >
+                               <span>+ {addon.name} × {addon.quantity}</span>
+                               <span className="font-mono">₱{(addon.price * addon.quantity).toFixed(2)}</span>
+                             </div>
+                           ))}
+                         </div>
+                       )}
+                     </div>
+                   );
+                 })}
               </div>
             </div>
 

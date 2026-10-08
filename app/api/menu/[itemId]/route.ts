@@ -15,63 +15,71 @@ export async function GET(
     return NextResponse.json({ error: "Invalid itemId" }, { status: 400 });
   }
 
-  try {
-    const result = await pool.query(
-      `
-      SELECT
-        mi.id AS item_id,
-        mi.name AS item_name,
-        mi.image_url AS item_img,
-        mi.is_available AS is_available,
-        c.name AS category,
-        s.id AS size_id,
-        s.label AS size,
-        s.oz AS oz,
-        s.temperature AS temperature,
-         mis.price AS price,
+   try {
+     const result = await pool.query(
+       `
+       SELECT
+         mi.id AS item_id,
+         mi.name AS item_name,
+         mi.image_url AS item_img,
+         mi.is_available AS is_available,
+         c.name AS category,
+         s.id AS size_id,
+         s.label AS size,
+         s.oz AS oz,
+         s.temperature AS temperature,
+          mis.price AS price,
 
-         -- Same low-stock rule as /api/menu: one recipe ingredient at or below
-        -- its restock threshold is enough
-        EXISTS (
-          SELECT 1
-          FROM recipes r
-          JOIN ingredients ing ON ing.id = r.ingredient_id
-          WHERE r.menu_item_id = mi.id
-            AND ing.stock_qty <= ing.restock_threshold
-        ) AS is_low_stock
-      FROM menu_items AS mi
-      JOIN categories AS c ON mi.category_id = c.id
-      JOIN menu_item_sizes AS mis ON mi.id = mis.menu_item_id
-      JOIN sizes AS s ON mis.size_id = s.id
-      WHERE mi.id = $1 AND mi.is_available = TRUE
-      ORDER BY s.id;
-      `,
-      [id]
-    );
+          -- Same low-stock rule as /api/menu: one recipe ingredient at or below
+         -- its restock threshold is enough
+         EXISTS (
+           SELECT 1
+           FROM recipes r
+           JOIN ingredients ing ON ing.id = r.ingredient_id
+           WHERE r.menu_item_id = mi.id
+             AND ing.stock_qty <= ing.restock_threshold
+         ) AS is_low_stock,
+          -- Get ingredient names for this menu item
+          COALESCE(
+            json_agg(ing.name) FILTER (WHERE ing.id IS NOT NULL),
+            '[]'::json
+          ) AS ingredients
+       FROM menu_items AS mi
+       JOIN categories AS c ON mi.category_id = c.id
+       JOIN menu_item_sizes AS mis ON mi.id = mis.menu_item_id
+       JOIN sizes AS s ON mis.size_id = s.id
+       LEFT JOIN recipes r ON r.menu_item_id = mi.id
+       LEFT JOIN ingredients ing ON ing.id = r.ingredient_id
+       WHERE mi.id = $1 AND mi.is_available = TRUE
+       GROUP BY mi.id, mi.name, mi.image_url, mi.is_available, c.name, s.id, s.label, s.oz, s.temperature, mis.price
+       ORDER BY s.id;
+       `,
+       [id]
+     );
 
     if (result.rows.length === 0) {
       return NextResponse.json({ error: "Item not found" }, { status: 404 });
     }
 
-    const rows: MenuRow[] = result.rows;
-    const first = rows[0];
+     const rows: MenuRow[] = result.rows;
+     const first = rows[0];
 
-    const item: MenuItem = {
-      itemId: first.item_id,
-      itemName: first.item_name,
-      itemImg: first.item_img,
-      category: first.category,
-      isAvailable: first.is_available,
-      isLowStock: first.is_low_stock,
-      ingredients: [],
-      sizes: rows.map((row) => ({
-        sizeId: row.size_id,
-        size: row.size,
-        oz: row.oz === null ? null : Number(row.oz),
-        temperature: row.temperature,
-        price: Number(row.price),
-      })),
-    };
+     const item: MenuItem = {
+       itemId: first.item_id,
+       itemName: first.item_name,
+       itemImg: first.item_img,
+       category: first.category,
+       isAvailable: first.is_available,
+       isLowStock: first.is_low_stock,
+       ingredients: first.ingredients ?? [],
+       sizes: rows.map((row) => ({
+         sizeId: row.size_id,
+         size: row.size,
+         oz: row.oz === null ? null : Number(row.oz),
+         temperature: row.temperature,
+         price: Number(row.price),
+       })),
+     };
 
     return NextResponse.json(item);
   } catch (error) {
