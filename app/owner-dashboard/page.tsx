@@ -118,7 +118,7 @@ export default function OwnerDashboard() {
    }));
 
   return (
-    <section className="min-h-screen bg-cream">
+    <section className="min-h-screen bg-card-cream">
       <OwnerHeader title="DASHBOARD" />
       <StatsCard />
 
@@ -145,7 +145,7 @@ export default function OwnerDashboard() {
       {/* Charts Grid */}
       <div className="px-4 space-y-6 pb-10">
         {/* Revenue by Category - Bar Chart */}
-        <div className="bg-white rounded-lg p-4 shadow">
+        <div className="bg-cream rounded-lg p-4 shadow">
           <h3 className="text-lg font-semibold text-gray-900 mb-4">Revenue by Category</h3>
           <div className="h-64">
             <ResponsiveContainer width="100%" height="100%">
