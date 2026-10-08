@@ -184,19 +184,19 @@ export async function GET(request: Request) {
         [from, to]
       ),
 
-      // 6. Summary totals
-      pool.query(
-        `
-        SELECT COUNT(*) AS total_orders,
-               COALESCE(SUM(total), 0) AS total_revenue,
-               COALESCE(AVG(total), 0) AS avg_order_value,
-               COUNT(*) FILTER (WHERE status = 'completed') AS completed_orders
-        FROM orders
-        WHERE ($1::date IS NULL OR order_date >= $1::date)
-          AND ($2::date IS NULL OR order_date <= $2::date)
-        `,
-        [from, to]
-      ),
+       // 6. Summary totals
+       pool.query(
+         `
+         SELECT COUNT(*) AS total_orders,
+                COALESCE(SUM(o.total), 0) AS total_revenue,
+                COALESCE(AVG(o.total), 0) AS avg_order_value,
+                COUNT(*) FILTER (WHERE o.status = 'completed') AS completed_orders
+         FROM orders o
+         WHERE ($1::date IS NULL OR o.order_date >= $1::date)
+           AND ($2::date IS NULL OR o.order_date <= $2::date)
+         `,
+         [from, to]
+       ),
 
       // 7. Daily breakdown for trend chart
       pool.query(
@@ -212,6 +212,39 @@ export async function GET(request: Request) {
         `,
         [from, to]
       ),
+
+      // 8. Top 5 best selling menu items (by quantity)
+      pool.query(
+        `
+        SELECT mi.name AS item_name, SUM(oi.quantity) AS total_quantity
+        FROM order_items oi
+        JOIN menu_items mi ON mi.id = oi.menu_item_id
+        JOIN orders o ON o.id = oi.order_id
+        WHERE ($1::date IS NULL OR o.order_date >= $1::date)
+          AND ($2::date IS NULL OR o.order_date <= $2::date)
+        GROUP BY mi.name
+        ORDER BY total_quantity DESC
+        LIMIT 5
+        `,
+        [from, to]
+      ),
+
+      // 9. Top 5 most chosen add-ons (by quantity)
+      pool.query(
+        `
+        SELECT a.name AS addon_name, SUM(oia.quantity) AS total_quantity
+        FROM order_item_addons oia
+        JOIN add_ons a ON a.id = oia.add_on_id
+        JOIN order_items oi ON oi.id = oia.order_item_id
+        JOIN orders o ON o.id = oi.order_id
+        WHERE ($1::date IS NULL OR o.order_date >= $1::date)
+          AND ($2::date IS NULL OR o.order_date <= $2::date)
+        GROUP BY a.name
+        ORDER BY total_quantity DESC
+        LIMIT 5
+        `,
+        [from, to]
+      ),
     ]);
 
     const [
@@ -222,6 +255,8 @@ export async function GET(request: Request) {
       staffPerf,
       summary,
       dailyTrend,
+      bestSellingItems,
+      topAddons,
     ] = results;
 
     return NextResponse.json({
@@ -233,6 +268,8 @@ export async function GET(request: Request) {
       addonAttachmentRate: Number(addonRate.rows[0]?.attachment_rate_percent ?? 0),
       staffPerformance: staffPerf.rows,
       dailyTrend: dailyTrend.rows,
+      bestSellingItems: bestSellingItems.rows,
+      topAddons: topAddons.rows,
     });
   } catch (error) {
     console.error("Analytics query failed:", error);

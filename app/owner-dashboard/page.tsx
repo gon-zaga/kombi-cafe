@@ -81,15 +81,15 @@ export default function OwnerDashboard() {
     );
   }
 
-  const { summary, revenueByCategory, revenueByHour, avgItemsPerOrder, addonAttachmentRate, staffPerformance, dailyTrend } = analyticsData || {
-    summary: { total_orders: 0, total_revenue: 0, avg_order_value: 0, completed_orders: 0 },
-    revenueByCategory: [],
-    revenueByHour: [],
-    avgItemsPerOrder: 0,
-    addonAttachmentRate: 0,
-    staffPerformance: [],
-    dailyTrend: [],
-  };
+   const { summary, revenueByCategory, revenueByHour, avgItemsPerOrder, addonAttachmentRate, staffPerformance, dailyTrend } = analyticsData || {
+     summary: { total_orders: 0, total_revenue: 0, avg_order_value: 0, completed_orders: 0 },
+     revenueByCategory: [],
+     revenueByHour: [],
+     avgItemsPerOrder: 0,
+     addonAttachmentRate: 0,
+     staffPerformance: [],
+     dailyTrend: [],
+   };
 
   const categoryData = revenueByCategory.map((item, i) => ({
     name: item.category,
@@ -110,12 +110,12 @@ export default function OwnerDashboard() {
     orders: Number(d.orders),
   }));
 
-  const staffData = staffPerformance.map((s) => ({
-    name: `${s.first_name || s.username}`,
-    orders: Number(s.orders_completed),
-    revenue: Number(s.total_revenue),
-    avgOrder: Number(s.avg_order_value),
-  }));
+   const staffData = staffPerformance.map((s) => ({
+     name: `${s.first_name || s.username}`,
+     orders: Number(s.orders_completed),
+     revenue: Number(s.total_revenue),
+     avgOrder: Number(s.avg_order_value),
+   }));
 
   return (
     <section className="min-h-screen bg-cream">
@@ -225,36 +225,36 @@ export default function OwnerDashboard() {
           </div>
         )}
 
-        {/* Staff Performance Table */}
-        {staffPerformance.length > 0 && (
-          <div className="bg-white rounded-lg p-4 shadow">
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">Staff Performance</h3>
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b border-gray-200 text-left text-gray-500">
-                    <th className="pb-2 pr-4">Staff</th>
-                    <th className="pb-2 pr-4 text-right">Orders</th>
-                    <th className="pb-2 pr-4 text-right">Revenue</th>
-                    <th className="pb-2 pr-4 text-right">Avg Order</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {staffData.map((s, i) => (
-                    <tr key={i} className="border-b border-gray-100 hover:bg-gray-50">
-                      <td className="py-2 pr-4 font-medium text-gray-900">{s.name}</td>
-                      <td className="py-2 pr-4 text-right text-gray-700">{s.orders}</td>
-                      <td className="py-2 pr-4 text-right text-gray-700">₱{s.revenue.toFixed(2)}</td>
-                      <td className="py-2 pr-4 text-right text-gray-700">₱{s.avgOrder.toFixed(2)}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        )}
+         {/* Staff Performance Table */}
+         {staffPerformance.length > 0 && (
+           <div className="bg-white rounded-lg p-4 shadow">
+             <h3 className="text-lg font-semibold text-gray-900 mb-4">Staff Performance</h3>
+             <div className="overflow-x-auto">
+               <table className="w-full text-sm">
+                 <thead>
+                   <tr className="border-b border-gray-200 text-left text-gray-500">
+                     <th className="pb-2 pr-4">Staff</th>
+                     <th className="pb-2 pr-4 text-right">Orders</th>
+                     <th className="pb-2 pr-4 text-right">Revenue</th>
+                     <th className="pb-2 pr-4 text-right">Avg Order</th>
+                   </tr>
+                 </thead>
+                 <tbody>
+                   {staffData.map((s, i) => (
+                     <tr key={i} className="border-b border-gray-100 hover:bg-gray-50">
+                       <td className="py-2 pr-4 font-medium text-gray-900">{s.name}</td>
+                       <td className="py-2 pr-4 text-right text-gray-700">{s.orders}</td>
+                       <td className="py-2 pr-4 text-right text-gray-700">₱{s.revenue.toFixed(2)}</td>
+                       <td className="py-2 pr-4 text-right text-gray-700">₱{s.avgOrder.toFixed(2)}</td>
+                     </tr>
+                   ))}
+                 </tbody>
+               </table>
+             </div>
+           </div>
+         )}
 
-        {/* Category Breakdown Table */}
+         {/* Category Breakdown Table */}
         {categoryData.length > 0 && (
           <div className="bg-white rounded-lg p-4 shadow">
             <h3 className="text-lg font-semibold text-gray-900 mb-4">Category Breakdown</h3>
@@ -269,17 +269,17 @@ export default function OwnerDashboard() {
                   </tr>
                 </thead>
                 <tbody>
-                  {categoryData.map((c, i) => (
-                    <tr key={i} className="border-b border-gray-100 hover:bg-gray-50">
-                      <td className="py-2 pr-4 font-medium text-gray-900 flex items-center gap-2">
-                        <span className="w-3 h-3 rounded" style={{ background: c.fill }} />
-                        {c.name}
-                      </td>
-                      <td className="py-2 pr-4 text-right text-gray-700">₱{c.revenue.toFixed(2)}</td>
-                      <td className="py-2 pr-4 text-right text-gray-700">{c.orders}</td>
-                      <td className="py-2 pr-4 text-right text-gray-700">₱{c.orders > 0 ? (c.revenue / c.orders).toFixed(2) : "0.00"}</td>
-                    </tr>
-                  ))}
+                   {categoryData.map((c, i) => (
+                     <tr key={i} className="border-b border-gray-100 hover:bg-gray-50">
+                       <td className="py-2 pr-4 font-medium text-gray-900 flex items-center gap-2">
+                         <span className="w-3 h-3 rounded" style={{ background: c.fill }} />
+                         {c.name}
+                       </td>
+                       <td className="py-2 pr-4 text-right text-gray-700">₱{c.revenue.toFixed(2)}</td>
+                       <td className="py-2 pr-4 text-right text-gray-700">{c.orders}</td>
+                       <td className="py-2 pr-4 text-right text-gray-700">₱{c.orders > 0 ? (c.revenue / c.orders).toFixed(2) : "0.00"}</td>
+                     </tr>
+                   ))}
                 </tbody>
               </table>
             </div>

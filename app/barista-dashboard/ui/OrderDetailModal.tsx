@@ -24,8 +24,11 @@ function OrderDetailModal({ order, onClose, onUpdateStatus }: OrderDetailModalPr
   // in-app confirm first, using the shared ConfirmModal so no native dialog is
   // used. delayMs is 0 because a revert is itself reversible (mark ready again)
   // and baristas do it often; the 3s lock is for irreversible deletes.
-   const [confirmingRevert, setConfirmingRevert] = useState(false);
-   const [deletingOrder, setDeletingOrder] = useState<OrderSummary | null>(null);
+    const [confirmingRevert, setConfirmingRevert] = useState(false);
+    const [confirmingPreparing, setConfirmingPreparing] = useState(false);
+    const [confirmingReady, setConfirmingReady] = useState(false);
+    const [confirmingCompleted, setConfirmingCompleted] = useState(false);
+    const [deletingOrder, setDeletingOrder] = useState<OrderSummary | null>(null);
 
   // Whether the barista has computed the change for this order.
   // 'preparing' is blocked until this is true, so the transaction
@@ -40,13 +43,26 @@ function OrderDetailModal({ order, onClose, onUpdateStatus }: OrderDetailModalPr
   const changeComputed =
     order !== null && changeState?.orderId === order.id && changeState.computed;
 
-  const handleComputedChange = useCallback((computed) => {
-    if (order) {
-      setChangeState({ orderId: order.id, computed });
-    }
-  }, [order?.id]);
+   const handleComputedChange = useCallback((computed) => {
+     if (order) {
+       setChangeState({ orderId: order.id, computed });
+     }
+   }, [order?.id]);
 
-  if (!order) return null;
+   const handleConfirmPreparing = () => {
+     handleUpdateStatus('preparing');
+     setConfirmingPreparing(false);
+   };
+   const handleConfirmReady = () => {
+     handleUpdateStatus('ready');
+     setConfirmingReady(false);
+   };
+   const handleConfirmCompleted = () => {
+     handleUpdateStatus('completed');
+     setConfirmingCompleted(false);
+   };
+
+   if (!order) return null;
 
   // 'ready' and 'completed' both end the order's turn, so the parent
   // auto-advances to the next order. 'preparing' keeps this card open on
@@ -232,7 +248,7 @@ function OrderDetailModal({ order, onClose, onUpdateStatus }: OrderDetailModalPr
                {order.status === 'pending' && (
                  <>
                    <button
-                     onClick={() => handleUpdateStatus('preparing')}
+                      onClick={() => setConfirmingPreparing(true)}
                      disabled={!canStartPreparing}
                      title={canStartPreparing ? undefined : "Compute the customer's change first"}
                      className={`w-full text-sm font-medium rounded-lg py-3 transition-transform active:scale-95 ${canStartPreparing ? "bg-blue-50 border border-blue-200 text-blue-800 hover:bg-blue-100" : "bg-gray-100 border border-gray-200 text-gray-400 cursor-not-allowed"}`}
@@ -252,7 +268,7 @@ function OrderDetailModal({ order, onClose, onUpdateStatus }: OrderDetailModalPr
 
               {order.status === 'preparing' && (
                 <button
-                  onClick={() => handleUpdateStatus('ready')}
+                   onClick={() => setConfirmingReady(true)}
                   className="w-full text-sm font-medium bg-green-50 border border-green-200 text-green-800 rounded-lg py-3 hover:bg-green-100 active:scale-95 transition-transform"
                 >
                   Mark as Ready
@@ -264,7 +280,7 @@ function OrderDetailModal({ order, onClose, onUpdateStatus }: OrderDetailModalPr
                   prominent button and sits above the revert. */}
               {order.status === 'ready' && (
                 <button
-                  onClick={() => handleUpdateStatus('completed')}
+                   onClick={() => setConfirmingCompleted(true)}
                   className="w-full text-sm font-medium bg-green-600 text-white rounded-lg py-3 hover:bg-green-700 active:scale-95 transition-transform"
                 >
                   Mark as Completed
@@ -299,19 +315,49 @@ function OrderDetailModal({ order, onClose, onUpdateStatus }: OrderDetailModalPr
          message={`Order #${order.orderReference} will go back to Preparing and be counted in the queue again.`}
          confirmLabel="Yes, Move It Back"
          tone="primary"
-         delayMs={0}
+          delayMs={2000}
          onCancel={() => setConfirmingRevert(false)}
          onConfirm={handleRevert}
        />
-       <ConfirmModal
-         isOpen={deletingOrder !== null}
-         title="Delete order?"
-         message={deletingOrder ? `"${deletingOrder.orderReference}" will be deleted permanently.` : ""}
-         confirmLabel="Delete"
-         tone="danger"
-         onCancel={() => setDeletingOrder(null)}
-         onConfirm={handleDeleteOrder}
-       />
+        <ConfirmModal
+          isOpen={deletingOrder !== null}
+          title="Delete order?"
+          message={deletingOrder ? `"${deletingOrder.orderReference}" will be deleted permanently.` : ""}
+          confirmLabel="Delete"
+          tone="danger"
+          onCancel={() => setDeletingOrder(null)}
+          onConfirm={handleDeleteOrder}
+        />
+        <ConfirmModal
+          isOpen={confirmingPreparing}
+          title="Mark as Preparing?"
+          message={`Order #${order.orderReference} will be marked as Preparing.`}
+          confirmLabel="Yes, Mark Preparing"
+          tone="primary"
+          delayMs={2000}
+          onCancel={() => setConfirmingPreparing(false)}
+          onConfirm={handleConfirmPreparing}
+        />
+        <ConfirmModal
+          isOpen={confirmingReady}
+          title="Mark as Ready?"
+          message={`Order #${order.orderReference} will be marked as Ready.`}
+          confirmLabel="Yes, Mark Ready"
+          tone="primary"
+          delayMs={2000}
+          onCancel={() => setConfirmingReady(false)}
+          onConfirm={handleConfirmReady}
+        />
+        <ConfirmModal
+          isOpen={confirmingCompleted}
+          title="Mark as Completed?"
+          message={`Order #${order.orderReference} will be marked as Completed.`}
+          confirmLabel="Yes, Mark Completed"
+          tone="primary"
+          delayMs={2000}
+          onCancel={() => setConfirmingCompleted(false)}
+          onConfirm={handleConfirmCompleted}
+        />
     </div>
   );
 }
