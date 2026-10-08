@@ -193,7 +193,7 @@ export default function SalesReport() {
   ];
 
   return (
-    <section className="min-h-screen bg-gray-50">
+    <section className="min-h-screen bg-cream">
       <OwnerHeader title="SALES REPORT" />
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
@@ -346,53 +346,53 @@ export default function SalesReport() {
              </div>
 
              {/* Orders List */}
-             <div className="bg-gray-50 rounded-xl shadow-sm border border-gray-100">
+             <div className="bg-white rounded-xl shadow-sm border border-gray-100">
                <div className="px-6 py-4 border-b border-gray-100">
                  <h3 className="text-base font-semibold text-gray-900">Completed Orders</h3>
                </div>
                <div className="p-6">
                  {orders.length > 0 ? (
                    <div className="space-y-4">
-                     {orders.map((order) => (
-                       <div key={order.id} className="border-b border-gray-100 pb-4 last:border-b-0 last:pb-0">
-                         <div className="flex items-start justify-between">
-                           <div className="flex-1 min-w-0">
-                             <p className="font-medium text-gray-900">Order #{order.orderReference}</p>
-                             <p className="text-sm text-gray-500">
-                               {new Date(order.createdAt).toLocaleString('en-PH', { 
-                                 hour: 'numeric', 
-                                 minute: '2-digit',
-                                 hour12: true 
-                               })} • {order.items.length} item{(order.items.length !== 1) ? 's' : ''}
-                             </p>
-                             {order.items.map((item, index) => (
-                               <div key={`${order.id}-item-${index}`} className="mt-1 text-sm text-gray-700 pl-2">
-                                 • {item.quantity}x {item.name}{item.size ? ` (${item.size})` : ''}
-                                 {item.addOns.length > 0 && (
-                                   <span className="text-xs text-gray-500 ml-1">
-                                     (+{item.addOns.reduce((sum, addon) => sum + addon.quantity, 0)} add-on{(item.addOns.reduce((sum, addon) => sum + addon.quantity, 0) !== 1) ? 's' : ''})
-                                   </span>
-                                 )}
-                               </div>
-                             ))}
-                           </div>
-                           <div className="text-right ml-4">
-                             <p className="font-bold text-gray-900">{formatCurrency(order.total)}</p>
-                             <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${
-                               order.status === 'completed' 
-                                 ? 'bg-green-100 text-green-800' 
-                                 : order.status === 'ready' 
-                                   ? 'bg-yellow-100 text-yellow-800' 
-                                   : order.status === 'preparing' 
-                                     ? 'bg-blue-100 text-blue-800' 
-                                     : 'bg-gray-100 text-gray-800'
-                             }`}>
-                               {order.status.charAt(0).toUpperCase() + order.status.slice(1)}
-                             </span>
-                           </div>
-                         </div>
-                       </div>
-                     ))}
+                      {orders.map((order) => (
+                        <div key={order.id} className="border border-brown-800 rounded-lg p-4 mb-4 last:mb-0">
+                          <div className="flex items-start justify-between">
+                            <div className="flex-1 min-w-0">
+                              <p className="font-medium text-gray-900">Order #{order.orderReference}</p>
+                              <p className="text-sm text-gray-500">
+                                {new Date(order.createdAt).toLocaleString('en-PH', { 
+                                  hour: 'numeric', 
+                                  minute: '2-digit',
+                                  hour12: true 
+                                })} • {order.items.length} item{(order.items.length !== 1) ? 's' : ''}
+                              </p>
+                              {order.items.map((item, index) => (
+                                <div key={`${order.id}-item-${index}`} className="mt-1 text-sm text-gray-700 pl-2">
+                                  • {item.quantity}x {item.name}{item.size ? ` (${item.size})` : ''}
+                                  {item.addOns.length > 0 && (
+                                    <span className="text-xs text-gray-500 ml-1">
+                                      (+{item.addOns.reduce((sum, addon) => sum + addon.quantity, 0)} add-on{(item.addOns.reduce((sum, addon) => sum + addon.quantity, 0) !== 1) ? 's' : ''})
+                                    </span>
+                                  )}
+                                </div>
+                              ))}
+                            </div>
+                            <div className="text-right ml-4">
+                              <p className="font-bold text-gray-900">{formatCurrency(order.total)}</p>
+                              <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${
+                                order.status === 'completed' 
+                                  ? 'bg-green-100 text-green-800' 
+                                  : order.status === 'ready' 
+                                    ? 'bg-yellow-100 text-yellow-800' 
+                                    : order.status === 'preparing' 
+                                      ? 'bg-blue-100 text-blue-800' 
+                                      : 'bg-gray-100 text-gray-800'
+                              }`}>
+                                {order.status.charAt(0).toUpperCase() + order.status.slice(1)}
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
                    </div>
                  ) : (
                    <div className="flex flex-col items-center justify-center py-8 text-center">
