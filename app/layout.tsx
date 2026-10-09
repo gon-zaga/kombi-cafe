@@ -8,6 +8,8 @@ import {
 } from "next/font/google";
 import "./globals.css";
 import { AuthProvider } from "@/app/lib/auth/AuthContext";
+import StoreGate from "@/app/ui/StoreGate";
+import StoreStatusRedirectClient from "@/app/ui/StoreStatusRedirectClient";
 
 const roboto = Roboto({
   variable: "--font-roboto",
@@ -52,7 +54,8 @@ export const metadata: Metadata = {
 export const viewport = {
   width: 'device-width',
   initialScale: 1,
-}
+};
+
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -72,7 +75,10 @@ export default function RootLayout({
       ].join(" ")}
     >
       <body className="min-h-full flex flex-col">
-        <AuthProvider>{children}</AuthProvider>
+        <AuthProvider>
+          <StoreStatusRedirectClient />
+          <StoreGate>{children}</StoreGate>
+        </AuthProvider>
       </body>
     </html>
   );
