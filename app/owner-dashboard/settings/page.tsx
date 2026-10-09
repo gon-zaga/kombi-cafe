@@ -1,51 +1,40 @@
 'use client'
 
+// Owner settings: set opening/closing time; outside these hours customers see STORE CLOSED
 import { useEffect, useState } from "react";
 import OwnerHeader from "../ui/OwnerHeader";
-import { useRouter } from "next/navigation";
 
-// Helper function to convert 24-hour format to 12-hour format
-const convertTo12HourFormat = (time24: string) => {
-  const [hoursStr, minutesStr] = time24.split(':');
-  let hours = parseInt(hoursStr, 10);
-  const minutes = parseInt(minutesStr, 10);
-  const ampm = hours >= 12 ? 'PM' : 'AM';
-  hours = hours % 12;
-  hours = hours ? hours : 12; // the hour "0" should be "12"
-  return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')} ${ampm}`;
+const to12h = (time24: string) => {
+  const [h, m] = time24.split(':').map((n) => parseInt(n, 10));
+  const hours = h % 12 || 12;
+  return `${String(hours).padStart(2, '0')}:${String(m).padStart(2, '0')} ${h >= 12 ? 'PM' : 'AM'}`;
 };
 
 export default function SettingsPage() {
   const [openingTime, setOpeningTime] = useState("");
   const [closingTime, setClosingTime] = useState("");
   const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState(false);
-  const router = useRouter();
 
   useEffect(() => {
+    async function loadSettings() {
+      try {
+        const response = await fetch('/api/settings');
+        if (!response.ok) throw new Error(`Failed to load settings: ${response.status}`);
+        const data = await response.json();
+        setOpeningTime(data.opening_time ? data.opening_time.substring(0, 5) : "08:00");
+        setClosingTime(data.closing_time ? data.closing_time.substring(0, 5) : "20:00");
+      } catch (err) {
+        console.error("Failed to load settings:", err);
+        setError("Could not load settings");
+      } finally {
+        setLoading(false);
+      }
+    }
     loadSettings();
   }, []);
-
-  const loadSettings = async () => {
-    try {
-      const response = await fetch(`/api/settings`);
-      if (!response.ok) {
-        throw new Error(`Failed to load settings: ${response.status}`);
-      }
-      const data = await response.json();
-      // Extract HH:MM from HH:MM:SS format
-      const openingTimeValue = data.opening_time ? data.opening_time.substring(0, 5) : "08:00";
-      const closingTimeValue = data.closing_time ? data.closing_time.substring(0, 5) : "20:00";
-      setOpeningTime(openingTimeValue);
-      setClosingTime(closingTimeValue);
-    } catch (err) {
-      console.error("Failed to load settings:", err);
-      setError("Could not load settings");
-    } finally {
-      setLoading(false);
-    }
-  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -56,29 +45,28 @@ export default function SettingsPage() {
       setError("Both opening and closing times are required");
       return;
     }
+    if (openingTime === closingTime) {
+      setError("Opening and closing time can't be the same");
+      return;
+    }
 
+    setSaving(true);
     try {
-      const response = await fetch(`/api/settings`, {
+      const response = await fetch('/api/settings', {
         method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ opening_time: openingTime, closing_time: closingTime }),
       });
-
-      if (!response.ok) {
-        throw new Error(`Failed to save settings: ${response.status}`);
-      }
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(data.error || "Could not save settings");
 
       setSuccess(true);
-      setError("");
-      // Reset success state after 3 seconds
-      setTimeout(() => {
-        setSuccess(false);
-      }, 3000);
+      setTimeout(() => setSuccess(false), 3000);
     } catch (err) {
       console.error("Failed to save settings:", err);
-      setError("Could not save settings");
+      setError(err instanceof Error ? err.message : "Could not save settings");
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -93,67 +81,67 @@ export default function SettingsPage() {
   return (
     <section className="min-h-screen bg-card-cream">
       <OwnerHeader title="SETTINGS" />
-      
+
       <div className="px-4 py-8">
         {error && (
           <div className="mb-4 bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg">
             {error}
           </div>
         )}
-        
         {success && (
           <div className="mb-4 bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded-lg">
             Settings saved successfully!
           </div>
         )}
-        
+
         <form onSubmit={handleSubmit} className="bg-white rounded-lg p-6 shadow">
           <div className="space-y-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                Opening Time (24-hour format)
+                Opening Time
               </label>
               <input
                 type="time"
                 value={openingTime}
                 onChange={(e) => setOpeningTime(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus-ring-amber-500 focus:border-amber-500"
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-amber-500"
                 required
               />
             </div>
-            
+
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                Closing Time (24-hour format)
+                Closing Time
               </label>
               <input
                 type="time"
                 value={closingTime}
                 onChange={(e) => setClosingTime(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus-ring-amber-500 focus:border-amber-500"
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-amber-500"
                 required
               />
             </div>
-            
+
             <button
               type="submit"
-              className="w-full bg-amber-600 text-white px-4 py-2 rounded-md hover:bg-amber-700 transition-colors font-medium"
-              disabled={loading}
+              disabled={saving}
+              className="w-full bg-amber-600 text-white px-4 py-2 rounded-md hover:bg-amber-700 transition-colors font-medium disabled:opacity-50"
             >
-              {loading ? "Saving..." : "Save Settings"}
+              {saving ? "Saving..." : "Save Settings"}
             </button>
           </div>
         </form>
-        
-         <div className="mt-6 text-sm text-gray-500">
-           <p>When the store is closed:</p>
-           <ul className="list-disc list-inside mt-2">
-             <li>Customers will see a "STORE CLOSED" page instead of the table selection</li>
-             <li>No orders can be placed through the API</li>
-             <li>Opening time: {openingTime ? convertTo12HourFormat(openingTime) : "Not set"}</li>
-             <li>Closing time: {closingTime ? convertTo12HourFormat(closingTime) : "Not set"}</li>
-           </ul>
-         </div>
+
+        <div className="mt-6 text-sm text-gray-500">
+          <p>When the store is closed:</p>
+          <ul className="list-disc list-inside mt-2">
+            <li>Customers will see a &quot;STORE CLOSED&quot; page instead of the menu</li>
+            <li>No orders can be placed through the API</li>
+            <li>Staff and owner pages stay accessible</li>
+            <li>Opening time: {openingTime ? to12h(openingTime) : "Not set"}</li>
+            <li>Closing time: {closingTime ? to12h(closingTime) : "Not set"}</li>
+          </ul>
+        </div>
       </div>
     </section>
   );

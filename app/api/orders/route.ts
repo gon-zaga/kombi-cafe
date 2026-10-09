@@ -1,79 +1,13 @@
-// Handles order submission: creates an order + its items/add-ons from a client-submitted cart,
-// with prices re-looked-up server-side (never trusted from the client) and the whole
-// insert sequence run as one transaction so a failure partway rolls everything back
+
+/* Handles order submission: creates an order + its items/add-ons from a client-submitted cart,
+   with prices re-looked-up server-side (never trusted from the client) and the whole
+   insert sequence run as one transaction so a failure partway rolls everything back. */
+
 import { NextResponse } from "next/server";
 import pool from "@/app/lib/db";
 import type { PoolClient } from "pg";
 import type { OrderSummary } from "@/app/lib/types";
-
-// Check if store is currently open
-async function isStoreOpen(): Promise<boolean> {
-  try {
-    const result = await pool.query(
-      "SELECT opening_time, closing_time FROM store_settings ORDER BY id DESC LIMIT 1"
-    );
-    
-    if (result.rows.length === 0) {
-      // Default to 8:00-20:00 if no settings
-      return isWithinDefaultHours();
-    }
-    
-    const { opening_time, closing_time } = result.rows[0];
-    const now = new Date();
-    // Get current time in Manila (UTC+8)
-    const manilaTime = new Date(now.getTime() + (8 * 60 * 60 * 1000)); // Add 8 hours for Manila timezone
-    const manilaHours = manilaTime.getHours();
-    const manilaMinutes = manilaTime.getMinutes();
-    const currentManilaMinutes = manilaHours * 60 + manilaMinutes;
-
-    // Parse opening and closing times (format: HH:MM or HH:MM:SS)
-    const parseTime = (timeStr) => {
-      // Handle null or undefined
-      if (!timeStr) {
-        return 0; // Default to midnight
-      }
-      const parts = timeStr.split(':');
-      // Handle cases where the string doesn't have enough parts
-      const hours = parseInt(parts[0], 10) || 0;
-      const minutes = parseInt(parts[1], 10) || 0;
-      return hours * 60 + minutes;
-    };
-
-    const openingMinutes = parseTime(opening_time.toString());
-    const closingMinutes = parseTime(closing_time.toString());
-
-    // Check if store is open using modulo arithmetic to handle crossing midnight
-    const L = 24 * 60; // Minutes in a day
-    const openDuration = (closingMinutes - openingMinutes + L) % L; // Ensure positive
-    const isOpenNow = ((currentManilaMinutes - openingMinutes + L) % L) < openDuration;
-    
-    return isOpenNow;
-  } catch (error) {
-    console.error("Failed to check store hours:", error);
-    // Default to open if we can't check
-    return true;
-  }
-}
-
-// Helper function for default hours (8:00-20:00)
-function isWithinDefaultHours(): boolean {
-  const now = new Date();
-  // Get current time in Manila (UTC+8)
-  const manilaTime = new Date(now.getTime() + (8 * 60 * 60 * 1000)); // Add 8 hours for Manila timezone
-  const manilaHours = manilaTime.getHours();
-  const manilaMinutes = manilaTime.getMinutes();
-  const currentManilaMinutes = manilaHours * 60 + manilaMinutes;
-
-  const openingTotalMinutes = 8 * 60; // 8:00 AM
-  const closingTotalMinutes = 20 * 60; // 8:00 PM
-  
-  // Check if store is open using modulo arithmetic to handle crossing midnight
-  const L = 24 * 60; // Minutes in a day
-  const openDuration = (closingTotalMinutes - openingTotalMinutes + L) % L; // Ensure positive
-  const isOpenNow = ((currentManilaMinutes - openingTotalMinutes + L) % L) < openDuration;
-  
-  return isOpenNow;
-}
+import { getStoreStatus } from "@/app/lib/storeHours";
 
 interface PlaceOrderPayload {
   table_number: number;
@@ -83,15 +17,14 @@ interface PlaceOrderPayload {
     quantity: number;
     addOnIds: number[];
   }[];
-  // How the customer intends to pay. 'gcash' requires a reference number;
-  // the server rejects a GCash order without one. No payment is actually
-  // taken -- the staff handles the payment at the counter.
+  /* How the customer intends to pay. 'gcash' requires a reference number.
+     No payment is actually taken -- the staff handles payment at the counter. */
   payment_method?: 'counter' | 'gcash';
   gcash_reference?: string | null;
 }
 
-// Which recipe rows apply to a given item + size, and how much each costs.
-// No trailing semicolon: this string is also embedded as a subquery.
+/* Which recipe rows apply to a given item + size, and how much each costs.
+   No trailing semicolon: this string is also embedded as a subquery. */
 const recipeCostSql = `
   SELECT i.id, i.name, i.unit, i.stock_qty, i.restock_threshold,
          SUM(r.quantity_needed) * $3::numeric AS needed
@@ -108,9 +41,8 @@ const recipeCostSql = `
   GROUP BY i.id, i.name, i.unit, i.stock_qty, i.restock_threshold
 `;
 
-// Removes stock for one ordered item's recipe. Throws (which rolls the whole
-// transaction back) when an ingredient can't cover the order, rather than
-// letting stock go negative or silently clamping to zero.
+/* Removes stock for one ordered item's recipe. Throws (which rolls the whole
+   transaction back) when an ingredient can't cover the order. */
 async function deductRecipeStock(
   client: PoolClient,
   menuItemId: number,
@@ -123,15 +55,15 @@ async function deductRecipeStock(
     quantity,
   ]);
 
-  // No recipes on this item, so nothing to deduct
+  /* No recipes on this item, so nothing to deduct. */
   if (costResult.rows.length === 0) return;
 
-  // Check everything before changing anything, so a failure can't leave
-  // some ingredients deducted and others not
-  // An ingredient is insufficient if stock_qty - restock_threshold < needed
-  // (would dip below the restock threshold)
+  /* Check everything before changing anything, so a failure can't leave
+     some ingredients deducted and others not. */
   const short = costResult.rows.filter(
-    (row) => Number(row.stock_qty) - Number(row.restock_threshold) < Number(row.needed)
+    (row) =>
+      Number(row.stock_qty) - Number(row.restock_threshold) <
+      Number(row.needed)
   );
 
   if (short.length > 0) {
@@ -157,12 +89,8 @@ async function deductRecipeStock(
   );
 }
 
-// Today in Manila as "YYYY-MM-DD". The DB's CURRENT_DATE would be UTC, which
-// rolls over at 8 AM Manila time, so the app's day boundaries are computed here
-// from an explicit Manila date instead.
+/* Today in Manila as "YYYY-MM-DD". */
 function manilaToday(): string {
-  // formatToParts instead of relying on en-CA's date shape: the parts are read
-  // explicitly, so this can't silently change with the ICU data
   const parts = new Intl.DateTimeFormat("en-US", {
     timeZone: "Asia/Manila",
     year: "numeric",
@@ -170,29 +98,35 @@ function manilaToday(): string {
     day: "2-digit",
   }).formatToParts(new Date());
 
-  const get = (type: string) => parts.find((p) => p.type === type)?.value ?? "";
+  const get = (type: string) =>
+    parts.find((p) => p.type === type)?.value ?? "";
+
   return `${get("year")}-${get("month")}-${get("day")}`;
 }
 
-// Adds (or subtracts) whole days to a "YYYY-MM-DD" string. Done in UTC because
-// these are plain calendar dates with no time or zone attached.
+/* Adds (or subtracts) whole days to a "YYYY-MM-DD" string. */
 function addDays(isoDate: string, days: number): string {
   const d = new Date(`${isoDate}T00:00:00Z`);
   d.setUTCDate(d.getUTCDate() + days);
   return d.toISOString().slice(0, 10);
 }
 
-// True for a real "YYYY-MM-DD" calendar date that survives a round trip, which
-// rejects values like 2026-02-31 that Date.parse would otherwise roll over
+/* True for a real "YYYY-MM-DD" calendar date that survives a round trip. */
 function isValidIsoDate(value: string): boolean {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
+
   const d = new Date(`${value}T00:00:00Z`);
-  return !Number.isNaN(d.getTime()) && d.toISOString().slice(0, 10) === value;
+
+  return (
+    !Number.isNaN(d.getTime()) &&
+    d.toISOString().slice(0, 10) === value
+  );
 }
 
-// Named ranges, resolved to concrete Manila dates so the query is one simple
-// BETWEEN. null means unbounded on that side, which is what "all" needs.
-function resolveRange(range: string): { from: string | null; to: string | null } | null {
+/* Named ranges, resolved to concrete Manila dates. */
+function resolveRange(
+  range: string
+): { from: string | null; to: string | null } | null {
   const today = manilaToday();
   const yearStart = `${today.slice(0, 4)}-01-01`;
 
@@ -214,9 +148,9 @@ function resolveRange(range: string): { from: string | null; to: string | null }
   }
 }
 
-// Lists orders with their items and add-ons.
-// Supports ?range=today|yesterday|week|month|year|all, OR ?from=YYYY-MM-DD&to=YYYY-MM-DD
-// for an exact window, plus an optional ?status=.
+/* Lists orders with their items and add-ons.
+   Supports ?range=today|yesterday|week|month|year|all,
+   OR ?from=YYYY-MM-DD&to=YYYY-MM-DD, plus an optional ?status=. */
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const fromParam = searchParams.get("from");
@@ -226,7 +160,7 @@ export async function GET(request: Request) {
   let from: string | null = null;
   let to: string | null = null;
 
-  // An explicit window wins over ?range, but both dates must be present and sane
+  /* An explicit window wins over ?range, but both dates must be present and sane. */
   if (fromParam !== null || toParam !== null) {
     if (!fromParam || !toParam) {
       return NextResponse.json(
@@ -234,32 +168,46 @@ export async function GET(request: Request) {
         { status: 400 }
       );
     }
+
     if (!isValidIsoDate(fromParam) || !isValidIsoDate(toParam)) {
       return NextResponse.json(
         { error: "Dates must be in YYYY-MM-DD format" },
         { status: 400 }
       );
     }
+
     if (fromParam > toParam) {
       return NextResponse.json(
         { error: "'from' must be on or before 'to'" },
         { status: 400 }
       );
     }
+
     from = fromParam;
     to = toParam;
   } else {
     const range = searchParams.get("range") ?? "today";
     const resolved = resolveRange(range);
+
     if (!resolved) {
-      return NextResponse.json({ error: "Invalid range" }, { status: 400 });
+      return NextResponse.json(
+        { error: "Invalid range" },
+        { status: 400 }
+      );
     }
+
     from = resolved.from;
     to = resolved.to;
   }
 
-  if (status !== null && !["pending", "preparing", "ready", "completed"].includes(status)) {
-    return NextResponse.json({ error: "Invalid status" }, { status: 400 });
+  if (
+    status !== null &&
+    !["pending", "preparing", "ready", "completed"].includes(status)
+  ) {
+    return NextResponse.json(
+      { error: "Invalid status" },
+      { status: 400 }
+    );
   }
 
   try {
@@ -270,7 +218,6 @@ export async function GET(request: Request) {
         o.daily_number,
         o.status,
         o.table_number,
-        -- created_at is stored as UTC without a zone; tag it so JS reads the right moment
         (o.created_at AT TIME ZONE 'UTC') AS created_at,
         o.total,
         o.payment_method,
@@ -283,14 +230,16 @@ export async function GET(request: Request) {
               'quantity', oi.quantity,
               'unitPrice', oi.unit_price,
               'addOns', (
-                SELECT COALESCE(json_agg(
-                  json_build_object(
-                    'name', a.name,
-                    -- oia.price is the snapshot charged at order time
-                    'price', oia.price,
-                    'quantity', oia.quantity
-                  ) ORDER BY oia.id
-                ), '[]'::json)
+                SELECT COALESCE(
+                  json_agg(
+                    json_build_object(
+                      'name', a.name,
+                      'price', oia.price,
+                      'quantity', oia.quantity
+                    ) ORDER BY oia.id
+                  ),
+                  '[]'::json
+                )
                 FROM order_item_addons oia
                 JOIN add_ons a ON a.id = oia.add_on_id
                 WHERE oia.order_item_id = oi.id
@@ -327,43 +276,64 @@ export async function GET(request: Request) {
     return NextResponse.json(orders);
   } catch (error) {
     console.error("Failed to fetch orders:", error);
-    return NextResponse.json({ error: "Failed to fetch orders" }, { status: 500 });
+
+    return NextResponse.json(
+      { error: "Failed to fetch orders" },
+      { status: 500 }
+    );
   }
 }
 
 export async function POST(request: Request) {
-  // Check if store is open before processing order
-  const open = await isStoreOpen();
-  if (!open) {
+  /* Closed store: refuse before reading or touching anything. */
+  const { isOpen } = await getStoreStatus();
+
+  if (!isOpen) {
     return NextResponse.json(
-      { error: "Store is currently closed. Please come back during opening hours." },
-      { status: 403 } // Forbidden
+      {
+        error:
+          "Store is currently closed. Please come back during opening hours.",
+      },
+      { status: 403 }
     );
   }
 
   try {
     const body: PlaceOrderPayload = await request.json();
 
-    if (!body.items || body.items.length === 0) {
-      return NextResponse.json(
-        { error: "Order must contain at least one item" },
-        { status: 400 }
-      );
-    }
-
-    // The café has 7 tables (see app/table-select/page.tsx), so a valid
-    // table number is a whole number in that range
-    if (!Number.isInteger(body.table_number) || body.table_number < 1 || body.table_number > 7) {
+    /* The café has 7 tables, so a valid table number is a whole number in that range. */
+    if (
+      !Number.isInteger(body.table_number) ||
+      body.table_number < 1 ||
+      body.table_number > 7
+    ) {
       return NextResponse.json(
         { error: "A table number between 1 and 7 is required" },
         { status: 400 }
       );
     }
 
-    // Payment method is counter cash or GCash. A GCash order must carry a
-    // reference number the customer reads from their GCash app -- the
-    // staff still handles the actual payment at the counter, so nothing
-    // is charged here, but the reference is what they check against.
+    /* Validate items before processing or deducting any stock. */
+    const validItems = Array.isArray(body.items) &&
+      body.items.every(
+        (i) =>
+          Number.isInteger(i.itemId) &&
+          Number.isInteger(i.sizeId) &&
+          Number.isInteger(i.quantity) &&
+          i.quantity >= 1 &&
+          i.quantity <= 99 &&
+          Array.isArray(i.addOnIds)
+      );
+
+    if (!validItems) {
+      return NextResponse.json(
+        { error: "Invalid items in order" },
+        { status: 400 }
+      );
+    }
+
+    /* Payment method is counter cash or GCash. A GCash order must carry a
+       reference number. Staff handles the actual payment at the counter. */
     const paymentMethod = body.payment_method === 'gcash' ? 'gcash' : 'counter';
     const trimmed = (body.gcash_reference ?? '').trim();
     const gcashReference = paymentMethod === 'gcash' ? trimmed : null;
@@ -375,58 +345,73 @@ export async function POST(request: Request) {
       );
     }
 
-    // One client so BEGIN/COMMIT/ROLLBACK all run on the same connection
+    /* One client so BEGIN/COMMIT/ROLLBACK all run on the same connection. */
     const client = await pool.connect();
 
     try {
       await client.query('BEGIN');
 
-      // step 1: bump today's counter (or create it) and get this order's number
+      /* Step 1: bump today's counter (or create it) and get this order's number. */
       const dailyNumberResult = await client.query(`
         INSERT INTO daily_counters (order_date, last_number)
         VALUES ((NOW() AT TIME ZONE 'Asia/Manila')::date, 1)
         ON CONFLICT (order_date)
         DO UPDATE SET last_number = daily_counters.last_number + 1
         RETURNING last_number;
-        `);
+      `);
 
       const dailyNumber = dailyNumberResult.rows[0].last_number;
 
-      // step 2: insert the order with a placeholder total of 0
+      /* Step 2: insert the order with a placeholder total of 0. */
       const orderResult = await client.query(
         `
-          INSERT INTO orders (daily_number, order_date, total, status, table_number, payment_method, gcash_reference)
-          VALUES ($1, (NOW() AT TIME ZONE 'Asia/Manila')::date, 0, 'pending', $2, $3, $4)
-          RETURNING id;
-          `,
+        INSERT INTO orders (
+          daily_number,
+          order_date,
+          total,
+          status,
+          table_number,
+          payment_method,
+          gcash_reference
+        )
+        VALUES (
+          $1,
+          (NOW() AT TIME ZONE 'Asia/Manila')::date,
+          0,
+          'pending',
+          $2,
+          $3,
+          $4
+        )
+        RETURNING id;
+        `,
         [dailyNumber, body.table_number, paymentMethod, gcashReference]
       );
 
       const orderId = orderResult.rows[0].id;
-
       let runningTotal = 0;
 
-      // step 3 + 4: price each item and add-on server-side
+      /* Step 3 + 4: price each item and add-on server-side. */
       for (const item of body.items) {
-        // Availability is re-read here, inside the transaction, rather than
-        // trusted from the cart: the UI blocks unavailable items, but a cart can
-        // sit open while the owner switches something off, and the stale item id
-        // would otherwise still be accepted.
+        /* Availability is re-read inside the transaction rather than trusted
+           from the cart, which may have been open while an item was disabled. */
         const priceResult = await client.query(
-          `SELECT mis.price, mi.name, mi.is_available
-           FROM menu_item_sizes AS mis
-           JOIN menu_items AS mi ON mi.id = mis.menu_item_id
-           WHERE mis.menu_item_id = $1 AND mis.size_id = $2;`,
+          `
+          SELECT mis.price, mi.name, mi.is_available
+          FROM menu_item_sizes AS mis
+          JOIN menu_items AS mi ON mi.id = mis.menu_item_id
+          WHERE mis.menu_item_id = $1 AND mis.size_id = $2;
+          `,
           [item.itemId, item.sizeId]
         );
 
         if (priceResult.rows.length === 0) {
-          throw new Error(`No price found for itemId ${item.itemId}, sizeId ${item.sizeId}`);
+          throw new Error(
+            `No price found for itemId ${item.itemId}, sizeId ${item.sizeId}`
+          );
         }
 
         if (priceResult.rows[0].is_available !== true) {
-          // Same prefix convention as the stock shortage so the catch below can
-          // tell a customer-facing refusal from a server fault
           throw new Error(`Unavailable: ${priceResult.rows[0].name}`);
         }
 
@@ -435,7 +420,13 @@ export async function POST(request: Request) {
 
         const orderItemResult = await client.query(
           `
-          INSERT INTO order_items (order_id, menu_item_id, size_id, quantity, unit_price)
+          INSERT INTO order_items (
+            order_id,
+            menu_item_id,
+            size_id,
+            quantity,
+            unit_price
+          )
           VALUES ($1, $2, $3, $4, $5)
           RETURNING id;
           `,
@@ -444,9 +435,8 @@ export async function POST(request: Request) {
 
         const orderItemId = orderItemResult.rows[0].id;
 
-        // Deduct recipe ingredients before the order can commit. A size-specific
-        // recipe overrides the general "all sizes" row for the same ingredient,
-        // so the two never stack.
+        /* Deduct recipe ingredients before the order can commit.
+           A size-specific recipe overrides the general recipe for the same ingredient. */
         await deductRecipeStock(
           client,
           item.itemId,
@@ -469,7 +459,12 @@ export async function POST(request: Request) {
 
           await client.query(
             `
-            INSERT INTO order_item_addons (order_item_id, add_on_id, quantity, price)
+            INSERT INTO order_item_addons (
+              order_item_id,
+              add_on_id,
+              quantity,
+              price
+            )
             VALUES ($1, $2, $3, $4);
             `,
             [orderItemId, addOnId, 1, addOnPrice]
@@ -477,7 +472,7 @@ export async function POST(request: Request) {
         }
       }
 
-      // Set the real total now that everything is priced
+      /* Set the real total now that everything is priced. */
       await client.query(
         `UPDATE orders SET total = $1 WHERE id = $2;`,
         [runningTotal, orderId]
@@ -487,9 +482,7 @@ export async function POST(request: Request) {
 
       const orderReference = String(dailyNumber).padStart(4, '0');
 
-      // order_id is the raw orders.id (a stable database key), orderReference is
-      // the human daily number the queue display and confirmation page show.
-      // Both are returned so a caller can key on one or display the other.
+      /* Return the database ID and the human-readable daily order number. */
       return NextResponse.json(
         {
           message: "Order placed successfully",
@@ -499,7 +492,7 @@ export async function POST(request: Request) {
           status: 'pending',
           total: runningTotal,
           payment_method: paymentMethod,
-          gcash_reference: gcashReference
+          gcash_reference: gcashReference,
         },
         { status: 201 }
       );
@@ -507,8 +500,7 @@ export async function POST(request: Request) {
       await client.query('ROLLBACK');
       console.error("Failed to place order:", error);
 
-      // Stock shortage and unavailable items are expected outcomes, not server
-      // faults: both messages are safe (and useful) to show the customer.
+      /* Stock shortages and unavailable items are expected customer-facing refusals. */
       if (
         error instanceof Error &&
         (error.message.startsWith('Not enough stock:') ||
@@ -532,11 +524,13 @@ export async function POST(request: Request) {
       client.release();
     }
   } catch (error) {
-    // Malformed JSON body or anything else before we reach the database
+    /* Malformed JSON body or anything else before the database connection. */
     console.error("Failed to process order request:", error);
+
     return NextResponse.json(
       { error: "Invalid request" },
       { status: 400 }
     );
   }
 }
+

@@ -1,89 +1,73 @@
-import { Pool } from "pg";
-const pool = new Pool({
-  connectionString: process.env.DATABASE_URL,
-});
+// Single source of truth for store hours: reads settings, computes open/closed in Manila time
+import pool from "@/app/lib/db";
 
-// Get current time in Manila timezone
-function getManilaTime(): Date {
-  return new Date(new Date().toLocaleString("en-US", {
-    timeZone: "Asia/Manila"
-  }));
+export type StoreStatus = {
+  isOpen: boolean;
+  openingTime: string; // "08:00 AM"
+  closingTime: string; // "08:00 PM"
+};
+
+const DEFAULT_OPEN = "08:00";
+const DEFAULT_CLOSE = "20:00";
+const DAY = 24 * 60;
+
+// "HH:MM" or "HH:MM:SS" -> minutes since midnight
+export function toMinutes(value?: string | null): number {
+  if (!value) return 0;
+  const [h, m] = value.split(":");
+  return (parseInt(h, 10) || 0) * 60 + (parseInt(m, 10) || 0);
 }
 
-// Check if store is currently open based on settings
-export async function isStoreOpen(): Promise<boolean> {
+export function formatMinutes12h(total: number): string {
+  const h24 = Math.floor(total / 60) % 24;
+  const m = total % 60;
+  const ampm = h24 >= 12 ? "PM" : "AM";
+  const h12 = h24 % 12 || 12;
+  return `${String(h12).padStart(2, "0")}:${String(m).padStart(2, "0")} ${ampm}`;
+}
+
+// Current minutes since midnight in Manila, independent of the server's timezone
+export function manilaMinutesNow(): number {
+  const parts = new Intl.DateTimeFormat("en-US", {
+    timeZone: "Asia/Manila",
+    hour: "2-digit",
+    minute: "2-digit",
+    hourCycle: "h23",
+  }).formatToParts(new Date());
+  const get = (t: string) => parseInt(parts.find((p) => p.type === t)?.value ?? "0", 10);
+  return get("hour") * 60 + get("minute");
+}
+
+// Works for same-day hours and hours that cross midnight (e.g. 20:00 -> 02:00)
+export function isOpenAt(now: number, open: number, close: number): boolean {
+  if (open === close) return true;
+  const duration = (close - open + DAY) % DAY;
+  return (now - open + DAY) % DAY < duration;
+}
+
+export async function getStoreStatus(): Promise<StoreStatus> {
+  let opening = DEFAULT_OPEN;
+  let closing = DEFAULT_CLOSE;
+
   try {
     const result = await pool.query(
       "SELECT opening_time, closing_time FROM store_settings ORDER BY id DESC LIMIT 1"
     );
-    
-    if (result.rows.length === 0) {
-      // Default to 8:00-20:00 if no settings
-      return isWithinDefaultHours();
-    }
-    
-    const { opening_time, closing_time } = result.rows[0];
-    const now = getManilaTime();
-    
-    // Convert times to Date objects for comparison
-    const openingHours = opening_time.getHours();
-    const openingMinutes = opening_time.getMinutes();
-    const closingHours = closing_time.getHours();
-    const closingMinutes = closing_time.getMinutes();
-    
-    const currentHours = now.getHours();
-    const currentMinutes = now.getMinutes();
-    
-    const openingTotalMinutes = openingHours * 60 + openingMinutes;
-    const closingTotalMinutes = closingHours * 60 + closingMinutes;
-    const currentTotalMinutes = currentHours * 60 + currentMinutes;
-    
-    // Handle case where closing time is after midnight (e.g., 2:00 AM)
-    if (closingTotalMinutes < openingTotalMinutes) {
-      // Store crosses midnight (e.g., 20:00 to 02:00)
-      return currentTotalMinutes >= openingTotalMinutes || currentTotalMinutes <= closingTotalMinutes;
-    } else {
-      // Normal same-day hours
-      return currentTotalMinutes >= openingTotalMinutes && currentTotalMinutes <= closingTotalMinutes;
+    if (result.rows.length > 0) {
+      opening = String(result.rows[0].opening_time);
+      closing = String(result.rows[0].closing_time);
     }
   } catch (error) {
-    console.error("Failed to check store hours:", error);
-    // Default to open if we can't check
-    return true;
+    // Table missing or DB down: fall back to default hours
+    console.error("Failed to read store hours:", error);
   }
-}
 
-// Helper function for default hours (8:00-20:00)
-function isWithinDefaultHours(): boolean {
-  const now = getManilaTime();
-  const currentHours = now.getHours();
-  const currentMinutes = now.getMinutes();
-  const currentTotalMinutes = currentHours * 60 + currentMinutes;
-  
-  const openingTotalMinutes = 8 * 60; // 8:00 AM
-  const closingTotalMinutes = 20 * 60; // 8:00 PM
-  
-  return currentTotalMinutes >= openingTotalMinutes && currentTotalMinutes <= closingTotalMinutes;
-}
+  const open = toMinutes(opening);
+  const close = toMinutes(closing);
 
-// Get formatted store hours for display
-export async function getStoreHours(): Promise<{ opening: string; closing: string }> {
-  try {
-    const result = await pool.query(
-      "SELECT opening_time, closing_time FROM store_settings ORDER BY id DESC LIMIT 1"
-    );
-    
-    if (result.rows.length === 0) {
-      return { opening: "08:00", closing: "20:00" };
-    }
-    
-    const { opening_time, closing_time } = result.rows[0];
-    return {
-      opening: opening_time.toString().slice(0, 5), // Extract HH:MM
-      closing: closing_time.toString().slice(0, 5)   // Extract HH:MM
-    };
-  } catch (error) {
-    console.error("Failed to get store hours:", error);
-    return { opening: "08:00", closing: "20:00" };
-  }
+  return {
+    isOpen: isOpenAt(manilaMinutesNow(), open, close),
+    openingTime: formatMinutes12h(open),
+    closingTime: formatMinutes12h(close),
+  };
 }
