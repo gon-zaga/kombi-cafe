@@ -171,22 +171,21 @@ export default function SettingsPage() {
                 </p>
               </div>
 
-              <button
-                type="button"
-                role="switch"
-                aria-checked={systemDown}
-                aria-label="System Down Mode"
-                onClick={() => setSystemDown((v) => !v)}
-                className={`relative shrink-0 w-12 h-6 rounded-full transition-colors ${
-                  systemDown ? "bg-red-500" : "bg-gray-300"
-                }`}
-              >
-                <span
-                  className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${
-                    systemDown ? "translate-x-6" : "translate-x-0"
-                  }`}
-                />
-              </button>
+               <label
+                 onClick={(e) => e.stopPropagation()}
+                 title={systemDown ? "System Down Mode is active — click to deactivate" : "System Down Mode is inactive — click to activate"}
+                 className="relative inline-flex items-center cursor-pointer"
+               >
+                 <input
+                   type="checkbox"
+                   checked={systemDown}
+                   aria-label={systemDown ? "Deactivate System Down Mode" : "Activate System Down Mode"}
+                   onChange={(e) => setSystemDown(e.target.checked)}
+                   className="sr-only peer"
+                 />
+                 <div className="w-11 h-6 bg-gray-200 rounded-full peer-checked:bg-red-500 transition-colors" />
+                 <div className="absolute top-0.5 left-0.5 bg-white w-5 h-5 rounded-full transition-transform peer-checked:translate-x-5" />
+               </label>
             </div>
 
             {systemDown && (
@@ -228,33 +227,7 @@ export default function SettingsPage() {
           </div>
         </form>
 
-        <div className="mt-6 text-sm text-gray-500">
-          <p>When the store is closed:</p>
 
-          <ul className="list-disc list-inside mt-2 space-y-1">
-            <li>
-              Customers will see a &quot;STORE CLOSED&quot; page instead of the
-              menu.
-            </li>
-            <li>No orders can be placed through the API.</li>
-            <li>Staff and owner pages stay accessible.</li>
-            <li>
-              Opening time:{" "}
-              {openingTime ? to12h(openingTime) : "Not set"}
-            </li>
-            <li>
-              Closing time:{" "}
-              {closingTime ? to12h(closingTime) : "Not set"}
-            </li>
-          </ul>
-
-          {systemDown && (
-            <p className="mt-3 text-xs text-red-600">
-              <strong>System Down Mode is active.</strong> The store will appear
-              closed regardless of opening hours.
-            </p>
-          )}
-        </div>
       </div>
     </section>
   );
