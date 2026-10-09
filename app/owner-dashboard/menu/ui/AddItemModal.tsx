@@ -84,12 +84,40 @@ function AddItemModal({ isOpen, onClose, onCreated }: AddItemModalProps) {
    // Each row: ingredientId, quantityNeeded, sizeId (null for all sizes)
    const [recipeRows, setRecipeRows] = useState<Array<{ ingredientId: number; quantityNeeded: number; sizeId: number | null }>>([]);
 
-   // The row currently being filled in
-   const [tempIngredientId, setTempIngredientId] = useState("");
-   const [tempQuantity, setTempQuantity] = useState("");
-   const [tempSizeId, setTempSizeId] = useState("");
+    // The row currently being filled in
+    const [tempIngredientId, setTempIngredientId] = useState("");
+    const [tempQuantity, setTempQuantity] = useState("");
+    const [tempSizeId, setTempSizeId] = useState("");
 
-   const { success, error: showError } = useToast();
+    // Controls whether the ingredient creation modal is open
+    const [isIngredientModalOpen, setIsIngredientModalOpen] = useState(false);
+    // Function that loads categories, sizes, and ingredients
+    async function loadOptions() {
+      try {
+
+        // Request categories, sizes, and ingredients at the same time
+        const [catRes, sizeRes, ingredientRes] = await Promise.all([
+          fetch('/api/categories'),
+          fetch('/api/sizes'),
+          fetch('/api/ingredients'),
+        ]);
+
+
+        // Convert the responses into JSON
+        // Then store them in React state
+        setCategories(await catRes.json());
+        setSizeOptions(await sizeRes.json());
+        setIngredients(await ingredientRes.json());
+
+
+      } catch (err) {
+
+        // Show an error in the browser console if loading fails
+        console.error("Failed to load category/size/ingredient options:", err);
+      }
+    }
+
+
 
    // "Regular" size (oz === null && temperature === null) is for snacks only.
    // Default to drink mode (Regular disabled). Auto-toggle based on category.
@@ -99,35 +127,13 @@ function AddItemModal({ isOpen, onClose, onCreated }: AddItemModalProps) {
   // useEffect runs when the component opens
   useEffect(() => {
 
-    // Don't load the options if the modal isn't open
-    if (!isOpen) return;
 
 
-     // Function that loads categories, sizes, and ingredients
-     async function loadOptions() {
-       try {
 
-         // Request categories, sizes, and ingredients at the same time
-         const [catRes, sizeRes, ingredientRes] = await Promise.all([
-           fetch('/api/categories'),
-           fetch('/api/sizes'),
-           fetch('/api/ingredients'),
-         ]);
+     // Don't load the options if the modal isn't open
+     if (!isOpen) return;
 
 
-         // Convert the responses into JSON
-         // Then store them in React state
-         setCategories(await catRes.json());
-         setSizeOptions(await sizeRes.json());
-         setIngredients(await ingredientRes.json());
-
-
-       } catch (err) {
-
-         // Show an error in the browser console if loading fails
-         console.error("Failed to load category/size/ingredient options:", err);
-       }
-     }
 
 
     // Run the function
@@ -224,20 +230,25 @@ function AddItemModal({ isOpen, onClose, onCreated }: AddItemModalProps) {
         },
 
         // Convert the form data into JSON
-        body: JSON.stringify({
-          name,
+         body: JSON.stringify({
+           name,
 
-          // Convert categoryId from a string to a number
-          categoryId: Number(categoryId),
+           // Convert categoryId from a string to a number
+           categoryId: Number(categoryId),
 
-          // If there is no image URL, send undefined
-          imageUrl: imageUrl || undefined,
+           // If there is no image URL, send undefined
+           imageUrl: imageUrl || undefined,
 
-          isAvailable,
+           isAvailable,
 
-          // Send the selected sizes and prices
-          sizes,
-        }),
+           // Send the selected sizes and prices
+           sizes,
+           recipes: recipeRows.map(row => ({
+             ingredientId: row.ingredientId,
+             quantityNeeded: row.quantityNeeded,
+             sizeId: row.sizeId,
+           })),
+         }),
       });
 
 
@@ -440,7 +451,126 @@ function AddItemModal({ isOpen, onClose, onCreated }: AddItemModalProps) {
             </div>
           </div>
 
+           {/* Ingredients (at least one required) */}
+           <div>
+             <label className="block text-sm font-medium text-gray-700 mb-2">
+               Ingredients
+             </label>
+             <div className="space-y-2">
+               {recipeRows.length === 0 ? (
+                 <p className="text-xs text-gray-500">
+                   No ingredients added yet. Please add at least one ingredient.
+                 </p>
+               ) : (
+                 <ul className="space-y-1">
+                   {recipeRows.map((row) => {
+                     const ingredient = ingredients.find(i => i.id === row.ingredientId);
+                     const sizeLabel = row.sizeId === null ? 'All sizes' : sizeOptions.find(s => s.id === row.sizeId)?.label ?? `Size #${row.sizeId}`;
+                     return (
+                       <li key={`${row.ingredientId}-${row.sizeId}`} className="flex items-center justify-between bg-gray-50 rounded-lg px-3 py-2">
+                         <div className="min-w-0">
+                           <span className="text-sm text-gray-900 font-medium">
+                             {ingredient?.name ?? 'Unknown'}
+                           </span>
+                           <span className="text-sm text-gray-600">
+                             {' '}
+                             — {row.quantityNeeded} {ingredient?.unit ?? ''}
+                           </span>
+                           <span className="block text-xs text-gray-500">
+                             {sizeLabel}
+                           </span>
+       </div>
+       <AddingIngredientModal
+         isOpen={isIngredientModalOpen}
+         onClose={() => setIsIngredientModalOpen(false)}
+         onAdded={loadOptions}
+       />
+                         <button
+                           onClick={() => {
+                             setRecipeRows(prev => prev.filter(r => !(r.ingredientId === row.ingredientId && r.sizeId === row.sizeId)));
+                           }}
+                           className="text-xs text-red-700 bg-red-50 px-2 py-1 rounded hover:bg-red-100 transition-colors shrink-0"
+                         >
+                           Remove
+                         </button>
+                       </li>
+                     );
+                   })}
+                 </ul>
+               )}
+             </div>
 
+             <div className="space-y-2">
+               <div className="flex items-center justify-between">
+                 <label className="block text-sm font-semibold text-gray-900">
+                   Add Ingredient
+                 </label>
+                 <button
+                   type="button"
+                   onClick={() => setIsIngredientModalOpen(true)}
+                   className="text-xs text-amber-700 bg-amber-50 px-2 py-1 rounded hover:bg-amber-100 transition-colors"
+                 >
+                   + New Ingredient
+                 </button>
+               </div>
+
+               <IngredientPicker
+                 ingredients={ingredients}
+                 value={tempIngredientId}
+                 onChange={setTempIngredientId}
+               />
+
+               <div className="flex gap-2">
+                 <input
+                   type="number"
+                   min="0"
+                   step="0.01"
+                   value={tempQuantity}
+                   onChange={(e) => setTempQuantity(e.target.value)}
+                   placeholder="Quantity"
+                   className="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-amber-500"
+                 />
+
+                 <select
+                   value={tempSizeId}
+                   onChange={(e) => setTempSizeId(e.target.value)}
+                   className="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-amber-500"
+                 >
+                   <option value="">All sizes</option>
+                   {sizeOptions.map((s) => (
+                     <option key={s.id} value={s.id}>
+                       {s.label} only
+                     </option>
+                   ))}
+                 </select>
+               </div>
+
+               <button
+                 onClick={() => {
+                   // Validate and add the row
+                   const ingredientIdNum = Number(tempIngredientId);
+                   const quantityNum = Number(tempQuantity);
+                   const sizeIdValue = tempSizeId === '' || tempSizeId === null ? null : Number(tempSizeId);
+                   if (!ingredientIdNum || isNaN(ingredientIdNum) || quantityNum <= 0 || isNaN(quantityNum)) {
+                     // Should not happen if we disable button, but just in case
+                     return;
+                   }
+                   setRecipeRows(prev => [
+                     ...prev,
+                     { ingredientId: ingredientIdNum, quantityNeeded: quantityNum, sizeId: sizeIdValue }
+                   ]);
+                   // Reset temporary form
+                   setTempIngredientId('');
+                   setTempQuantity('');
+                   setTempSizeId('');
+                 }}
+                 disabled={tempIngredientId === '' || tempQuantity === '' || Number(tempQuantity) <= 0}
+                 className="px-4 py-2 text-sm font-medium text-white bg-amber-600 rounded-lg hover:bg-amber-700 transition-colors disabled:opacity-50"
+               >
+                 {tempIngredientId === '' || tempQuantity === '' || Number(tempQuantity) <= 0 ? 'Adding...' : 'Add to Recipe'}
+               </button>
+             </div>
+           </div>
           {/* Available for ordering checkbox */}
           <div>
             <label className="flex items-center">
