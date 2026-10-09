@@ -13,6 +13,8 @@ const to12h = (time24: string) => {
 export default function SettingsPage() {
   const [openingTime, setOpeningTime] = useState("");
   const [closingTime, setClosingTime] = useState("");
+  const [systemDown, setSystemDown] = useState(false);
+  const [systemDownMessage, setSystemDownMessage] = useState("");
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
@@ -23,9 +25,11 @@ export default function SettingsPage() {
       try {
         const response = await fetch('/api/settings');
         if (!response.ok) throw new Error(`Failed to load settings: ${response.status}`);
-        const data = await response.json();
-        setOpeningTime(data.opening_time ? data.opening_time.substring(0, 5) : "08:00");
-        setClosingTime(data.closing_time ? data.closing_time.substring(0, 5) : "20:00");
+    const data = await response.json();
+    setOpeningTime(data.opening_time ? data.opening_time.substring(0, 5) : "08:00");
+    setClosingTime(data.closing_time ? data.closing_time.substring(0, 5) : "20:00");
+    setSystemDown(Boolean(data.system_down));
+    setSystemDownMessage(data.system_down_message ?? "");
       } catch (err) {
         console.error("Failed to load settings:", err);
         setError("Could not load settings");
@@ -52,11 +56,16 @@ export default function SettingsPage() {
 
     setSaving(true);
     try {
-      const response = await fetch('/api/settings', {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ opening_time: openingTime, closing_time: closingTime }),
-      });
+    const response = await fetch('/api/settings', {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ 
+        opening_time: openingTime, 
+        closing_time: closingTime,
+        system_down: systemDown,
+        system_down_message: systemDownMessage
+      }),
+    });
       const data = await response.json().catch(() => ({}));
       if (!response.ok) throw new Error(data.error || "Could not save settings");
 
@@ -122,6 +131,38 @@ export default function SettingsPage() {
               />
             </div>
 
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                System Down Mode
+              </label>
+              <div className="flex items-center space-x-3">
+                <input
+                  type="checkbox"
+                  checked={systemDown}
+                  onChange={(e) => setSystemDown(e.target.checked)}
+                  className="h-4 w-4 text-amber-600 focus:ring-amber-500 border-gray-300 rounded"
+                />
+                <span className="text-sm text-gray-700">
+                  Enable to manually set store as closed
+                </span>
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                System Down Message
+              </label>
+              <textarea
+                value={systemDownMessage}
+                onChange={(e) => setSystemDownMessage(e.target.value)}
+                placeholder="The ordering management system is down for a moment!\nWe are working to bring it back online as quickly as possible.\nTo place your order: Please see a staff member at the counter.\nThey are ready to take your order manually!"
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-amber-500 h-32 resize-y"
+              />
+              <p className="mt-1 text-xs text-gray-500">
+                Leave empty to use default message when system down is active
+              </p>
+            </div>
+
             <button
               type="submit"
               disabled={saving}
@@ -132,16 +173,21 @@ export default function SettingsPage() {
           </div>
         </form>
 
-        <div className="mt-6 text-sm text-gray-500">
-          <p>When the store is closed:</p>
-          <ul className="list-disc list-inside mt-2">
-            <li>Customers will see a &quot;STORE CLOSED&quot; page instead of the menu</li>
-            <li>No orders can be placed through the API</li>
-            <li>Staff and owner pages stay accessible</li>
-            <li>Opening time: {openingTime ? to12h(openingTime) : "Not set"}</li>
-            <li>Closing time: {closingTime ? to12h(closingTime) : "Not set"}</li>
-          </ul>
-        </div>
+         <div className="mt-6 text-sm text-gray-500">
+           <p>When the store is closed:</p>
+           <ul className="list-disc list-inside mt-2">
+             <li>Customers will see a &quot;STORE CLOSED&quot; page instead of the menu</li>
+             <li>No orders can be placed through the API</li>
+             <li>Staff and owner pages stay accessible</li>
+             <li>Opening time: {openingTime ? to12h(openingTime) : "Not set"}</li>
+             <li>Closing time: {closingTime ? to12h(closingTime) : "Not set"}</li>
+           </ul>
+           {systemDown && (
+             <p className="mt-2 text-xs text-amber-600">
+               <strong>System Down Mode is active</strong> - Store will appear closed regardless of opening hours
+             </p>
+           )}
+         </div>
       </div>
     </section>
   );

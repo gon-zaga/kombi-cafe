@@ -5,6 +5,8 @@ export type StoreStatus = {
   isOpen: boolean;
   openingTime: string; // "08:00 AM"
   closingTime: string; // "08:00 PM"
+  systemDown: boolean;
+  systemDownMessage?: string;
 };
 
 const DEFAULT_OPEN = "08:00";
@@ -48,20 +50,38 @@ export function isOpenAt(now: number, open: number, close: number): boolean {
 export async function getStoreStatus(): Promise<StoreStatus> {
   let opening = DEFAULT_OPEN;
   let closing = DEFAULT_CLOSE;
+  let systemDown = false;
+  let systemDownMessage: string | undefined;
 
   try {
     const result = await pool.query(
-      "SELECT opening_time, closing_time FROM store_settings ORDER BY id DESC LIMIT 1"
+      "SELECT opening_time, closing_time, system_down, system_down_message FROM store_settings ORDER BY id DESC LIMIT 1"
     );
     if (result.rows.length > 0) {
       opening = String(result.rows[0].opening_time);
       closing = String(result.rows[0].closing_time);
+      systemDown = Boolean(result.rows[0].system_down);
+      systemDownMessage = result.rows[0].system_down_message as string | undefined;
     }
   } catch (error) {
     // Table missing or DB down: fall back to default hours
-    console.error("Failed to read store hours:", error);
+    console.error("Failed to read store settings:", error);
   }
 
+  // If system is down, return closed status with custom message
+  if (systemDown) {
+    const open = toMinutes(opening);
+    const close = toMinutes(closing);
+    return {
+      isOpen: false,
+      openingTime: formatMinutes12h(open),
+      closingTime: formatMinutes12h(close),
+      systemDown,
+      systemDownMessage,
+    };
+  }
+
+  // Otherwise, use time-based logic
   const open = toMinutes(opening);
   const close = toMinutes(closing);
 
@@ -69,5 +89,6 @@ export async function getStoreStatus(): Promise<StoreStatus> {
     isOpen: isOpenAt(manilaMinutesNow(), open, close),
     openingTime: formatMinutes12h(open),
     closingTime: formatMinutes12h(close),
+    systemDown: false,
   };
 }
