@@ -1,15 +1,11 @@
-
 'use client'
 
 import { useEffect, useMemo, useState } from "react";
-
 import OwnerHeader from "./ui/OwnerHeader";
 import StatsCard from "./ui/StatsCard";
 import DateFilterBar from "@/app/ui/DateFilterBar";
-
 import type { CustomRange, DateFilter } from "@/app/lib/dateFilter";
 import { buildOrdersQuery, describeRange } from "@/app/lib/dateFilter";
-
 import {
   BarChart,
   Bar,
@@ -25,29 +21,24 @@ import {
 
 interface AnalyticsData {
   range: { from: string | null; to: string | null };
-
   summary: {
     total_orders: number;
     total_revenue: number;
     avg_order_value: number;
     completed_orders: number;
   };
-
   revenueByCategory: {
     category: string;
     revenue: string;
     order_count: string;
   }[];
-
   revenueByHour: {
     hour: number;
     orders: string;
     revenue: string;
   }[];
-
   avgItemsPerOrder: number;
   addonAttachmentRate: number;
-
   staffPerformance: {
     user_id: number;
     username: string;
@@ -57,13 +48,11 @@ interface AnalyticsData {
     avg_order_value: string;
     total_revenue: string;
   }[];
-
   dailyTrend: {
     order_date: string;
     orders: string;
     revenue: string;
   }[];
-
   ingredientConsumption: {
     ingredient_name: string;
     total_used: string;
@@ -98,9 +87,7 @@ export default function OwnerDashboard() {
         const response = await fetch(`/api/analytics${query}`);
 
         if (!response.ok) {
-          throw new Error(
-            `Request failed (${response.status})`
-          );
+          throw new Error(`Request failed (${response.status})`);
         }
 
         const d: AnalyticsData = await response.json();
@@ -110,15 +97,10 @@ export default function OwnerDashboard() {
           setError("");
         }
       } catch (err) {
-        console.error(
-          "Failed to fetch analytics:",
-          err
-        );
+        console.error("Failed to fetch analytics:", err);
 
         if (isMounted) {
-          setError(
-            "Could not load analytics for this range."
-          );
+          setError("Could not load analytics for this range.");
         }
       } finally {
         if (isMounted) {
@@ -148,70 +130,67 @@ export default function OwnerDashboard() {
     "#8B7355",
   ];
 
-   const {
-     summary,
-     revenueByCategory,
-     revenueByHour,
-     avgItemsPerOrder,
-     addonAttachmentRate,
-     staffPerformance,
-     dailyTrend,
-     ingredientConsumption,
-   } = analyticsData || {
-     summary: {
-       total_orders: 0,
-       total_revenue: 0,
-       avg_order_value: 0,
-       completed_orders: 0,
-     },
+  const {
+    summary,
+    revenueByCategory,
+    revenueByHour,
+    avgItemsPerOrder,
+    addonAttachmentRate,
+    staffPerformance,
+    dailyTrend,
+    ingredientConsumption,
+  } = analyticsData || {
+    summary: {
+      total_orders: 0,
+      total_revenue: 0,
+      avg_order_value: 0,
+      completed_orders: 0,
+    },
+    revenueByCategory: [],
+    revenueByHour: [],
+    avgItemsPerOrder: 0,
+    addonAttachmentRate: 0,
+    staffPerformance: [],
+    dailyTrend: [],
+    ingredientConsumption: [],
+  };
 
-     revenueByCategory: [],
-     revenueByHour: [],
-     avgItemsPerOrder: 0,
-     addonAttachmentRate: 0,
-     staffPerformance: [],
-     dailyTrend: [],
-     ingredientConsumption: [],
-   };
+  const categoryData = revenueByCategory.map((item, i) => ({
+    name: item.category,
+    revenue: Number(item.revenue),
+    orders: Number(item.order_count),
+    fill: COLORS[i % COLORS.length],
+  }));
 
-   const categoryData = revenueByCategory.map(
-     (item, i) => ({
-       name: item.category,
-       revenue: Number(item.revenue),
-       orders: Number(item.order_count),
-       fill: COLORS[i % COLORS.length],
-     })
-   );
+  const hourData = revenueByHour.map((h) => ({
+    hour: `${h.hour}:00`,
+    revenue: Number(h.revenue),
+    orders: Number(h.orders),
+  }));
 
-   const hourData = revenueByHour.map((h) => ({
-     hour: `${h.hour}:00`,
-     revenue: Number(h.revenue),
-     orders: Number(h.orders),
-   }));
+  const dailyData = dailyTrend.map((d) => ({
+    date: d.order_date,
+    revenue: Number(d.revenue),
+    orders: Number(d.orders),
+  }));
 
-   const dailyData = dailyTrend.map((d) => ({
-     date: d.order_date,
-     revenue: Number(d.revenue),
-     orders: Number(d.orders),
-   }));
+  const staffData = staffPerformance.map((s) => ({
+    name: `${s.first_name || s.username}`,
+    orders: Number(s.orders_completed),
+    revenue: Number(s.total_revenue),
+    avgOrder: Number(s.avg_order_value),
+  }));
 
-   const staffData = staffPerformance.map((s) => ({
-     name: `${s.first_name || s.username}`,
-     orders: Number(s.orders_completed),
-     revenue: Number(s.total_revenue),
-     avgOrder: Number(s.avg_order_value),
-   }));
+  const ingredientData = ingredientConsumption.map((item) => ({
+    name: item.ingredient_name,
+    used: Number(item.total_used),
+  }));
 
-   const ingredientData = ingredientConsumption.map((item) => ({
-     name: item.ingredient_name,
-     used: Number(item.total_used),
-   }));
+  const showDailyTrend = dailyData.length > 1;
 
   return (
     <section className="min-h-screen bg-card-cream">
-
       <OwnerHeader title="DASHBOARD" />
-
       <StatsCard />
 
       {loading && !analyticsData && (
@@ -222,9 +201,7 @@ export default function OwnerDashboard() {
 
       {!loading && (
         <>
-          {/* Date Filter */}
           <div className="px-4 mb-4">
-
             <DateFilterBar
               filter={dateFilter}
               customRange={customRange}
@@ -236,11 +213,7 @@ export default function OwnerDashboard() {
             />
 
             <p className="text-sm text-gray-600 mt-3">
-              Report for{" "}
-              {describeRange(
-                dateFilter,
-                customRange
-              )}
+              Report for {describeRange(dateFilter, customRange)}
             </p>
 
             {error && (
@@ -248,121 +221,64 @@ export default function OwnerDashboard() {
                 {error}
               </div>
             )}
-
           </div>
 
-          {/* Dashboard Content */}
-          <div className="px-4 space-y-6 pb-10">
-
-            {/* =====================================================
-                ROW 1
-                Revenue by Category | Peak Hours
-            ====================================================== */}
-
+          <div className="px-4 pb-10 space-y-6">
+            {/* Row 1: Revenue by Category | Peak Hours */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-
-              {/* Revenue by Category */}
-              <div className="bg-cream rounded-lg p-4 shadow">
-
+              <div className="bg-cream rounded-lg p-4 shadow min-w-0">
                 <h3 className="text-lg font-semibold text-gray-900 mb-4">
                   Revenue by Category
                 </h3>
 
                 <div className="h-64">
-
-                  <ResponsiveContainer
-                    width="100%"
-                    height="100%"
-                  >
-
+                  <ResponsiveContainer width="100%" height="100%">
                     <BarChart data={categoryData}>
-
                       <CartesianGrid
                         strokeDasharray="3 3"
                         stroke="#f0f0f0"
                       />
-
-                      <XAxis
-                        dataKey="name"
-                        tick={{ fontSize: 12 }}
-                      />
-
+                      <XAxis dataKey="name" tick={{ fontSize: 12 }} />
                       <YAxis
                         tick={{ fontSize: 12 }}
-                        tickFormatter={(v) =>
-                          `₱${v}`
-                        }
+                        tickFormatter={(v) => `₱${v}`}
                       />
-
                       <Tooltip />
 
                       <Bar
                         dataKey="revenue"
                         name="Revenue"
-                        radius={[
-                          4,
-                          4,
-                          0,
-                          0,
-                        ]}
+                        radius={[4, 4, 0, 0]}
                       >
-
-                        {categoryData.map(
-                          (_, i) => (
-                            <Cell
-                              key={i}
-                              fill={
-                                COLORS[
-                                  i %
-                                    COLORS.length
-                                ]
-                              }
-                            />
-                          )
-                        )}
-
+                        {categoryData.map((_, i) => (
+                          <Cell
+                            key={i}
+                            fill={COLORS[i % COLORS.length]}
+                          />
+                        ))}
                       </Bar>
-
                     </BarChart>
-
                   </ResponsiveContainer>
-
                 </div>
               </div>
 
-              {/* Peak Hours */}
-              <div className="bg-white rounded-lg p-4 shadow">
-
+              <div className="bg-white rounded-lg p-4 shadow min-w-0">
                 <h3 className="text-lg font-semibold text-gray-900 mb-4">
                   Peak Hours (Revenue by Hour)
                 </h3>
 
                 <div className="h-64">
-
-                  <ResponsiveContainer
-                    width="100%"
-                    height="100%"
-                  >
-
+                  <ResponsiveContainer width="100%" height="100%">
                     <LineChart data={hourData}>
-
                       <CartesianGrid
                         strokeDasharray="3 3"
                         stroke="#f0f0f0"
                       />
-
-                      <XAxis
-                        dataKey="hour"
-                        tick={{ fontSize: 12 }}
-                      />
-
+                      <XAxis dataKey="hour" tick={{ fontSize: 12 }} />
                       <YAxis
                         tick={{ fontSize: 12 }}
-                        tickFormatter={(v) =>
-                          `₱${v}`
-                        }
+                        tickFormatter={(v) => `₱${v}`}
                       />
-
                       <Tooltip />
 
                       <Line
@@ -372,239 +288,32 @@ export default function OwnerDashboard() {
                         strokeWidth={2}
                         dot={{ r: 4 }}
                       />
-
                     </LineChart>
-
                   </ResponsiveContainer>
-
                 </div>
               </div>
-
             </div>
 
-
-            {/* =====================================================
-                ROW 2
-                Staff Performance | Category Breakdown
-            ====================================================== */}
-
+            {/* Row 2: Daily Trend | Ingredient Consumption */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-
-              {/* Staff Performance */}
-              {staffPerformance.length > 0 && (
-                <div className="bg-white rounded-lg p-4 shadow">
-
-                  <h3 className="text-lg font-semibold text-gray-900 mb-4">
-                    Staff Performance
-                  </h3>
-
-                  <div className="overflow-x-auto">
-
-                    <table className="w-full text-sm">
-
-                      <thead>
-
-                        <tr className="border-b border-gray-200 text-left text-gray-500">
-
-                          <th className="pb-2 pr-4">
-                            Staff
-                          </th>
-
-                          <th className="pb-2 pr-4 text-right">
-                            Orders
-                          </th>
-
-                          <th className="pb-2 pr-4 text-right">
-                            Revenue
-                          </th>
-
-                          <th className="pb-2 pr-4 text-right">
-                            Avg Order
-                          </th>
-
-                        </tr>
-
-                      </thead>
-
-                      <tbody>
-
-                        {staffData.map(
-                          (s, i) => (
-                            <tr
-                              key={i}
-                              className="border-b border-gray-100 hover:bg-gray-50"
-                            >
-
-                              <td className="py-2 pr-4 font-medium text-gray-900">
-                                {s.name}
-                              </td>
-
-                              <td className="py-2 pr-4 text-right text-gray-700">
-                                {s.orders}
-                              </td>
-
-                              <td className="py-2 pr-4 text-right text-gray-700">
-                                ₱
-                                {s.revenue.toFixed(
-                                  2
-                                )}
-                              </td>
-
-                              <td className="py-2 pr-4 text-right text-gray-700">
-                                ₱
-                                {s.avgOrder.toFixed(
-                                  2
-                                )}
-                              </td>
-
-                            </tr>
-                          )
-                        )}
-
-                      </tbody>
-
-                    </table>
-
-                  </div>
-                </div>
-              )}
-
-              {/* Category Breakdown */}
-              {categoryData.length > 0 && (
-                <div className="bg-white rounded-lg p-4 shadow">
-
-                  <h3 className="text-lg font-semibold text-gray-900 mb-4">
-                    Category Breakdown
-                  </h3>
-
-                  <div className="overflow-x-auto">
-
-                    <table className="w-full text-sm">
-
-                      <thead>
-
-                        <tr className="border-b border-gray-200 text-left text-gray-500">
-
-                          <th className="pb-2 pr-4">
-                            Category
-                          </th>
-
-                          <th className="pb-2 pr-4 text-right">
-                            Revenue
-                          </th>
-
-                          <th className="pb-2 pr-4 text-right">
-                            Orders
-                          </th>
-
-                          <th className="pb-2 pr-4 text-right">
-                            Avg/Order
-                          </th>
-
-                        </tr>
-
-                      </thead>
-
-                      <tbody>
-
-                        {categoryData.map(
-                          (c, i) => (
-                            <tr
-                              key={i}
-                              className="border-b border-gray-100 hover:bg-gray-50"
-                            >
-
-                              <td className="py-2 pr-4 font-medium text-gray-900 flex items-center gap-2">
-
-                                <span
-                                  className="w-3 h-3 rounded"
-                                  style={{
-                                    background:
-                                      c.fill,
-                                  }}
-                                />
-
-                                {c.name}
-
-                              </td>
-
-                              <td className="py-2 pr-4 text-right text-gray-700">
-                                ₱
-                                {c.revenue.toFixed(
-                                  2
-                                )}
-                              </td>
-
-                              <td className="py-2 pr-4 text-right text-gray-700">
-                                {c.orders}
-                              </td>
-
-                              <td className="py-2 pr-4 text-right text-gray-700">
-                                ₱
-                                {c.orders > 0
-                                  ? (
-                                      c.revenue /
-                                      c.orders
-                                    ).toFixed(2)
-                                  : "0.00"}
-                              </td>
-
-                            </tr>
-                          )
-                        )}
-
-                      </tbody>
-
-                    </table>
-
-                  </div>
-                </div>
-              )}
-
-            </div>
-
-
-            {/* =====================================================
-                 ROW 3
-                 Daily Trend | Ingredient Consumption
-             ====================================================== */}
-
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-
-              {/* Daily Trend */}
-              {dailyData.length > 1 && (
-                <div className="bg-white rounded-lg p-4 shadow">
-
+              {showDailyTrend ? (
+                <div className="bg-white rounded-lg p-4 shadow min-w-0">
                   <h3 className="text-lg font-semibold text-gray-900 mb-4">
                     Daily Trend
                   </h3>
 
                   <div className="h-64">
-
-                    <ResponsiveContainer
-                      width="100%"
-                      height="100%"
-                    >
-
+                    <ResponsiveContainer width="100%" height="100%">
                       <LineChart data={dailyData}>
-
                         <CartesianGrid
                           strokeDasharray="3 3"
                           stroke="#f0f0f0"
                         />
-
-                        <XAxis
-                          dataKey="date"
-                          tick={{ fontSize: 12 }}
-                        />
-
+                        <XAxis dataKey="date" tick={{ fontSize: 12 }} />
                         <YAxis
                           tick={{ fontSize: 12 }}
-                          tickFormatter={(v) =>
-                            `₱${v}`
-                          }
+                          tickFormatter={(v) => `₱${v}`}
                         />
-
                         <Tooltip />
 
                         <Line
@@ -625,49 +334,87 @@ export default function OwnerDashboard() {
                           dot={{ r: 3 }}
                           yAxisId="right"
                         />
-
                       </LineChart>
-
                     </ResponsiveContainer>
+                  </div>
+                </div>
+              ) : (
+                <div className="bg-white rounded-lg p-4 shadow min-w-0">
+                  <h3 className="text-lg font-semibold text-gray-900 mb-4">
+                    Category Breakdown
+                  </h3>
 
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-sm">
+                      <thead>
+                        <tr className="border-b border-gray-200 text-left text-gray-500">
+                          <th className="pb-2 pr-4">Category</th>
+                          <th className="pb-2 pr-4 text-right">Revenue</th>
+                          <th className="pb-2 pr-4 text-right">Orders</th>
+                          <th className="pb-2 pr-4 text-right">Avg/Order</th>
+                        </tr>
+                      </thead>
+
+                      <tbody>
+                        {categoryData.map((c, i) => (
+                          <tr
+                            key={i}
+                            className="border-b border-gray-100 hover:bg-gray-50"
+                          >
+                            <td className="py-2 pr-4 font-medium text-gray-900">
+                              <div className="flex items-center gap-2">
+                                <span
+                                  className="w-3 h-3 rounded shrink-0"
+                                  style={{ background: c.fill }}
+                                />
+                                {c.name}
+                              </div>
+                            </td>
+
+                            <td className="py-2 pr-4 text-right text-gray-700">
+                              ₱{c.revenue.toFixed(2)}
+                            </td>
+
+                            <td className="py-2 pr-4 text-right text-gray-700">
+                              {c.orders}
+                            </td>
+
+                            <td className="py-2 pr-4 text-right text-gray-700">
+                              ₱
+                              {c.orders > 0
+                                ? (c.revenue / c.orders).toFixed(2)
+                                : "0.00"}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
                   </div>
                 </div>
               )}
 
-              {/* Ingredient Consumption */}
-              {ingredientData.length > 0 && (
-                <div className="bg-white rounded-lg p-4 shadow">
+              <div className="bg-white rounded-lg p-4 shadow min-w-0">
+                <h3 className="text-lg font-semibold text-gray-900 mb-4">
+                  Ingredient Consumption
+                </h3>
 
-                  <h3 className="text-lg font-semibold text-gray-900 mb-4">
-                    Ingredient Consumption
-                  </h3>
-
-                  <div className="h-64">
-
-                    <ResponsiveContainer
-                      width="100%"
-                      height="100%"
-                    >
-
+                <div className="h-64">
+                  {ingredientData.length > 0 ? (
+                    <ResponsiveContainer width="100%" height="100%">
                       <BarChart data={ingredientData}>
-
                         <CartesianGrid
                           strokeDasharray="3 3"
                           stroke="#f0f0f0"
                         />
-
                         <XAxis
                           dataKey="name"
                           tick={{ fontSize: 12 }}
                         />
-
                         <YAxis
                           tick={{ fontSize: 12 }}
                           tickFormatter={(v) =>
-                            `${v} units`
-                          }
+                            `${v} units`}
                         />
-
                         <Tooltip />
 
                         <Bar
@@ -675,38 +422,177 @@ export default function OwnerDashboard() {
                           name="Usage"
                           radius={[4, 4, 0, 0]}
                         >
-
-                          {ingredientData.map(
-                            (_, i) => (
-                              <Cell
-                                key={i}
-                                fill={
-                                  COLORS[
-                                    i %
-                                    COLORS.length
-                                  ]
-                                }
-                              />
-                            )
-                          )}
-
+                          {ingredientData.map((_, i) => (
+                            <Cell
+                              key={i}
+                              fill={COLORS[i % COLORS.length]}
+                            />
+                          ))}
                         </Bar>
-
                       </BarChart>
-
                     </ResponsiveContainer>
-
-                  </div>
+                  ) : (
+                    <div className="flex items-center justify-center text-center">
+                      <p className="text-gray-600 font-medium">
+                        Ingredient consumption chart
+                      </p>
+                      <p className="text-sm text-gray-500 mt-2">
+                        No consumption chart is connected in this dashboard
+                        component yet.
+                      </p>
+                    </div>
+                  )}
                 </div>
-              )}
-
+              </div>
             </div>
 
+            {/* Row 3: Staff Performance | Category Breakdown */}
+            {showDailyTrend && (
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                {staffPerformance.length > 0 && (
+                  <div className="bg-white rounded-lg p-4 shadow min-w-0">
+                    <h3 className="text-lg font-semibold text-gray-900 mb-4">
+                      Staff Performance
+                    </h3>
+
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-sm">
+                        <thead>
+                          <tr className="border-b border-gray-200 text-left text-gray-500">
+                            <th className="pb-2 pr-4">Staff</th>
+                            <th className="pb-2 pr-4 text-right">Orders</th>
+                            <th className="pb-2 pr-4 text-right">Revenue</th>
+                            <th className="pb-2 pr-4 text-right">Avg Order</th>
+                          </tr>
+                        </thead>
+
+                        <tbody>
+                          {staffData.map((s, i) => (
+                            <tr
+                              key={i}
+                              className="border-b border-gray-100 hover:bg-gray-50"
+                            >
+                              <td className="py-2 pr-4 font-medium text-gray-900">
+                                {s.name}
+                              </td>
+                              <td className="py-2 pr-4 text-right text-gray-700">
+                                {s.orders}
+                              </td>
+                              <td className="py-2 pr-4 text-right text-gray-700">
+                                ₱{s.revenue.toFixed(2)}
+                              </td>
+                              <td className="py-2 pr-4 text-right text-gray-700">
+                                ₱{s.avgOrder.toFixed(2)}
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                )}
+
+                <div className="bg-white rounded-lg p-4 shadow min-w-0">
+                  <h3 className="text-lg font-semibold text-gray-900 mb-4">
+                    Category Breakdown
+                  </h3>
+
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-sm">
+                      <thead>
+                        <tr className="border-b border-gray-200 text-left text-gray-500">
+                          <th className="pb-2 pr-4">Category</th>
+                          <th className="pb-2 pr-4 text-right">Revenue</th>
+                          <th className="pb-2 pr-4 text-right">Orders</th>
+                          <th className="pb-2 pr-4 text-right">Avg/Order</th>
+                        </tr>
+                      </thead>
+
+                      <tbody>
+                        {categoryData.map((c, i) => (
+                          <tr
+                            key={i}
+                            className="border-b border-gray-100 hover:bg-gray-50"
+                          >
+                            <td className="py-2 pr-4 font-medium text-gray-900">
+                              <div className="flex items-center gap-2">
+                                <span
+                                  className="w-3 h-3 rounded shrink-0"
+                                  style={{ background: c.fill }}
+                                />
+                                {c.name}
+                              </div>
+                            </td>
+
+                            <td className="py-2 pr-4 text-right text-gray-700">
+                              ₱{c.revenue.toFixed(2)}
+                            </td>
+
+                            <td className="py-2 pr-4 text-right text-gray-700">
+                              {c.orders}
+                            </td>
+
+                            <td className="py-2 pr-4 text-right text-gray-700">
+                              ₱
+                              {c.orders > 0
+                                ? (c.revenue / c.orders).toFixed(2)
+                                : "0.00"}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* When Daily Trend is hidden, keep Staff Performance below Row 2 */}
+            {!showDailyTrend && staffPerformance.length > 0 && (
+              <div className="bg-white rounded-lg p-4 shadow min-w-0">
+                <h3 className="text-lg font-semibold text-gray-900 mb-4">
+                  Staff Performance
+                </h3>
+
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="border-b border-gray-200 text-left text-gray-500">
+                        <th className="pb-2 pr-4">Staff</th>
+                        <th className="pb-2 pr-4 text-right">Orders</th>
+                        <th className="pb-2 pr-4 text-right">Revenue</th>
+                        <th className="pb-2 pr-4 text-right">Avg Order</th>
+                      </tr>
+                    </thead>
+
+                    <tbody>
+                      {staffData.map((s, i) => (
+                        <tr
+                          key={i}
+                          className="border-b border-gray-100 hover:bg-gray-50"
+                        >
+                          <td className="py-2 pr-4 font-medium text-gray-900">
+                            {s.name}
+                          </td>
+                          <td className="py-2 pr-4 text-right text-gray-700">
+                            {s.orders}
+                          </td>
+                          <td className="py-2 pr-4 text-right text-gray-700">
+                            ₱{s.revenue.toFixed(2)}
+                          </td>
+                          <td className="py-2 pr-4 text-right text-gray-700">
+                            ₱{s.avgOrder.toFixed(2)}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
           </div>
         </>
       )}
-
     </section>
   );
 }
-

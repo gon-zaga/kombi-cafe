@@ -90,43 +90,49 @@ export default function SalesReport() {
   const [isLoading, setIsLoading] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
 
-  const query = useMemo(
-    () => buildOrdersQuery(dateFilter, customRange),
-    [dateFilter, customRange]
-  );
+   const ordersQuery = useMemo(() => {
+     const baseQuery = buildOrdersQuery(dateFilter, customRange);
+     if (baseQuery === null) {
+       // For custom range with no dates selected, don't fetch anything
+       return null;
+     }
+     // Always filter for completed orders only
+     const separator = baseQuery.includes('?') ? '&' : '?';
+     return `${baseQuery}${separator}status=completed`;
+   }, [dateFilter, customRange]);
 
-  useEffect(() => {
-    if (!query) return;
+   useEffect(() => {
+     if (!ordersQuery) return;
 
-    let isMounted = true;
+     let isMounted = true;
 
-    Promise.resolve().then(() => {
-      if (isMounted) {
-        setIsLoading(true);
-      }
-    });
+     Promise.resolve().then(() => {
+       if (isMounted) {
+         setIsLoading(true);
+       }
+     });
 
-    fetch(`/api/orders${query}`)
-      .then((r) => {
-        if (!r.ok) throw new Error(`Request failed (${r.status})`);
-        return r.json();
-      })
-      .then((data) => {
-        if (!isMounted) return;
-        if (Array.isArray(data)) setOrders(data);
-      })
-      .catch((error) => {
-        console.error("Failed to fetch orders:", error);
-        if (isMounted) setLoadError("Could not load orders for this range. Please try again.");
-      })
-      .finally(() => {
-        if (isMounted) setIsLoading(false);
-      });
+     fetch(`/api/orders${ordersQuery}`)
+       .then((r) => {
+         if (!r.ok) throw new Error(`Request failed (${r.status})`);
+         return r.json();
+       })
+       .then((data) => {
+         if (!isMounted) return;
+         if (Array.isArray(data)) setOrders(data);
+       })
+       .catch((error) => {
+         console.error("Failed to fetch orders:", error);
+         if (isMounted) setLoadError("Could not load orders for this range. Please try again.");
+       })
+       .finally(() => {
+         if (isMounted) setIsLoading(false);
+       });
 
-    return () => {
-      isMounted = false;
-    };
-  }, [query]);
+     return () => {
+       isMounted = false;
+     };
+   }, [ordersQuery]);
 
   const handleSelectFilter = (f: DateFilter) => {
     setLoadError("");
