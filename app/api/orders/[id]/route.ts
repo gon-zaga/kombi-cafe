@@ -15,6 +15,24 @@ const JWT_SECRET = new TextEncoder().encode(
   process.env.JWT_SECRET || "your-super-secret-jwt-key-change-in-production"
 );
 
+/* Which recipe rows apply to a given item + size, and how much each costs.
+   No trailing semicolon: this string is also embedded as a subquery. */
+const recipeCostSql = `
+  SELECT i.id, i.name, i.unit, i.stock_qty, i.restock_threshold,
+          SUM(r.quantity_needed) * $3::numeric AS needed
+  FROM recipes r
+  JOIN ingredients i ON i.id = r.ingredient_id
+  WHERE r.menu_item_id = $1
+    AND (r.size_id = $2 OR r.size_id IS NULL)
+    AND NOT EXISTS (
+      SELECT 1 FROM recipes r2
+      WHERE r2.menu_item_id = r.menu_item_id
+        AND r2.size_id = $2
+        AND r2.ingredient_id = r.ingredient_id
+    )
+  GROUP BY i.id, i.name, i.unit, i.stock_qty, i.restock_threshold
+`;
+
 async function getCurrentUserId(): Promise<number | null> {
   try {
     const cookieStore = await cookies();
@@ -199,6 +217,33 @@ export async function PATCH(
   }
 }
 
+async function restoreRecipeStock(
+  client: any, // PoolClient
+  menuItemId: number,
+  sizeId: number,
+  quantity: number
+) {
+  const costResult = await client.query(recipeCostSql, [
+    menuItemId,
+    sizeId,
+    quantity,
+  ]);
+
+  // No recipes on this item, so nothing to restore.
+  if (costResult.rows.length === 0) return;
+
+  await client.query(
+    `
+    UPDATE ingredients i
+    SET stock_qty = i.stock_qty + c.needed,
+        updated_at = CURRENT_TIMESTAMP
+    FROM (${recipeCostSql}) c
+    WHERE i.id = c.id;
+    `,
+    [menuItemId, sizeId, quantity]
+  );
+}
+
 export async function DELETE(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -215,40 +260,60 @@ export async function DELETE(
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
+  const client = await pool.connect();
+
   try {
-    await pool.query('BEGIN');
+    await client.query('BEGIN');
+
+    // Fetch order items to restore stock before deletion
+    const itemsResult = await client.query(
+      `SELECT menu_item_id, size_id, quantity FROM order_items WHERE order_id = $1`,
+      [orderId]
+    );
+
+    // Restore stock for each item
+    for (const row of itemsResult.rows) {
+      await restoreRecipeStock(
+        client,
+        row.menu_item_id,
+        row.size_id,
+        row.quantity
+      );
+    }
 
     // Delete from order_item_addons first
-    await pool.query(
+    await client.query(
       `DELETE FROM order_item_addons oia USING order_items oi WHERE oia.order_item_id = oi.id AND oi.order_id = $1`,
       [orderId]
     );
 
     // Delete from order_items
-    await pool.query(
+    await client.query(
       `DELETE FROM order_items WHERE order_id = $1`,
       [orderId]
     );
 
     // Delete from orders
-    const result = await pool.query(
+    const result = await client.query(
       `DELETE FROM orders WHERE id = $1 RETURNING id`,
       [orderId]
     );
 
     if (result.rows.length === 0) {
-      await pool.query('ROLLBACK');
+      await client.query('ROLLBACK');
       return NextResponse.json({ error: "Order not found" }, { status: 404 });
     }
 
-    await pool.query('COMMIT');
+    await client.query('COMMIT');
     return NextResponse.json({ success: true }, { status: 200 });
   } catch (error) {
-    await pool.query('ROLLBACK');
+    await client.query('ROLLBACK');
     console.error("Failed to delete order:", error);
     return NextResponse.json(
       { error: "Failed to delete order" },
       { status: 500 }
     );
+  } finally {
+    client.release();
   }
 }

@@ -15,3 +15,21 @@ export function getRelativeTime(timestamp: Date | string) {
   const days = Math.floor(hours / 24)
   return `${days}d ago`
 }
+
+// Filename-safe Manila timestamp, e.g. 2026-10-02_1430
+export function exportTimestamp(): string {
+  const parts = new Intl.DateTimeFormat("en-US", {
+    timeZone: "Asia/Manila",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  }).formatToParts(new Date());
+
+  const get = (type: string) =>
+    parts.find((p) => p.type === type)?.value ?? "00";
+
+  return `${get("year")}-${get("month")}-${get("day")}_${get("hour")}${get("minute")}`;
+}

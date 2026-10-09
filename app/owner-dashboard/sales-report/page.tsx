@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import OwnerHeader from "../ui/OwnerHeader";
 import DateFilterBar from "@/app/ui/DateFilterBar";
-import { exportTimestamp } from "@/app/lib/csv";
+import { exportTimestamp } from "@/app/lib/utils";
 import { downloadXlsx } from "@/app/lib/xlsx";
 import type { CustomRange, DateFilter } from "@/app/lib/dateFilter";
 import { buildOrdersQuery, describeRange, rangeSlug } from "@/app/lib/dateFilter";
@@ -177,30 +177,35 @@ export default function SalesReport() {
   const stamp = exportTimestamp();
   const slug = rangeSlug(dateFilter, customRange);
 
-   const exportSales = () => {
-     const columns = [
-       { header: "Order Ref", value: (o: OrderSummary) => o.orderReference, width: 12 },
-       { header: "Time", value: (o: OrderSummary) => new Date(o.createdAt).toLocaleString("en-PH"), width: 20 },
-       { header: "Date", value: (o: OrderSummary) => o.createdAt.slice(0, 10), width: 15 },
-       { header: "Status", value: (o: OrderSummary) => o.status, width: 12 },
-       { header: "Item Count", value: (o: OrderSummary) => (o.items || []).length, width: 12 },
-       {
-         header: "Add-ons Total",
-         value: (o: OrderSummary) =>
-           (o.items || [])
-             .reduce(
-               (sum, item) =>
-                 sum + (item.addOns || []).reduce((s, a) => s + a.price * a.quantity, 0),
-               0
-             )
-             .toFixed(2),
-         width: 15,
-       },
-       { header: "Total", value: (o: OrderSummary) => o.total.toFixed(2), width: 12 },
-     ];
-     downloadXlsx(`sales-report-${slug}-${stamp}.xlsx`, orders, columns);
-     setMenuOpen(false);
-   };
+    const exportSales = () => {
+      const columns = [
+        { header: "Order Ref", value: (o: OrderSummary) => o.orderReference, width: 12 },
+        { header: "Time", value: (o: OrderSummary) => new Date(o.createdAt).toLocaleString("en-PH"), width: 20 },
+        { header: "Date", value: (o: OrderSummary) => o.createdAt.slice(0, 10), width: 15 },
+        { header: "Status", value: (o: OrderSummary) => o.status, width: 12 },
+        { header: "Item Count", value: (o: OrderSummary) => (o.items || []).length, width: 12 },
+        {
+          header: "Add-ons Total",
+          value: (o: OrderSummary) =>
+            (o.items || [])
+              .reduce(
+                (sum, item) =>
+                  sum + (item.addOns || []).reduce((s, a) => s + a.price * a.quantity, 0),
+                0
+              )
+              .toFixed(2),
+          width: 15,
+        },
+        { header: "Total", value: (o: OrderSummary) => o.total.toFixed(2), width: 12 },
+      ];
+      try {
+        downloadXlsx(`sales-report-${slug}-${stamp}.xlsx`, orders, columns);
+        setMenuOpen(false);
+      } catch (error) {
+        console.error("Export failed:", error);
+        setLoadError("Export failed: " + (error instanceof Error ? error.message : String(error)));
+      }
+    };
 
   const exportOptions = [
     { label: "Sales & orders", hint: "One row per order with add-on breakdown", action: exportSales },

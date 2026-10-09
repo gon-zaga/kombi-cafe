@@ -47,6 +47,9 @@ export function downloadXlsx<T>(
 ): void {
   const wb = toXlsx(rows, columns);
   const wbout = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
+  if (wbout.length === 0) {
+    throw new Error('Generated Excel file is empty');
+  }
   saveAsNewBlob(wbout, filename);
 }
 
@@ -54,7 +57,7 @@ export function downloadXlsx<T>(
  * Helper to create a blob and trigger download.
  */
 function saveAsNewBlob(data: Uint8Array, filename: string): void {
-  const blob = new Blob([data.buffer as ArrayBuffer], { type: 'application/octet-stream' });
+  const blob = new Blob([data], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
   const url = URL.createObjectURL(blob);
   const link = document.createElement('a');
   link.href = url;
