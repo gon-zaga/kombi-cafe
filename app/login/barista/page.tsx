@@ -7,7 +7,7 @@ import { useAuth } from "@/app/lib/auth/AuthContext";
 function BaristaLoginPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { user, loading: authLoading, login } = useAuth();
+   const { user, loading: authLoading, login, logout } = useAuth();
 
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
@@ -50,55 +50,65 @@ function BaristaLoginPage() {
     return `${mins}:${secs.toString().padStart(2, '0')}`;
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setError("");
-    setLoading(true);
+   const handleSubmit = async (e: React.FormEvent) => {
+     e.preventDefault();
+     setError("");
+     setLoading(true);
 
-    try {
-      const loggedInUser = await login(username, password);
-      // Redirect to appropriate dashboard based on role
-      const defaultRedirect = loggedInUser.role === "owner" ? "/owner-dashboard" : "/barista-dashboard";
-      router.push(searchParams.get("redirect") || defaultRedirect);
-    } catch (err) {
-      const message = err instanceof Error ? err.message : "Login failed";
-      setError(message);
-      
-      // Check if it's a lockout error (429 status)
-      if (message.includes("locked") || message.includes("Try again in")) {
-        setLocked(true);
-        // Extract retryAfter from error if possible
-        const match = message.match(/(\d+)\s*(minute|second|hour)/i);
-        if (match) {
-          const num = parseInt(match[1]);
-          const unit = match[2].toLowerCase();
-          let seconds = num * 60;
-          if (unit.startsWith('hour')) seconds = num * 3600;
-          else if (unit.startsWith('second')) seconds = num;
-          setRetryAfter(seconds);
-        } else {
-          setRetryAfter(60); // default 1 minute
-        }
-      }
-    } finally {
-      setLoading(false);
-    }
-  };
+     try {
+       const loggedInUser = await login(username, password);
+       // Check if the user is a barista
+       if (loggedInUser.role !== "barista") {
+         await logout();
+         setError("This login is for barista accounts only.");
+         return;
+       }
+       // Redirect to appropriate dashboard based on role
+       const defaultRedirect = loggedInUser.role === "owner" ? "/owner-dashboard" : "/barista-dashboard";
+       router.push(searchParams.get("redirect") || defaultRedirect);
+     } catch (err) {
+       const message = err instanceof Error ? err.message : "Login failed";
+       setError(message);
+       
+       // Check if it's a lockout error (429 status)
+       if (message.includes("locked") || message.includes("Try again in")) {
+         setLocked(true);
+         // Extract retryAfter from error if possible
+         const match = message.match(/(\d+)\s*(minute|second|hour)/i);
+         if (match) {
+           const num = parseInt(match[1]);
+           const unit = match[2].toLowerCase();
+           let seconds = num * 60;
+           if (unit.startsWith('hour')) seconds = num * 3600;
+           else if (unit.startsWith('second')) seconds = num;
+           setRetryAfter(seconds);
+         } else {
+           setRetryAfter(60); // default 1 minute
+         }
+       }
+     } finally {
+       setLoading(false);
+     }
+   };
 
   return (
     <div className="min-h-screen bg-cream flex items-center justify-center p-4">
       <div className="w-full max-w-md bg-white rounded-2xl shadow-xl p-8">
-        {/* Back Button */}
-        <button
-          type="button"
-          onClick={() => router.back()}
-          className="mb-4 flex items-center gap-2 text-sm text-gray-600 hover:text-dark-brown transition-colors"
-        >
-          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-          </svg>
-          Back
-        </button>
+         {/* Back Button */}
+         <button
+           type="button"
+           onClick={() => {
+             if (typeof window !== 'undefined') {
+               window.history.back();
+             }
+           }}
+           className="mb-4 flex items-center gap-2 text-sm text-gray-600 hover:text-dark-brown transition-colors"
+         >
+           <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+           </svg>
+           Back
+         </button>
 
         <div className="text-center mb-8">
           <h1 className="text-3xl font-bold text-dark-brown">Kombi Cafe</h1>
