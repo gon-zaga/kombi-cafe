@@ -22,11 +22,10 @@ async function ensureSettingsRow() {
       ADD COLUMN system_down BOOLEAN NOT NULL DEFAULT FALSE
     `);
   } catch (err) {
-    if (err.code !== '42701') {
-      throw err;
-    }
-    // Column already exists, ignore
+  if ((err as { code?: string }).code !== '42701') {
+    throw err;
   }
+}
 
   // Try to add system_down_message column if it doesn't exist
   try {
@@ -35,11 +34,10 @@ async function ensureSettingsRow() {
       ADD COLUMN system_down_message TEXT
     `);
   } catch (err) {
-    if (err.code !== '42701') {
-      throw err;
-    }
-    // Column already exists, ignore
+  if ((err as { code?: string }).code !== '42701') {
+    throw err;
   }
+}
 
   // Insert default row if no settings exist
   await pool.query(`

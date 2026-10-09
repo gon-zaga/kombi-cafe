@@ -18,7 +18,7 @@ export function useStoreStatusWithRedirect(enabled = true) {
     if (!enabled || !gated || !status) return
     if (!status.isOpen) {
       // Redirect to home; replace history so back‑button doesn’t return to a blocked page
-      router.push('/', { replace: true })
+      router.replace('/')
     }
   }, [status, enabled, gated, router])
 

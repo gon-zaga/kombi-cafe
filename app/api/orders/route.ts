@@ -9,6 +9,7 @@ import type { PoolClient } from "pg";
 import type { OrderSummary } from "@/app/lib/types";
 import { getStoreStatus } from "@/app/lib/storeHours";
 
+
 interface PlaceOrderPayload {
   table_number: number;
   items: {
@@ -286,17 +287,18 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   /* Closed store: refuse before reading or touching anything. */
-  const { isOpen } = await getStoreStatus();
-
-  if (!isOpen) {
-    return NextResponse.json(
-      {
-        error:
-          "Store is currently closed. Please come back during opening hours.",
-      },
-      { status: 403 }
-    );
-  }
+  const { isOpen, systemDown, systemDownMessage } = await getStoreStatus();
+  
+if (!isOpen) {
+  return NextResponse.json(
+    {
+      error: systemDown
+        ? (systemDownMessage?.trim() || "The ordering system is down. Please see a staff member at the counter to place your order.")
+        : "Store is currently closed. Please come back during opening hours.",
+    },
+    { status: 403 }
+  );
+}
 
   try {
     const body: PlaceOrderPayload = await request.json();
