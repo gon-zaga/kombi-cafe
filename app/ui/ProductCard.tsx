@@ -11,9 +11,7 @@ type MenuCardItem = {
   itemName: string;
   ingredients: string[];
   sizes: { size: string; price: number }[];
-  // Set by the API. False means the owner switched the item off.
   isAvailable?: boolean;
-  // True when one of the recipe ingredients is at or below its threshold.
   isLowStock?: boolean;
 };
 
@@ -36,11 +34,9 @@ function ProductCard({
   const itemName = item.itemName || "Menu item";
   const categoryLabel = item.category || "Other";
 
-  // Defaults to true so cards without the flag remain usable.
   const isAvailable = item.isAvailable ?? true;
   const isLowStock = isAvailable && item.isLowStock === true;
 
-  // The card body is not a link when the item is unavailable.
   const body = (
     <>
       <div className="flex justify-center items-center bg-white rounded-xl p-2">
@@ -55,7 +51,7 @@ function ProductCard({
       </div>
 
       <div className="flex flex-col items-start gap-0.5">
-        {/* Badges appear above the item name. */}
+        {/* Availability badges */}
         {!isAvailable ? (
           <span className="text-[10px] font-bold uppercase tracking-wide text-white bg-red-600 rounded-full px-2 py-0.5">
             Unavailable
@@ -66,6 +62,7 @@ function ProductCard({
           </span>
         ) : null}
 
+        {/* Price */}
         <span
           className={`font-bold text-lg ${
             isAvailable ? "" : "line-through opacity-60"
@@ -74,6 +71,7 @@ function ProductCard({
           ₱{Number(price).toFixed(2)}
         </span>
 
+        {/* Product name */}
         <span
           className={`font-medium text-sm ${
             isAvailable ? "" : "opacity-60"
@@ -82,31 +80,40 @@ function ProductCard({
           {itemName}
         </span>
 
+        {/* Category */}
         <span className="text-xs opacity-75">
           {categoryLabel}
         </span>
 
-        {/* Ingredients */}
+        {/* Styled ingredients */}
         {Array.isArray(item.ingredients) &&
         item.ingredients.length > 0 ? (
-          <div className="flex flex-wrap gap-1 mt-1">
-            <span className="font-medium text-dark-brown text-xs">
-              Ingredients:
-            </span>
+          <div className="mt-2 w-full border-t border-[#D8C7A5] pt-2">
+            <p className="text-[10px] font-bold uppercase tracking-wider text-[#6B4F3A] mb-1.5">
+              Ingredients
+            </p>
 
-            {item.ingredients.map((ing, index) => (
-              <span
-                key={index}
-                className="bg-dark-brown/10 text-dark-brown text-[10px] font-medium me-1 px-1.5 py-0.5 rounded"
-              >
-                {ing}
-              </span>
-            ))}
+            <div className="flex flex-wrap gap-1.5">
+              {item.ingredients.map((ing, index) => (
+                <span
+                  key={`${ing}-${index}`}
+                  className="inline-flex items-center rounded-full border border-[#D6C09A] bg-[#E8D9B8] px-2.5 py-1 text-[11px] font-medium text-[#4B3325] shadow-sm"
+                >
+                  {ing}
+                </span>
+              ))}
+            </div>
           </div>
         ) : (
-          <p className="text-xs text-dark-brown/50 mt-1">
-            Ingredients: <span className="italic">none</span>
-          </p>
+          <div className="mt-2 w-full border-t border-[#D8C7A5] pt-2">
+            <p className="text-[10px] font-bold uppercase tracking-wider text-[#6B4F3A] mb-1.5">
+              Ingredients
+            </p>
+
+            <span className="inline-flex rounded-full border border-[#D6C09A] bg-[#E8D9B8] px-2.5 py-1 text-[11px] italic text-[#6B4F3A]">
+              None listed
+            </span>
+          </div>
         )}
       </div>
     </>
@@ -118,19 +125,21 @@ function ProductCard({
         isAvailable ? "" : "opacity-70"
       } ${className ?? ""}`}
     >
-      {/* NEW and BEST badges */}
+      {/* NEW badge */}
       {tag === "new" && (
         <span className="absolute top-1.5 left-1.5 z-10 bg-green-800 text-white text-[9px] font-bold uppercase tracking-wide rounded-full px-1.5 py-0.5">
           NEW
         </span>
       )}
 
+      {/* BEST badge */}
       {tag === "best" && (
         <span className="absolute top-1.5 left-1.5 z-10 bg-amber-800 text-white text-[9px] font-bold uppercase tracking-wide rounded-full px-1.5 py-0.5">
           BEST
         </span>
       )}
 
+      {/* Available items are clickable */}
       {isAvailable ? (
         <Link
           href={`/orders/${item.itemId}`}
@@ -144,6 +153,7 @@ function ProductCard({
         </div>
       )}
 
+      {/* Optional sublabel */}
       {sublabel && (
         <span className="text-xs text-dark-brown/60 px-1">
           {sublabel}
