@@ -5,7 +5,7 @@
 import { usePathname } from "next/navigation";
 import { useStoreStatus } from "@/app/lib/useStoreStatus";
 
-const GATED_PATHS = [/^\/$/, /^\/table-select/, /^\/orders(\/|$)/, /^\/order-list/];
+const GATED_PATHS = [/^\/menu/, /^\/table-select/, /^\/orders(\/|$)/, /^\/order-list/];
 
 export default function StoreGate({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();

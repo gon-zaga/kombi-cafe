@@ -1,207 +1,22 @@
-'use client'
+'use client';
 
-// Customer menu page: fetches the full menu, lets the customer switch
-// categories or search drinks by name. Searching shows every matching item
-// across all categories, so a forgotten pick can be found even if the customer
-// no longer remembers which section it was in. Today's best sellers surface at
-// the top. Requires a table to be selected first; redirects to table-select
-// otherwise.
-import './globals.css'
-import { useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
+import OrderNowButton from '@/app/ui/OrderNowButton';
 import Header from '@/app/ui/Header';
-import BestSellers from '@/app/ui/BestSellers';
-import CategoryBar from './ui/CategoryBar';
-import MenuItem from './ui/MenuItem';
-import ProductCard from './ui/ProductCard';
-import ViewOrderBar from './ui/ViewOrderBar';
-import ChangeTableModal from './ui/ChangeTableModal';
-import { useTableStore } from '@/store/TableStore';
-import type { MenuItem as MenuItemType } from "@/app/lib/types";
 
-export default function Home() {
-  const [active, setActive] = useState("All");
-  const [menuItems, setMenuItems] = useState<MenuItemType[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [search, setSearch] = useState("");
-  const [tableModalOpen, setTableModalOpen] = useState(false);
-  const router = useRouter();
-  const selectedTable = useTableStore(state => state.selectedTable);
-
-  // Redirect to table selection if no table is chosen
-  useEffect(() => {
-    if (selectedTable === null) {
-      router.push('/table-select');
-    }
-  }, [selectedTable, router]);
-
-  useEffect(() => {
-    async function fetchMenu() {
-      try {
-        // ?unavailable=true so items the owner switched off are still listed, marked
-        // Unavailable, instead of vanishing from the menu
-        const response = await fetch('/api/menu?unavailable=true');
-        const data = await response.json();
-        setMenuItems(data);
-      } catch (error) {
-        console.error("Failed to fetch menu:", error);
-      } finally {
-        setLoading(false);
-      }
-    }
-
-    fetchMenu();
-  }, []);
-
-  // Search is category-independent: a match in any section counts, so the bar
-  // is the only thing that changes the displayed grid
-  const searchedItems = search
-    ? menuItems.filter((item) =>
-        item.itemName.toLowerCase().includes(search.toLowerCase())
-      )
-    : [];
-
-  if (loading || selectedTable === null) {
-    return (
-      <div className="min-h-screen bg-cream flex flex-col items-center justify-center p-8">
-        <div className="relative w-20 h-20 mb-6">
-          <div className="absolute inset-0 border-4 border-amber-200 rounded-full animate-spin" />
-          <div className="absolute inset-0 border-4 border-amber-600 rounded-full border-t-transparent animate-spin" />
-          <div className="absolute inset-2 border-4 border-amber-100 rounded-full border-b-transparent animate-spin reverse" style={{ animationDuration: '1.5s' }} />
-        </div>
-        <p className="text-dark-brown font-roboto-slab text-xl font-medium">Loading menu...</p>
-      </div>
-    );
-  }
-
-const searching = search.trim().length > 0;
-  const isAllCategory = active === "All";
-
-  // Base smudges - always visible, positioned behind the MenuItem grid area only
-  const baseSmudges = (
-    <>
-      <div className="absolute top-2/3 left-1/4 w-[400px] h-[400px] rounded-full bg-[#8B4513]/15 blur-[60px] -translate-x-1/2 -translate-y-1/2" />
-      <div className="absolute top-2/3 right-1/4 w-[380px] h-[380px] rounded-full bg-[#D2691E]/18 blur-[60px] -translate-x-1/2 -translate-y-1/2" />
-      <div className="absolute bottom-1/3 left-1/3 w-[350px] h-[350px] rounded-full bg-[#CD853F]/15 blur-[50px] -translate-x-1/2 -translate-y-1/2" />
-      <div className="absolute bottom-1/4 right-1/3 w-[320px] h-[320px] rounded-full bg-[#DEB887]/18 blur-[50px] -translate-x-1/2 -translate-y-1/2" />
-    </>
-  );
-
-  // Extra smudges - only when "All" category is selected
-  const extraSmudges = isAllCategory && !searching ? (
-    <>
-      {/* Medium smudges behind cards */}
-      <div className="absolute top-3/4 left-1/2 w-[300px] h-[300px] rounded-full bg-[#8B4513]/14 -translate-x-1/2 -translate-y-1/2 blur-[50px]" />
-      <div className="absolute top-4/5 right-1/2 w-[280px] h-[280px] rounded-full bg-[#D2691E]/16 -translate-x-1/2 -translate-y-1/2 blur-[50px]" />
-      <div className="absolute top-5/6 right-1/2 w-[260px] h-[260px] rounded-full bg-[#CD853F]/14 -translate-x-1/2 -translate-y-1/2 blur-[50px]" />
-      {/* Center smudges behind card grid */}
-      <div className="absolute top-3/4 left-1/2 w-[240px] h-[240px] rounded-full bg-[#8B4513]/12 -translate-x-1/2 blur-[40px]" />
-      <div className="absolute top-4/5 left-1/2 w-[220px] h-[220px] rounded-full bg-[#D2691E]/14 -translate-x-1/2 -translate-y-1/2 blur-[40px]" />
-      <div className="absolute top-5/6 left-1/3 w-[200px] h-[200px] rounded-full bg-[#CD853F]/12 -translate-y-1/2 blur-[40px]" />
-      <div className="absolute top-5/6 right-1/3 w-[200px] h-[200px] rounded-full bg-[#DEB887]/14 -translate-y-1/2 blur-[40px]" />
-      {/* Additional smudges in the card grid area */}
-      <div className="absolute top-3/4 left-1/4 w-[180px] h-[180px] rounded-full bg-[#8B4513]/11 -translate-x-1/2 -translate-y-1/2 blur-[30px]" />
-      <div className="absolute top-3/4 right-1/4 w-[180px] h-[180px] rounded-full bg-[#D2691E]/13 -translate-x-1/2 -translate-y-1/2 blur-[30px]" />
-      <div className="absolute top-4/5 left-1/4 w-[160px] h-[160px] rounded-full bg-[#CD853F]/11 -translate-x-1/2 blur-[30px]" />
-      <div className="absolute top-4/5 right-1/4 w-[160px] h-[160px] rounded-full bg-[#DEB887]/13 -translate-x-1/2 blur-[30px]" />
-      {/* Extra smudges - denser coverage */}
-      <div className="absolute top-4/5 left-1/6 w-[200px] h-[200px] rounded-full bg-[#8B4513]/11 -translate-x-1/2 blur-[40px]" />
-      <div className="absolute top-4/5 right-1/6 w-[200px] h-[200px] rounded-full bg-[#D2691E]/13 -translate-x-1/2 blur-[40px]" />
-      <div className="absolute top-5/6 left-1/4 w-[180px] h-[180px] rounded-full bg-[#CD853F]/11 -translate-x-1/2 blur-[40px]" />
-      <div className="absolute top-5/6 right-1/4 w-[180px] h-[180px] rounded-full bg-[#DEB887]/13 -translate-x-1/2 blur-[40px]" />
-      {/* More smudges for richer texture when All category */}
-      <div className="absolute top-3/4 left-1/6 w-[180px] h-[180px] rounded-full bg-[#8B4513]/10 -translate-x-1/2 -translate-y-1/2 blur-[35px]" />
-      <div className="absolute top-3/4 right-1/6 w-[180px] h-[180px] rounded-full bg-[#D2691E]/12 -translate-x-1/2 -translate-y-1/2 blur-[35px]" />
-      <div className="absolute top-4/5 left-1/3 w-[170px] h-[170px] rounded-full bg-[#CD853F]/10 -translate-x-1/2 -translate-y-1/2 blur-[35px]" />
-      <div className="absolute top-4/5 right-1/3 w-[170px] h-[170px] rounded-full bg-[#DEB887]/12 -translate-x-1/2 -translate-y-1/2 blur-[35px]" />
-      <div className="absolute top-5/6 left-1/6 w-[160px] h-[160px] rounded-full bg-[#8B4513]/10 -translate-x-1/2 blur-[30px]" />
-      <div className="absolute top-5/6 right-1/6 w-[160px] h-[160px] rounded-full bg-[#D2691E]/12 -translate-x-1/2 blur-[30px]" />
-      <div className="absolute bottom-1/3 left-1/2 w-[200px] h-[200px] rounded-full bg-[#CD853F]/10 -translate-x-1/2 blur-[35px]" />
-      <div className="absolute bottom-1/4 ri  ght-1/2 w-[200px] h-[200px] rounded-full bg-[#DEB887]/12 -translate-x-1/2 blur-[35px]" />
-      <div className="absolute top-7/8 left-1/4 w-[150px] h-[150px] rounded-full bg-[#8B4513]/9 blur-[25px]" />
-      <div className="absolute top-7/8 right-1/4 w-[150px] h-[150px] rounded-full bg-[#D2691E]/11 blur-[25px]" />
-      <div className="absolute top-7/8 left-1/2 w-[140px] h-[140px] rounded-full bg-[#CD853F]/9 -translate-x-1/2 blur-[25px]" />
-      <div className="absolute top-7/8 right-1/2 w-[140px] h-[140px] rounded-full bg-[#DEB887]/11 -translate-x-1/2 blur-[25px]" />
-      <div className="absolute top-7/8 left-3/4 w-[130px] h-[130px] rounded-full bg-[#8B4513]/9 blur-[25px]" />
-      <div className="absolute top-7/8 right-3/4 w-[130px] h-[130px] rounded-full bg-[#D2691E]/11 blur-[25px]" />
-    </>
-  ) : null;
-
+export default function HomePage() {
   return (
-    <div className='bg-cream min-h-screen relative overflow-hidden pb-24'>
-      {/* Paint smudge background - strictly behind MenuItem grid */}
-      <div className="absolute inset-0 pointer-events-none overflow-hidden" aria-hidden="true">
-        {baseSmudges}
-        {extraSmudges}
+    <div className="bg-cream min-h-screen flex flex-col items-center justify-start">
+      <div className="w-full">
+        <Header />
       </div>
 
-      <Header />
+      <h1 className="font-roboto-slab text-3xl text-center mt-0 mb-6">
+        Kombi Cafe
+      </h1>
 
-      {/* Table indicator bar */}
-      <div className="bg-amber-100 border-b border-amber-300 px-4 py-2 flex items-center justify-between">
-        <span className="text-sm font-roboto-condensed tracking-wide text-amber-900">
-          TABLE {selectedTable}
-        </span>
-        <button
-          onClick={() => setTableModalOpen(true)}
-          className="text-xs text-amber-900 hover:underline cursor-pointer"
-        >
-          Change table
-        </button>
-      </div>
-
-      <ChangeTableModal
-        isOpen={tableModalOpen}
-        onClose={() => setTableModalOpen(false)}
+      <OrderNowButton
+        className="bg-dark-brown text-white px-8 py-4 rounded-2xl text-lg font-semibold"
       />
-
-      <h2 className='font-roboto-slab text-2xl text-center mb-1 flex items-center justify-center'>
-        MENU
-      </h2>
-
-      <div className="px-4 mb-3">
-        <input
-          type="text"
-          placeholder="Search drinks..."
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          className="w-full bg-white border border-dark-brown/30 rounded-xl px-3 py-2 font-roboto-mono text-dark-brown focus:outline-none focus:ring-2 focus:ring-amber-800/30 placeholder:text-dark-brown/50"
-          aria-label="Search drinks"
-        />
-        {searching && searchedItems.length === 0 && (
-          <p className="text-sm text-dark-brown/60 mt-2">No drinks found.</p>
-        )}
-      </div>
-
-      <BestSellers menuItems={menuItems} />
-
-      {/* The category bar and active label only matter while browsing; hide them
-          while a search is active so the grid gets the whole viewport */}
-      {!searching && <CategoryBar active={active} setActive={setActive} />}
-      {!searching && (
-        <div className="h-12 flex justify-center items-center font-bold text-dark-brown">
-          {active}
-        </div>
-      )}
-
-      <hr className='mb-3' />
-
-      {/* MenuItem renders the category-filtered grid; the search
-          results mirror its grid shape, so toggling search never relayouts */}
-      {!searching ? (
-        <MenuItem active={active} menuItems={menuItems} />
-      ) : (
-        <div className="px-5 grid grid-cols-2 gap-4">
-          {searchedItems.map((item) => (
-            <ProductCard
-              key={item.itemId}
-              item={item}
-            />
-          ))}
-        </div>
-      )}
-
-      <ViewOrderBar />
     </div>
   );
 }

@@ -52,11 +52,11 @@ export default function OrderQueue() {
       <header className="flex items-center justify-between bg-dark-brown text-white px-4 py-3">
         <span className="font-roboto-mono text-xl tracking-[0.25em]">ORDERS</span>
 
-        <button
-          className="cursor-pointer hover:opacity-70 transition-opacity"
-          onClick={() => router.push('/')}
-          aria-label="Back to menu"
-        >
+         <button
+           className="cursor-pointer hover:opacity-70 transition-opacity"
+           onClick={() => router.push('/menu')}
+           aria-label="Back to menu"
+         >
           <Image
             src="/cream-close.svg"
             alt="exit-button"

@@ -13,7 +13,7 @@ export default function TableSelect() {
 
   const handleSelect = (tableNumber: number) => {
     setTable(tableNumber);
-    router.push('/');
+    router.push('/menu');
   };
 
   return (
