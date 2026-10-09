@@ -6,6 +6,8 @@ import { useEffect, useState } from "react";
 import type { FormEvent } from "react";
 import OwnerHeader from "../ui/OwnerHeader";
 import { DEFAULT_SYSTEM_DOWN_MESSAGE } from "@/app/lib/systemDown";
+import { useToast } from "@/app/ui/Toast";
+import ConfirmModal from "@/app/ui/ConfirmModal";
 
 const to12h = (time24: string) => {
   const [h, m] = time24.split(":").map((n) => parseInt(n, 10));
@@ -21,86 +23,91 @@ export default function SettingsPage() {
   const [systemDownMessage, setSystemDownMessage] = useState("");
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [error, setError] = useState("");
-  const [success, setSuccess] = useState(false);
+  const [confirmingSave, setConfirmingSave] = useState(false);
+  const { success, error } = useToast();
 
-  useEffect(() => {
-    async function loadSettings() {
+   useEffect(() => {
+     async function loadSettings() {
+       try {
+         const response = await fetch("/api/settings");
+
+         if (!response.ok) {
+           throw new Error(`Failed to load settings: ${response.status}`);
+         }
+
+         const data = await response.json();
+
+         setOpeningTime(
+           data.opening_time ? data.opening_time.substring(0, 5) : "08:00"
+         );
+         setClosingTime(
+           data.closing_time ? data.closing_time.substring(0, 5) : "20:00"
+         );
+         setSystemDown(Boolean(data.system_down));
+         setSystemDownMessage(data.system_down_message ?? "");
+       } catch (err) {
+         console.error("Failed to load settings:", err);
+         error("Could not load settings");
+       } finally {
+         setLoading(false);
+       }
+     }
+
+     loadSettings();
+   }, []);
+
+    const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
+      e.preventDefault();
+
+      if (!openingTime || !closingTime) {
+        error("Both opening and closing times are required");
+        return;
+      }
+
+      if (openingTime === closingTime) {
+        error("Opening and closing time can't be the same");
+        return;
+      }
+
+      setConfirmingSave(true);
+    };
+
+    const handleConfirmSave = async () => {
+      setSaving(true);
+      setConfirmingSave(false);
+
       try {
-        const response = await fetch("/api/settings");
+        const response = await fetch("/api/settings", {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            opening_time: openingTime,
+            closing_time: closingTime,
+            system_down: systemDown,
+            system_down_message: systemDownMessage,
+          }),
+        });
+
+        const data = await response.json().catch(() => ({}));
 
         if (!response.ok) {
-          throw new Error(`Failed to load settings: ${response.status}`);
+          throw new Error(data.error || "Could not save settings");
         }
 
-        const data = await response.json();
-
-        setOpeningTime(
-          data.opening_time ? data.opening_time.substring(0, 5) : "08:00"
-        );
-        setClosingTime(
-          data.closing_time ? data.closing_time.substring(0, 5) : "20:00"
-        );
-        setSystemDown(Boolean(data.system_down));
-        setSystemDownMessage(data.system_down_message ?? "");
+        success("Settings saved successfully!");
       } catch (err) {
-        console.error("Failed to load settings:", err);
-        setError("Could not load settings");
+        console.error("Failed to save settings:", err);
+        error(
+          err instanceof Error ? err.message : "Could not save settings"
+        );
       } finally {
-        setLoading(false);
+        setSaving(false);
       }
-    }
+    };
 
-    loadSettings();
-  }, []);
-
-  const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-
-    setError("");
-    setSuccess(false);
-
-    if (!openingTime || !closingTime) {
-      setError("Both opening and closing times are required");
-      return;
-    }
-
-    if (openingTime === closingTime) {
-      setError("Opening and closing time can't be the same");
-      return;
-    }
-
-    setSaving(true);
-
-    try {
-      const response = await fetch("/api/settings", {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          opening_time: openingTime,
-          closing_time: closingTime,
-          system_down: systemDown,
-          system_down_message: systemDownMessage,
-        }),
-      });
-
-      const data = await response.json().catch(() => ({}));
-
-      if (!response.ok) {
-        throw new Error(data.error || "Could not save settings");
-      }
-
-      setSuccess(true);
-      setTimeout(() => setSuccess(false), 3000);
-    } catch (err) {
-      console.error("Failed to save settings:", err);
-      setError(
-        err instanceof Error ? err.message : "Could not save settings"
-      );
-    } finally {
-      setSaving(false);
-    }
-  };
+   const handleCancelSave = () => {
+     setConfirmingSave(false);
+   };
 
   if (loading) {
     return (
@@ -110,27 +117,19 @@ export default function SettingsPage() {
     );
   }
 
-  return (
-    <section className="min-h-screen bg-card-cream">
-      <OwnerHeader title="SETTINGS" />
+   return (
+     <section className="min-h-screen bg-card-cream">
+       <OwnerHeader title="SETTINGS" />
 
-      <div className="px-4 py-8">
-        {error && (
-          <div className="mb-4 bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg">
-            {error}
-          </div>
-        )}
+       <div className="px-4 py-8">
 
-        {success && (
-          <div className="mb-4 bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded-lg">
-            Settings saved successfully!
-          </div>
-        )}
-
-        <form
-          onSubmit={handleSubmit}
-          className="bg-white rounded-lg p-6 shadow"
-        >
+         <form
+           onSubmit={(e) => {
+             e.preventDefault();
+             handleSubmit(e);
+           }}
+           className="bg-white rounded-lg p-6 shadow"
+         >
           <div className="space-y-6">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -225,10 +224,21 @@ export default function SettingsPage() {
               {saving ? "Saving..." : "Save Settings"}
             </button>
           </div>
-        </form>
+         </form>
 
-
-      </div>
-    </section>
-  );
-}
+         {confirmingSave && (
+           <ConfirmModal
+             isOpen={confirmingSave}
+             title="Confirm Settings Save"
+             message="Are you sure you want to save these settings? This will update the store's opening and closing times, system down mode, and system down message."
+             confirmLabel="Save Settings"
+             cancelLabel="Cancel"
+             tone="primary"
+             onConfirm={handleConfirmSave}
+             onCancel={handleCancelSave}
+           />
+         )}
+       </div>
+     </section>
+   );
+ }
