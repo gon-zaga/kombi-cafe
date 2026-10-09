@@ -71,6 +71,11 @@ export default function OwnerDashboard() {
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [storeStatus, setStoreStatus] = useState<{ isOpen: boolean; openingTime: string; closingTime: string }>({
+    isOpen: true,
+    openingTime: "08:00 AM",
+    closingTime: "08:00 PM"
+  });
 
   const query = useMemo(
     () => buildOrdersQuery(dateFilter, customRange),
@@ -115,6 +120,84 @@ export default function OwnerDashboard() {
       isMounted = false;
     };
   }, [query]);
+
+  // Fetch store status
+    useEffect(() => {
+      async function loadStoreStatus() {
+        try {
+          const response = await fetch('/api/settings');
+          if (!response.ok) {
+            throw new Error('Failed to fetch store settings');
+          }
+          const data = await response.json();
+
+          // Get current time in Manila (UTC+8)
+          const now = new Date();
+          const manilaTime = new Date(now.getTime() + (8 * 60 * 60 * 1000)); // Add 8 hours for Manila timezone
+          const manilaHours = manilaTime.getHours();
+          const manilaMinutes = manilaTime.getMinutes();
+          const currentManilaMinutes = manilaHours * 60 + manilaMinutes;
+
+        // Parse opening and closing times (format: HH:MM or HH:MM:SS)
+        const parseTime = (timeStr) => {
+          // Handle null or undefined
+          if (!timeStr) {
+            return 0; // Default to midnight
+          }
+          const parts = timeStr.split(':');
+          // Handle cases where the string doesn't have enough parts
+          const hours = parseInt(parts[0], 10) || 0;
+          const minutes = parseInt(parts[1], 10) || 0;
+          return hours * 60 + minutes;
+        };
+
+           const openingMinutes = parseTime(data.opening_time);
+           const closingMinutes = parseTime(data.closing_time);
+
+           // Check if store is open using modulo arithmetic to handle crossing midnight
+           const L = 24 * 60; // Minutes in a day
+           const openDuration = (closingMinutes - openingMinutes + L) % L; // Ensure positive
+           const isOpenNow = ((currentManilaMinutes - openingMinutes + L) % L) < openDuration;
+
+           // Format opening and closing times for display (12-hour format with AM/PM)
+           const formatTime = (totalMinutes) => {
+             // Handle invalid input
+             if (isNaN(totalMinutes) || totalMinutes < 0) {
+               return "12:00 AM"; // Default to midnight
+             }
+             
+             let hours = Math.floor(totalMinutes / 60);
+             const minutes = totalMinutes % 60;
+             const ampm = hours >= 12 ? 'PM' : 'AM';
+             hours = hours % 12;
+             hours = hours ? hours : 12; // the hour "0" should be "12"
+             return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')} ${ampm}`;
+           };
+
+          setStoreStatus({
+            isOpen: isOpenNow,
+            openingTime: formatTime(openingMinutes),
+            closingTime: formatTime(closingMinutes)
+          });
+        } catch (err) {
+          console.error('Failed to load store status:', err);
+          // Default values (08:00 opening, 20:00 closing)
+          const defaultOpeningMinutes = 8 * 60; // 08:00
+          const defaultClosingMinutes = 20 * 60; // 20:00
+          setStoreStatus({
+            isOpen: true,
+            openingTime: formatTime(defaultOpeningMinutes),
+            closingTime: formatTime(defaultClosingMinutes)
+          });
+        }
+      }
+
+      loadStoreStatus();
+
+      // Update every minute
+      const interval = setInterval(loadStoreStatus, 60 * 1000);
+      return () => clearInterval(interval);
+    }, []);
 
   const handleSelectFilter = (f: DateFilter) => {
     setError("");
@@ -191,6 +274,20 @@ export default function OwnerDashboard() {
   return (
     <section className="min-h-screen bg-card-cream">
       <OwnerHeader title="DASHBOARD" />
+      
+      {/* Store Status Indicator */}
+      <div className="px-4 mb-4 flex justify-between items-center">
+        <div className="flex items-center gap-3">
+           <div className={`w-3 h-3 rounded-full ${storeStatus.isOpen ? 'bg-green-500' : 'bg-red-500'} ${storeStatus.isOpen ? 'animate-pulse' : ''}`} />
+          <span className="text-sm font-medium">
+            Store is {storeStatus.isOpen ? 'OPEN' : 'CLOSED'}
+          </span>
+        </div>
+        <div className="text-xs text-gray-500">
+          Hours: {storeStatus.openingTime} - {storeStatus.closingTime}
+        </div>
+      </div>
+
       <StatsCard />
 
       {loading && !analyticsData && (

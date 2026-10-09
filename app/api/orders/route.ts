@@ -6,6 +6,75 @@ import pool from "@/app/lib/db";
 import type { PoolClient } from "pg";
 import type { OrderSummary } from "@/app/lib/types";
 
+// Check if store is currently open
+async function isStoreOpen(): Promise<boolean> {
+  try {
+    const result = await pool.query(
+      "SELECT opening_time, closing_time FROM store_settings ORDER BY id DESC LIMIT 1"
+    );
+    
+    if (result.rows.length === 0) {
+      // Default to 8:00-20:00 if no settings
+      return isWithinDefaultHours();
+    }
+    
+    const { opening_time, closing_time } = result.rows[0];
+    const now = new Date();
+    // Get current time in Manila (UTC+8)
+    const manilaTime = new Date(now.getTime() + (8 * 60 * 60 * 1000)); // Add 8 hours for Manila timezone
+    const manilaHours = manilaTime.getHours();
+    const manilaMinutes = manilaTime.getMinutes();
+    const currentManilaMinutes = manilaHours * 60 + manilaMinutes;
+
+    // Parse opening and closing times (format: HH:MM or HH:MM:SS)
+    const parseTime = (timeStr) => {
+      // Handle null or undefined
+      if (!timeStr) {
+        return 0; // Default to midnight
+      }
+      const parts = timeStr.split(':');
+      // Handle cases where the string doesn't have enough parts
+      const hours = parseInt(parts[0], 10) || 0;
+      const minutes = parseInt(parts[1], 10) || 0;
+      return hours * 60 + minutes;
+    };
+
+    const openingMinutes = parseTime(opening_time.toString());
+    const closingMinutes = parseTime(closing_time.toString());
+
+    // Check if store is open using modulo arithmetic to handle crossing midnight
+    const L = 24 * 60; // Minutes in a day
+    const openDuration = (closingMinutes - openingMinutes + L) % L; // Ensure positive
+    const isOpenNow = ((currentManilaMinutes - openingMinutes + L) % L) < openDuration;
+    
+    return isOpenNow;
+  } catch (error) {
+    console.error("Failed to check store hours:", error);
+    // Default to open if we can't check
+    return true;
+  }
+}
+
+// Helper function for default hours (8:00-20:00)
+function isWithinDefaultHours(): boolean {
+  const now = new Date();
+  // Get current time in Manila (UTC+8)
+  const manilaTime = new Date(now.getTime() + (8 * 60 * 60 * 1000)); // Add 8 hours for Manila timezone
+  const manilaHours = manilaTime.getHours();
+  const manilaMinutes = manilaTime.getMinutes();
+  const currentManilaMinutes = manilaHours * 60 + manilaMinutes;
+
+  const openingTotalMinutes = 8 * 60; // 8:00 AM
+  const closingTotalMinutes = 20 * 60; // 8:00 PM
+  
+  // Check if store is open using modulo arithmetic to handle crossing midnight
+  const L = 24 * 60; // Minutes in a day
+  const openDuration = (closingTotalMinutes - openingTotalMinutes + L) % L; // Ensure positive
+  const isOpenNow = ((currentManilaMinutes - openingTotalMinutes + L) % L) < openDuration;
+  
+  return isOpenNow;
+}
+
 interface PlaceOrderPayload {
   table_number: number;
   items: {
@@ -24,7 +93,7 @@ interface PlaceOrderPayload {
 // Which recipe rows apply to a given item + size, and how much each costs.
 // No trailing semicolon: this string is also embedded as a subquery.
 const recipeCostSql = `
-  SELECT i.id, i.name, i.unit, i.stock_qty,
+  SELECT i.id, i.name, i.unit, i.stock_qty, i.restock_threshold,
          SUM(r.quantity_needed) * $3::numeric AS needed
   FROM recipes r
   JOIN ingredients i ON i.id = r.ingredient_id
@@ -36,7 +105,7 @@ const recipeCostSql = `
         AND r2.size_id = $2
         AND r2.ingredient_id = r.ingredient_id
     )
-  GROUP BY i.id, i.name, i.unit, i.stock_qty
+  GROUP BY i.id, i.name, i.unit, i.stock_qty, i.restock_threshold
 `;
 
 // Removes stock for one ordered item's recipe. Throws (which rolls the whole
@@ -59,8 +128,10 @@ async function deductRecipeStock(
 
   // Check everything before changing anything, so a failure can't leave
   // some ingredients deducted and others not
+  // An ingredient is insufficient if stock_qty - restock_threshold < needed
+  // (would dip below the restock threshold)
   const short = costResult.rows.filter(
-    (row) => Number(row.stock_qty) < Number(row.needed)
+    (row) => Number(row.stock_qty) - Number(row.restock_threshold) < Number(row.needed)
   );
 
   if (short.length > 0) {
@@ -68,7 +139,7 @@ async function deductRecipeStock(
       `Not enough stock: ${short
         .map(
           (r) =>
-            `${r.name} (needs ${Number(r.needed)}, have ${Number(r.stock_qty)} ${r.unit})`
+            `${r.name} (needs ${Number(r.needed)}, have ${Number(r.stock_qty)} ${r.unit}, restock threshold: ${Number(r.restock_threshold)})`
         )
         .join(', ')}`
     );
@@ -261,6 +332,15 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
+  // Check if store is open before processing order
+  const open = await isStoreOpen();
+  if (!open) {
+    return NextResponse.json(
+      { error: "Store is currently closed. Please come back during opening hours." },
+      { status: 403 } // Forbidden
+    );
+  }
+
   try {
     const body: PlaceOrderPayload = await request.json();
 

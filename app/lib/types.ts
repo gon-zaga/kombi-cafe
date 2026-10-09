@@ -11,6 +11,8 @@ export type MenuRow = {
   oz: number | null;
   temperature: string | null;
   price: number;
+  /** Ingredient names for this menu item */
+  ingredients: string[];
 };
 
 export type MenuItem = {
