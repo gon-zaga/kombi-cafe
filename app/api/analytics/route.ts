@@ -229,22 +229,49 @@ export async function GET(request: Request) {
         [from, to]
       ),
 
-      // 9. Top 5 most chosen add-ons (by quantity)
-      pool.query(
-        `
-        SELECT a.name AS addon_name, SUM(oia.quantity) AS total_quantity
-        FROM order_item_addons oia
-        JOIN add_ons a ON a.id = oia.add_on_id
-        JOIN order_items oi ON oi.id = oia.order_item_id
-        JOIN orders o ON o.id = oi.order_id
-        WHERE ($1::date IS NULL OR o.order_date >= $1::date)
-          AND ($2::date IS NULL OR o.order_date <= $2::date)
-        GROUP BY a.name
-        ORDER BY total_quantity DESC
-        LIMIT 5
-        `,
-        [from, to]
-      ),
+     // 9. Top 5 most chosen add-ons (by quantity)
+       pool.query(
+         `
+         SELECT a.name AS addon_name, SUM(oia.quantity) AS total_quantity
+         FROM order_item_addons oia
+         JOIN add_ons a ON a.id = oia.add_on_id
+         JOIN order_items oi ON oi.id = oia.order_item_id
+         JOIN orders o ON o.id = oi.order_id
+         WHERE ($1::date IS NULL OR o.order_date >= $1::date)
+           AND ($2::date IS NULL OR o.order_date <= $2::date)
+         GROUP BY a.name
+         ORDER BY total_quantity DESC
+         LIMIT 5
+         `,
+         [from, to]
+       ),
+
+       // 10. Ingredient Consumption - What ingredients are using the most
+       pool.query(
+         `
+         SELECT 
+           i.name AS ingredient_name,
+           SUM(oi.quantity * r.quantity_needed) AS total_used
+         FROM order_items oi
+         JOIN orders o ON o.id = oi.order_id
+         JOIN menu_items mi ON mi.id = oi.menu_item_id
+         JOIN recipes r ON r.menu_item_id = mi.id 
+           AND (r.size_id = oi.size_id OR r.size_id IS NULL)
+           AND NOT EXISTS (
+             SELECT 1 FROM recipes r2
+             WHERE r2.menu_item_id = mi.id
+               AND r2.size_id = oi.size_id
+               AND r2.ingredient_id = r.ingredient_id
+           )
+         JOIN ingredients i ON i.id = r.ingredient_id
+         WHERE ($1::date IS NULL OR o.order_date >= $1::date)
+           AND ($2::date IS NULL OR o.order_date <= $2::date)
+         GROUP BY i.name
+         ORDER BY total_used DESC
+         LIMIT 5
+         `,
+         [from, to]
+       ),
     ]);
 
     const [
@@ -257,6 +284,7 @@ export async function GET(request: Request) {
       dailyTrend,
       bestSellingItems,
       topAddons,
+      ingredientConsumption,
     ] = results;
 
     return NextResponse.json({
@@ -270,6 +298,7 @@ export async function GET(request: Request) {
       dailyTrend: dailyTrend.rows,
       bestSellingItems: bestSellingItems.rows,
       topAddons: topAddons.rows,
+      ingredientConsumption: ingredientConsumption.rows,
     });
   } catch (error) {
     console.error("Analytics query failed:", error);

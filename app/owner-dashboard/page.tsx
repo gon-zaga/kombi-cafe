@@ -63,6 +63,11 @@ interface AnalyticsData {
     orders: string;
     revenue: string;
   }[];
+
+  ingredientConsumption: {
+    ingredient_name: string;
+    total_used: string;
+  }[];
 }
 
 export default function OwnerDashboard() {
@@ -143,57 +148,64 @@ export default function OwnerDashboard() {
     "#8B7355",
   ];
 
-  const {
-    summary,
-    revenueByCategory,
-    revenueByHour,
-    avgItemsPerOrder,
-    addonAttachmentRate,
-    staffPerformance,
-    dailyTrend,
-  } = analyticsData || {
-    summary: {
-      total_orders: 0,
-      total_revenue: 0,
-      avg_order_value: 0,
-      completed_orders: 0,
-    },
+   const {
+     summary,
+     revenueByCategory,
+     revenueByHour,
+     avgItemsPerOrder,
+     addonAttachmentRate,
+     staffPerformance,
+     dailyTrend,
+     ingredientConsumption,
+   } = analyticsData || {
+     summary: {
+       total_orders: 0,
+       total_revenue: 0,
+       avg_order_value: 0,
+       completed_orders: 0,
+     },
 
-    revenueByCategory: [],
-    revenueByHour: [],
-    avgItemsPerOrder: 0,
-    addonAttachmentRate: 0,
-    staffPerformance: [],
-    dailyTrend: [],
-  };
+     revenueByCategory: [],
+     revenueByHour: [],
+     avgItemsPerOrder: 0,
+     addonAttachmentRate: 0,
+     staffPerformance: [],
+     dailyTrend: [],
+     ingredientConsumption: [],
+   };
 
-  const categoryData = revenueByCategory.map(
-    (item, i) => ({
-      name: item.category,
-      revenue: Number(item.revenue),
-      orders: Number(item.order_count),
-      fill: COLORS[i % COLORS.length],
-    })
-  );
+   const categoryData = revenueByCategory.map(
+     (item, i) => ({
+       name: item.category,
+       revenue: Number(item.revenue),
+       orders: Number(item.order_count),
+       fill: COLORS[i % COLORS.length],
+     })
+   );
 
-  const hourData = revenueByHour.map((h) => ({
-    hour: `${h.hour}:00`,
-    revenue: Number(h.revenue),
-    orders: Number(h.orders),
-  }));
+   const hourData = revenueByHour.map((h) => ({
+     hour: `${h.hour}:00`,
+     revenue: Number(h.revenue),
+     orders: Number(h.orders),
+   }));
 
-  const dailyData = dailyTrend.map((d) => ({
-    date: d.order_date,
-    revenue: Number(d.revenue),
-    orders: Number(d.orders),
-  }));
+   const dailyData = dailyTrend.map((d) => ({
+     date: d.order_date,
+     revenue: Number(d.revenue),
+     orders: Number(d.orders),
+   }));
 
-  const staffData = staffPerformance.map((s) => ({
-    name: `${s.first_name || s.username}`,
-    orders: Number(s.orders_completed),
-    revenue: Number(s.total_revenue),
-    avgOrder: Number(s.avg_order_value),
-  }));
+   const staffData = staffPerformance.map((s) => ({
+     name: `${s.first_name || s.username}`,
+     orders: Number(s.orders_completed),
+     revenue: Number(s.total_revenue),
+     avgOrder: Number(s.avg_order_value),
+   }));
+
+   const ingredientData = ingredientConsumption.map((item) => ({
+     name: item.ingredient_name,
+     used: Number(item.total_used),
+   }));
 
   return (
     <section className="min-h-screen bg-card-cream">
@@ -553,71 +565,142 @@ export default function OwnerDashboard() {
 
 
             {/* =====================================================
-                ROW 3
-                Daily Trend
-            ====================================================== */}
+                 ROW 3
+                 Daily Trend | Ingredient Consumption
+             ====================================================== */}
 
-            {dailyData.length > 1 && (
-              <div className="bg-white rounded-lg p-4 shadow">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
 
-                <h3 className="text-lg font-semibold text-gray-900 mb-4">
-                  Daily Trend
-                </h3>
+              {/* Daily Trend */}
+              {dailyData.length > 1 && (
+                <div className="bg-white rounded-lg p-4 shadow">
 
-                <div className="h-64">
+                  <h3 className="text-lg font-semibold text-gray-900 mb-4">
+                    Daily Trend
+                  </h3>
 
-                  <ResponsiveContainer
-                    width="100%"
-                    height="100%"
-                  >
+                  <div className="h-64">
 
-                    <LineChart data={dailyData}>
+                    <ResponsiveContainer
+                      width="100%"
+                      height="100%"
+                    >
 
-                      <CartesianGrid
-                        strokeDasharray="3 3"
-                        stroke="#f0f0f0"
-                      />
+                      <LineChart data={dailyData}>
 
-                      <XAxis
-                        dataKey="date"
-                        tick={{ fontSize: 12 }}
-                      />
+                        <CartesianGrid
+                          strokeDasharray="3 3"
+                          stroke="#f0f0f0"
+                        />
 
-                      <YAxis
-                        tick={{ fontSize: 12 }}
-                        tickFormatter={(v) =>
-                          `₱${v}`
-                        }
-                      />
+                        <XAxis
+                          dataKey="date"
+                          tick={{ fontSize: 12 }}
+                        />
 
-                      <Tooltip />
+                        <YAxis
+                          tick={{ fontSize: 12 }}
+                          tickFormatter={(v) =>
+                            `₱${v}`
+                          }
+                        />
 
-                      <Line
-                        type="monotone"
-                        dataKey="revenue"
-                        stroke="#8B4513"
-                        strokeWidth={2}
-                        name="Revenue"
-                        dot={{ r: 3 }}
-                      />
+                        <Tooltip />
 
-                      <Line
-                        type="monotone"
-                        dataKey="orders"
-                        stroke="#D2691E"
-                        strokeWidth={2}
-                        name="Orders"
-                        dot={{ r: 3 }}
-                        yAxisId="right"
-                      />
+                        <Line
+                          type="monotone"
+                          dataKey="revenue"
+                          stroke="#8B4513"
+                          strokeWidth={2}
+                          name="Revenue"
+                          dot={{ r: 3 }}
+                        />
 
-                    </LineChart>
+                        <Line
+                          type="monotone"
+                          dataKey="orders"
+                          stroke="#D2691E"
+                          strokeWidth={2}
+                          name="Orders"
+                          dot={{ r: 3 }}
+                          yAxisId="right"
+                        />
 
-                  </ResponsiveContainer>
+                      </LineChart>
 
+                    </ResponsiveContainer>
+
+                  </div>
                 </div>
-              </div>
-            )}
+              )}
+
+              {/* Ingredient Consumption */}
+              {ingredientData.length > 0 && (
+                <div className="bg-white rounded-lg p-4 shadow">
+
+                  <h3 className="text-lg font-semibold text-gray-900 mb-4">
+                    Ingredient Consumption
+                  </h3>
+
+                  <div className="h-64">
+
+                    <ResponsiveContainer
+                      width="100%"
+                      height="100%"
+                    >
+
+                      <BarChart data={ingredientData}>
+
+                        <CartesianGrid
+                          strokeDasharray="3 3"
+                          stroke="#f0f0f0"
+                        />
+
+                        <XAxis
+                          dataKey="name"
+                          tick={{ fontSize: 12 }}
+                        />
+
+                        <YAxis
+                          tick={{ fontSize: 12 }}
+                          tickFormatter={(v) =>
+                            `${v} units`
+                          }
+                        />
+
+                        <Tooltip />
+
+                        <Bar
+                          dataKey="used"
+                          name="Usage"
+                          radius={[4, 4, 0, 0]}
+                        >
+
+                          {ingredientData.map(
+                            (_, i) => (
+                              <Cell
+                                key={i}
+                                fill={
+                                  COLORS[
+                                    i %
+                                    COLORS.length
+                                  ]
+                                }
+                              />
+                            )
+                          )}
+
+                        </Bar>
+
+                      </BarChart>
+
+                    </ResponsiveContainer>
+
+                  </div>
+                </div>
+              )}
+
+            </div>
 
           </div>
         </>
