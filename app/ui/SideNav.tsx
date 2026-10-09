@@ -53,8 +53,6 @@ export default function SideNav({ isOpen, onClose }: SideNavProps) {
         <div className="flex flex-col p-6">
           {/* Put your nav links here later */}
           <Link href="/side-navigation" className="px-4 py-2 hover:bg-[#E8D9B5]" >Staff Access</Link>
-          <Link href="/order-queue" className="px-4 py-2 hover:bg-[#E8D9B5]" >Order Queue</Link>
-          
         </div>
 
         {/* Footer */}
