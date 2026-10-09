@@ -135,10 +135,10 @@ function ChangeCalculator({ total, gate = false, onComputedChange }: ChangeCalcu
         ))}
       </div>
 
-      <div className="mt-3 flex justify-between items-center border-t border-amber-200 pt-2">
-        <span className={`text-sm ${isShort ? "text-red-600" : "text-gray-600"}`}>
-          {isShort ? "Still need" : "Change"}
-        </span>
+       <div className="mt-3 flex justify-between items-center border-t border-amber-200 pt-2">
+         <span className={`text-sm ${isShort ? "text-red-600" : "text-gray-600"}`}>
+           {isShort ? "Insufficient Payment" : "Change"}
+         </span>
         <span
           className={`text-xl font-mono font-bold ${
             isShort ? "text-red-600" : isExact ? "text-gray-900" : "text-green-700"

@@ -1,8 +1,8 @@
 'use client'
+
 import React from "react";
 import Link from "next/link";
 import ItemImage from "./ItemImage";
-
 
 type MenuCardItem = {
   itemId: number;
@@ -11,30 +11,36 @@ type MenuCardItem = {
   itemName: string;
   ingredients: string[];
   sizes: { size: string; price: number }[];
-
-  // Set by the API. isAvailable false means the owner switched the item off;
-  // isLowStock means one of its recipe ingredients is at/below its threshold
+  // Set by the API. False means the owner switched the item off.
   isAvailable?: boolean;
+  // True when one of the recipe ingredients is at or below its threshold.
   isLowStock?: boolean;
 };
 
-// A single menu item on the customer grid, or inside the Best Sellers shelf.
-// Optional `tag` stamps a NEW (recently added) or BEST (top seller) ribbon on the
-// card, and `sublabel` adds a one-line note (e.g. "3 sold") under the price.
-function ProductCard({ item, tag, sublabel, className }: { item: MenuCardItem; tag?: "new" | "best"; sublabel?: string; className?: string }) {
+type ProductCardProps = {
+  item: MenuCardItem;
+  tag?: "new" | "best";
+  sublabel?: string;
+  className?: string;
+};
+
+function ProductCard({
+  item,
+  tag,
+  sublabel,
+  className,
+}: ProductCardProps) {
   const firstSize = item.sizes?.[0];
   const price = firstSize?.price ?? 0;
   const imageSrc = item.itemImg || "/drinks/no-drink-image.svg";
   const itemName = item.itemName || "Menu item";
   const categoryLabel = item.category || "Other";
 
-  // Defaults to true so a card built from data without the flag still works
+  // Defaults to true so cards without the flag remain usable.
   const isAvailable = item.isAvailable ?? true;
   const isLowStock = isAvailable && item.isLowStock === true;
 
-  // The image + name block. Unavailable items render this instead of a Link,
-  // which is what makes them unclickable: there is no href to follow, so the
-  // order page can't be reached even by keyboard.
+  // The card body is not a link when the item is unavailable.
   const body = (
     <>
       <div className="flex justify-center items-center bg-white rounded-xl p-2">
@@ -49,7 +55,7 @@ function ProductCard({ item, tag, sublabel, className }: { item: MenuCardItem; t
       </div>
 
       <div className="flex flex-col items-start gap-0.5">
-        {/* Badges sit above the name so they read before the price */}
+        {/* Badges appear above the item name. */}
         {!isAvailable ? (
           <span className="text-[10px] font-bold uppercase tracking-wide text-white bg-red-600 rounded-full px-2 py-0.5">
             Unavailable
@@ -60,13 +66,48 @@ function ProductCard({ item, tag, sublabel, className }: { item: MenuCardItem; t
           </span>
         ) : null}
 
-        <span className={`font-bold text-lg ${isAvailable ? "" : "line-through opacity-60"}`}>
-          P{price}
+        <span
+          className={`font-bold text-lg ${
+            isAvailable ? "" : "line-through opacity-60"
+          }`}
+        >
+          ₱{Number(price).toFixed(2)}
         </span>
-        <span className={`font-medium text-sm ${isAvailable ? "" : "opacity-60"}`}>
+
+        <span
+          className={`font-medium text-sm ${
+            isAvailable ? "" : "opacity-60"
+          }`}
+        >
           {itemName}
         </span>
-        <span className="text-xs opacity-75">{categoryLabel}</span>
+
+        <span className="text-xs opacity-75">
+          {categoryLabel}
+        </span>
+
+        {/* Ingredients */}
+        {Array.isArray(item.ingredients) &&
+        item.ingredients.length > 0 ? (
+          <div className="flex flex-wrap gap-1 mt-1">
+            <span className="font-medium text-dark-brown text-xs">
+              Ingredients:
+            </span>
+
+            {item.ingredients.map((ing, index) => (
+              <span
+                key={index}
+                className="bg-dark-brown/10 text-dark-brown text-[10px] font-medium me-1 px-1.5 py-0.5 rounded"
+              >
+                {ing}
+              </span>
+            ))}
+          </div>
+        ) : (
+          <p className="text-xs text-dark-brown/50 mt-1">
+            Ingredients: <span className="italic">none</span>
+          </p>
+        )}
       </div>
     </>
   );
@@ -77,11 +118,13 @@ function ProductCard({ item, tag, sublabel, className }: { item: MenuCardItem; t
         isAvailable ? "" : "opacity-70"
       } ${className ?? ""}`}
     >
+      {/* NEW and BEST badges */}
       {tag === "new" && (
         <span className="absolute top-1.5 left-1.5 z-10 bg-green-800 text-white text-[9px] font-bold uppercase tracking-wide rounded-full px-1.5 py-0.5">
           NEW
         </span>
       )}
+
       {tag === "best" && (
         <span className="absolute top-1.5 left-1.5 z-10 bg-amber-800 text-white text-[9px] font-bold uppercase tracking-wide rounded-full px-1.5 py-0.5">
           BEST
@@ -89,15 +132,22 @@ function ProductCard({ item, tag, sublabel, className }: { item: MenuCardItem; t
       )}
 
       {isAvailable ? (
-        <Link href={`/orders/${item.itemId}`} className="flex flex-col gap-2">
+        <Link
+          href={`/orders/${item.itemId}`}
+          className="flex flex-col gap-2"
+        >
           {body}
         </Link>
       ) : (
-        <div className="flex flex-col gap-2 cursor-not-allowed">{body}</div>
+        <div className="flex flex-col gap-2 cursor-not-allowed">
+          {body}
+        </div>
       )}
 
       {sublabel && (
-        <span className="text-xs text-dark-brown/60 px-1">{sublabel}</span>
+        <span className="text-xs text-dark-brown/60 px-1">
+          {sublabel}
+        </span>
       )}
     </div>
   );
