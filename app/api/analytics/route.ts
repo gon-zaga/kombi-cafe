@@ -88,83 +88,87 @@ export async function GET(request: Request) {
 
   try {
     const results = await Promise.all([
-      // 1. Revenue by Category
-      // Add-on revenue is included via the order_item_addons
-      // snapshots, so category totals reconcile with the
-      // per-line receipt amounts (item + add-ons = order total)
-      pool.query(
-        `
-        SELECT c.name AS category,
-               COALESCE(
-                 SUM(oi.quantity * oi.unit_price + COALESCE(oa.addon_revenue, 0)),
-                 0
-               ) AS revenue,
-               COUNT(DISTINCT o.id) AS order_count
-        FROM order_items oi
-        JOIN menu_items mi ON mi.id = oi.menu_item_id
-        JOIN categories c ON c.id = mi.category_id
-        JOIN orders o ON o.id = oi.order_id
-        LEFT JOIN (
-          SELECT order_item_id, SUM(quantity * price) AS addon_revenue
-          FROM order_item_addons
-          GROUP BY order_item_id
-        ) oa ON oa.order_item_id = oi.id
-        WHERE ($1::date IS NULL OR o.order_date >= $1::date)
-          AND ($2::date IS NULL OR o.order_date <= $2::date)
-        GROUP BY c.name
-        ORDER BY revenue DESC
-        `,
-        [from, to]
-      ),
+       // 1. Revenue by Category
+       // Add-on revenue is included via the order_item_addons
+       // snapshots, so category totals reconcile with the
+       // per-line receipt amounts (item + add-ons = order total)
+       pool.query(
+         `
+         SELECT c.name AS category,
+                COALESCE(
+                  SUM(oi.quantity * oi.unit_price + COALESCE(oa.addon_revenue, 0)),
+                  0
+                ) AS revenue,
+                COUNT(DISTINCT o.id) AS order_count
+         FROM order_items oi
+         JOIN menu_items mi ON mi.id = oi.menu_item_id
+         JOIN categories c ON c.id = mi.category_id
+         JOIN orders o ON o.id = oi.order_id
+         LEFT JOIN (
+           SELECT order_item_id, SUM(quantity * price) AS addon_revenue
+           FROM order_item_addons
+           GROUP BY order_item_id
+         ) oa ON oa.order_item_id = oi.id
+         WHERE o.status = 'completed'
+           AND ($1::date IS NULL OR o.order_date >= $1::date)
+           AND ($2::date IS NULL OR o.order_date <= $2::date)
+         GROUP BY c.name
+         ORDER BY revenue DESC
+         `,
+         [from, to]
+       ),
 
-      // 2. Revenue by Hour (Peak Hours)
-      pool.query(
-        `
-        SELECT EXTRACT(HOUR FROM o.created_at AT TIME ZONE 'Asia/Manila')::int AS hour,
-               COUNT(*) AS orders,
-               COALESCE(SUM(o.total), 0) AS revenue
-        FROM orders o
-        WHERE ($1::date IS NULL OR o.order_date >= $1::date)
-          AND ($2::date IS NULL OR o.order_date <= $2::date)
-        GROUP BY hour
-        ORDER BY hour
-        `,
-        [from, to]
-      ),
+       // 2. Revenue by Hour (Peak Hours)
+       pool.query(
+         `
+         SELECT EXTRACT(HOUR FROM o.created_at AT TIME ZONE 'Asia/Manila')::int AS hour,
+                COUNT(*) AS orders,
+                COALESCE(SUM(o.total), 0) AS revenue
+         FROM orders o
+         WHERE o.status = 'completed'
+           AND ($1::date IS NULL OR o.order_date >= $1::date)
+           AND ($2::date IS NULL OR o.order_date <= $2::date)
+         GROUP BY hour
+         ORDER BY hour
+         `,
+         [from, to]
+       ),
 
-      // 3. Average Items per Order
-      pool.query(
-        `
-        SELECT COALESCE(AVG(item_count), 0) AS avg_items_per_order
-        FROM (
-          SELECT COUNT(*) AS item_count
-          FROM order_items oi
-          JOIN orders o ON o.id = oi.order_id
-          WHERE ($1::date IS NULL OR o.order_date >= $1::date)
-            AND ($2::date IS NULL OR o.order_date <= $2::date)
-          GROUP BY oi.order_id
-        ) sub
-        `,
-        [from, to]
-      ),
+       // 3. Average Items per Order
+       pool.query(
+         `
+         SELECT COALESCE(AVG(item_count), 0) AS avg_items_per_order
+         FROM (
+           SELECT COUNT(*) AS item_count
+           FROM order_items oi
+           JOIN orders o ON o.id = oi.order_id
+           WHERE o.status = 'completed'
+             AND ($1::date IS NULL OR o.order_date >= $1::date)
+             AND ($2::date IS NULL OR o.order_date <= $2::date)
+           GROUP BY oi.order_id
+         ) sub
+         `,
+         [from, to]
+       ),
 
-      // 4. Add-on Attachment Rate
-      pool.query(
-        `
-        SELECT 
-          COUNT(DISTINCT oi.id) AS total_order_items,
-          COUNT(DISTINCT oia.order_item_id) AS items_with_addons,
-          CASE WHEN COUNT(DISTINCT oi.id) = 0 THEN 0
-               ELSE COUNT(DISTINCT oia.order_item_id)::numeric / COUNT(DISTINCT oi.id) * 100
-          END AS attachment_rate_percent
-        FROM order_items oi
-        JOIN orders o ON o.id = oi.order_id
-        LEFT JOIN order_item_addons oia ON oia.order_item_id = oi.id
-        WHERE ($1::date IS NULL OR o.order_date >= $1::date)
-          AND ($2::date IS NULL OR o.order_date <= $2::date)
-        `,
-        [from, to]
-      ),
+       // 4. Add-on Attachment Rate
+       pool.query(
+         `
+         SELECT 
+           COUNT(DISTINCT oi.id) AS total_order_items,
+           COUNT(DISTINCT oia.order_item_id) AS items_with_addons,
+           CASE WHEN COUNT(DISTINCT oi.id) = 0 THEN 0
+                ELSE COUNT(DISTINCT oia.order_item_id)::numeric / COUNT(DISTINCT oi.id) * 100
+           END AS attachment_rate_percent
+         FROM order_items oi
+         JOIN orders o ON o.id = oi.order_id
+         LEFT JOIN order_item_addons oia ON oia.order_item_id = oi.id
+         WHERE o.status = 'completed'
+           AND ($1::date IS NULL OR o.order_date >= $1::date)
+           AND ($2::date IS NULL OR o.order_date <= $2::date)
+         `,
+         [from, to]
+       ),
 
       // 5. Staff Performance (Orders Processed)
       pool.query(
@@ -192,44 +196,47 @@ export async function GET(request: Request) {
                 COALESCE(AVG(o.total), 0) AS avg_order_value,
                 COUNT(*) FILTER (WHERE o.status = 'completed') AS completed_orders
          FROM orders o
-         WHERE ($1::date IS NULL OR o.order_date >= $1::date)
+         WHERE o.status = 'completed'
+           AND ($1::date IS NULL OR o.order_date >= $1::date)
            AND ($2::date IS NULL OR o.order_date <= $2::date)
          `,
          [from, to]
        ),
 
-      // 7. Daily breakdown for trend chart
-      pool.query(
-        `
-        SELECT o.order_date,
-               COUNT(*) AS orders,
-               COALESCE(SUM(o.total), 0) AS revenue
-        FROM orders o
-        WHERE ($1::date IS NULL OR o.order_date >= $1::date)
-          AND ($2::date IS NULL OR o.order_date <= $2::date)
-        GROUP BY o.order_date
-        ORDER BY o.order_date
-        `,
-        [from, to]
-      ),
+       // 7. Daily breakdown for trend chart
+       pool.query(
+         `
+         SELECT o.order_date,
+                COUNT(*) AS orders,
+                COALESCE(SUM(o.total), 0) AS revenue
+         FROM orders o
+         WHERE o.status = 'completed'
+           AND ($1::date IS NULL OR o.order_date >= $1::date)
+           AND ($2::date IS NULL OR o.order_date <= $2::date)
+         GROUP BY o.order_date
+         ORDER BY o.order_date
+         `,
+         [from, to]
+       ),
 
-      // 8. Top 5 best selling menu items (by quantity)
-      pool.query(
-        `
-        SELECT mi.name AS item_name, SUM(oi.quantity) AS total_quantity
-        FROM order_items oi
-        JOIN menu_items mi ON mi.id = oi.menu_item_id
-        JOIN orders o ON o.id = oi.order_id
-        WHERE ($1::date IS NULL OR o.order_date >= $1::date)
-          AND ($2::date IS NULL OR o.order_date <= $2::date)
-        GROUP BY mi.name
-        ORDER BY total_quantity DESC
-        LIMIT 5
-        `,
-        [from, to]
-      ),
+       // 8. Top 5 best selling menu items (by quantity)
+       pool.query(
+         `
+         SELECT mi.name AS item_name, SUM(oi.quantity) AS total_quantity
+         FROM order_items oi
+         JOIN menu_items mi ON mi.id = oi.menu_item_id
+         JOIN orders o ON o.id = oi.order_id
+         WHERE o.status = 'completed'
+           AND ($1::date IS NULL OR o.order_date >= $1::date)
+           AND ($2::date IS NULL OR o.order_date <= $2::date)
+         GROUP BY mi.name
+         ORDER BY total_quantity DESC
+         LIMIT 5
+         `,
+         [from, to]
+       ),
 
-     // 9. Top 5 most chosen add-ons (by quantity)
+       // 9. Top 5 most chosen add-ons (by quantity)
        pool.query(
          `
          SELECT a.name AS addon_name, SUM(oia.quantity) AS total_quantity
@@ -237,7 +244,8 @@ export async function GET(request: Request) {
          JOIN add_ons a ON a.id = oia.add_on_id
          JOIN order_items oi ON oi.id = oia.order_item_id
          JOIN orders o ON o.id = oi.order_id
-         WHERE ($1::date IS NULL OR o.order_date >= $1::date)
+         WHERE o.status = 'completed'
+           AND ($1::date IS NULL OR o.order_date >= $1::date)
            AND ($2::date IS NULL OR o.order_date <= $2::date)
          GROUP BY a.name
          ORDER BY total_quantity DESC
