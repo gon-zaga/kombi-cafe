@@ -4,6 +4,7 @@
 
 import { useEffect, useState } from "react";
 import ImagePicker from "@/app/ui/ImagePicker";
+import IngredientPicker from "./IngredientPicker";
 import { useToast } from "@/app/ui/Toast";
 
 
@@ -102,29 +103,31 @@ function AddItemModal({ isOpen, onClose, onCreated }: AddItemModalProps) {
     if (!isOpen) return;
 
 
-    // Function that loads categories and sizes
-    async function loadOptions() {
-      try {
+     // Function that loads categories, sizes, and ingredients
+     async function loadOptions() {
+       try {
 
-        // Request categories and sizes at the same time
-        const [catRes, sizeRes] = await Promise.all([
-          fetch('/api/categories'),
-          fetch('/api/sizes'),
-        ]);
-
-
-        // Convert the responses into JSON
-        // Then store them in React state
-        setCategories(await catRes.json());
-        setSizeOptions(await sizeRes.json());
+         // Request categories, sizes, and ingredients at the same time
+         const [catRes, sizeRes, ingredientRes] = await Promise.all([
+           fetch('/api/categories'),
+           fetch('/api/sizes'),
+           fetch('/api/ingredients'),
+         ]);
 
 
-      } catch (err) {
+         // Convert the responses into JSON
+         // Then store them in React state
+         setCategories(await catRes.json());
+         setSizeOptions(await sizeRes.json());
+         setIngredients(await ingredientRes.json());
 
-        // Show an error in the browser console if loading fails
-        console.error("Failed to load category/size options:", err);
-      }
-    }
+
+       } catch (err) {
+
+         // Show an error in the browser console if loading fails
+         console.error("Failed to load category/size/ingredient options:", err);
+       }
+     }
 
 
     // Run the function
