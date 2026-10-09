@@ -3,7 +3,9 @@
 // Standalone modal for one menu item's recipe (which ingredients it consumes).
 // Kept separate from the Edit modal so "what does this drink need" is its own
 // task and doesn't have to be scrolled to inside a long edit form.
+import { forwardRef, useRef } from "react";
 import RecipeEditor from "./RecipeEditor";
+import { useToast } from "@/app/ui/Toast";
 
 interface RecipeModalProps {
   isOpen: boolean;
@@ -22,12 +24,26 @@ interface RecipeModalProps {
 }
 
 function RecipeModal({ isOpen, item, onClose, onChanged }: RecipeModalProps) {
+  const recipeEditorRef = useRef<any>(null);
+  const { error: showError } = useToast();
+
+  const handleClose = () => {
+    // Check if recipe editor is valid (has at least one ingredient)
+    if (recipeEditorRef.current && recipeEditorRef.current.isValid) {
+      if (!recipeEditorRef.current.isValid()) {
+        showError("Please add at least one ingredient before closing.");
+        return;
+      }
+    }
+    onClose();
+  };
+
   if (!isOpen || !item) return null;
 
   return (
     <div
       className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4"
-      onClick={onClose}
+      onClick={handleClose}
     >
       <div
         className="bg-white w-full max-w-md rounded-2xl shadow-2xl p-6 max-h-[90vh] overflow-y-auto"
@@ -40,7 +56,7 @@ function RecipeModal({ isOpen, item, onClose, onChanged }: RecipeModalProps) {
           </div>
           <button
             type="button"
-            onClick={onClose}
+            onClick={handleClose}
             className="text-gray-400 hover:text-gray-600 text-2xl leading-none"
           >
             ×
@@ -53,6 +69,7 @@ function RecipeModal({ isOpen, item, onClose, onChanged }: RecipeModalProps) {
         </p>
 
         <RecipeEditor
+          ref={recipeEditorRef}
           menuItemId={item.itemId}
           itemSizes={item.sizes}
           onChanged={onChanged}

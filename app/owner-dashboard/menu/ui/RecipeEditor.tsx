@@ -3,7 +3,7 @@
 // Recipe editor for one menu item: lists the ingredients that item consumes and
 // lets the owner add or remove rows. A row with no size applies to every size;
 // a row with a size applies to that size only and overrides the general row.
-import { useCallback, useEffect, useState } from "react";
+import { forwardRef, useCallback, useEffect, useImperativeHandle, useRef, useState } from "react";
 import type { Recipe } from "@/app/api/recipes/route";
 import IngredientPicker from "./IngredientPicker";
 import AddingIngredientModal from "../../inventory/ui/AddingIngredientModal";
@@ -23,7 +23,7 @@ interface RecipeEditorProps {
   onChanged: () => void;
 }
 
-function RecipeEditor({ menuItemId, itemSizes, onChanged }: RecipeEditorProps) {
+function RecipeEditor({ menuItemId, itemSizes, onChanged }: RecipeEditorProps, ref: any) {
   const [recipes, setRecipes] = useState<Recipe[]>([]);
   const [ingredients, setIngredients] = useState<IngredientOption[]>([]);
   const [loading, setLoading] = useState(true);
@@ -38,6 +38,11 @@ function RecipeEditor({ menuItemId, itemSizes, onChanged }: RecipeEditorProps) {
 
   // Lets the owner create a new ingredient without leaving this screen
   const [isAddOpen, setIsAddOpen] = useState(false);
+
+  // Expose imperitive methods via ref
+  useImperativeHandle(ref, () => ({
+    isValid: () => recipes.length > 0
+  }));
 
   const load = useCallback(async () => {
     try {
@@ -243,4 +248,4 @@ function RecipeEditor({ menuItemId, itemSizes, onChanged }: RecipeEditorProps) {
   );
 }
 
-export default RecipeEditor;
+export default forwardRef(RecipeEditor);
