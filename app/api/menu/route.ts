@@ -100,26 +100,28 @@ export async function POST(request: Request) {
 
   try {
 
-    // Get the data sent by the frontend and convert it from JSON
-    const body = await request.json();
+     // Get the data sent by the frontend and convert it from JSON
+     const body = await request.json();
 
-    // Get the values from the request
-    const { name, categoryId, imageUrl, isAvailable, sizes } = body;
+     // Get the values from the request
+     const { name, categoryId, imageUrl, isAvailable, sizes, recipes } = body;
 
 
-    // Check if the required information was provided
-    if (
-      !name ||
-      !categoryId ||
-      !Array.isArray(sizes) ||
-      sizes.length === 0
-    ) {
-      // 400 = Bad Request
-      return Response.json(
-        { error: "Missing required fields" },
-        { status: 400 }
-      );
-    }
+     // Check if the required information was provided
+     if (
+       !name ||
+       !categoryId ||
+       !Array.isArray(sizes) ||
+       sizes.length === 0 ||
+       !Array.isArray(recipes) ||
+       recipes.length === 0
+     ) {
+       // 400 = Bad Request
+       return Response.json(
+         { error: "Missing required fields: at least one ingredient is required" },
+         { status: 400 }
+       );
+     }
 
     // The image field accepts three shapes: an inline data URL from the file
     // picker, an absolute http(s) URL, or a path under /public. Anything else
@@ -160,19 +162,45 @@ export async function POST(request: Request) {
     const menuItemId = itemResult.rows[0].id;
 
 
-    // Loop through every size that was provided
-    // Example: Small, Medium, Large
-    for (const s of sizes) {
+     // Loop through every size that was provided
+     // Example: Small, Medium, Large
+     for (const s of sizes) {
 
-      // Add each size and its price to menu_item_sizes
-      await client.query(
-        `INSERT INTO menu_item_sizes (menu_item_id, size_id, price)
-         VALUES ($1, $2, $3)`,
+       // Add each size and its price to menu_item_sizes
+       await client.query(
+         `INSERT INTO menu_item_sizes (menu_item_id, size_id, price)
+          VALUES ($1, $2, $3)`,
+ 
+         // Connect the size to the menu item and save its price
+         [menuItemId, s.sizeId, s.price]
+       );
+     }
 
-        // Connect the size to the menu item and save its price
-        [menuItemId, s.sizeId, s.price]
-      );
-    }
+
+     // Insert each recipe row
+     for (const r of recipes) {
+       const { ingredientId, quantityNeeded, sizeId } = r;
+       // Validate required fields
+       if (!ingredientId || quantityNeeded === undefined || Number(quantityNeeded) <= 0) {
+         throw new Error('Invalid recipe: ingredientId and quantityNeeded > 0 are required');
+       }
+       const sizeIdValue = sizeId === null || sizeId === '' ? null : Number(sizeId);
+ 
+       await client.query(
+         `
+         INSERT INTO recipes (menu_item_id, size_id, ingredient_id, quantity_needed)
+         VALUES ($1, $2, $3, $4)
+         ON CONFLICT (menu_item_id, COALESCE(size_id, 0), ingredient_id)
+         DO UPDATE SET quantity_needed = EXCLUDED.quantity_needed
+         `,
+         [
+           menuItemId,
+           sizeIdValue,
+           Number(ingredientId),
+           Number(quantityNeeded)
+         ]
+       );
+     }
 
 
     // Save all the changes permanently

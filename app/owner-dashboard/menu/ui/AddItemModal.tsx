@@ -22,6 +22,13 @@ interface SizeOption {
   temperature: string | null;
 }
 
+// Describes what an IngredientOption object looks like
+interface IngredientOption {
+  id: number;
+  name: string;
+  unit: string;
+}
+
 
 // Describes the props that this component receives
 interface AddItemModalProps {
@@ -50,30 +57,42 @@ function AddItemModal({ isOpen, onClose, onCreated }: AddItemModalProps) {
   // Stores the image URL entered by the user
   const [imageUrl, setImageUrl] = useState("");
 
-  // Stores whether the item is available for ordering
-  const [isAvailable, setIsAvailable] = useState(true);
+   // Stores whether the item is available for ordering
+   const [isAvailable, setIsAvailable] = useState(true);
 
 
-  // Stores which sizes have been selected
-  // Example: { 1: true, 2: false, 3: true }
-  const [selectedSizes, setSelectedSizes] =
-    useState<Record<number, boolean>>({});
+   // Stores which sizes have been selected
+   // Example: { 1: true, 2: false, 3: true }
+   const [selectedSizes, setSelectedSizes] =
+     useState<Record<number, boolean>>({});
 
 
-  // Stores the price for each selected size
-  // Example: { 1: "80", 2: "90", 3: "100" }
-  const [prices, setPrices] =
-    useState<Record<number, string>>({});
+   // Stores the price for each selected size
+   // Example: { 1: "80", 2: "90", 3: "100" }
+   const [prices, setPrices] =
+     useState<Record<number, string>>({});
 
 
-  // Tracks whether the form is currently being submitted
-  const [submitting, setSubmitting] = useState(false);
+   // Tracks whether the form is currently being submitted
+   const [submitting, setSubmitting] = useState(false);
 
-  const { success, error: showError } = useToast();
+   // Stores the list of ingredients loaded from the database
+   const [ingredients, setIngredients] = useState<IngredientOption[]>([]);
 
-  // "Regular" size (oz === null && temperature === null) is for snacks only.
-  // Default to drink mode (Regular disabled). Auto-toggle based on category.
-  const [isDrink, setIsDrink] = useState(true);
+   // Stores the recipe rows being built for this new item
+   // Each row: ingredientId, quantityNeeded, sizeId (null for all sizes)
+   const [recipeRows, setRecipeRows] = useState<Array<{ ingredientId: number; quantityNeeded: number; sizeId: number | null }>>([]);
+
+   // The row currently being filled in
+   const [tempIngredientId, setTempIngredientId] = useState("");
+   const [tempQuantity, setTempQuantity] = useState("");
+   const [tempSizeId, setTempSizeId] = useState("");
+
+   const { success, error: showError } = useToast();
+
+   // "Regular" size (oz === null && temperature === null) is for snacks only.
+   // Default to drink mode (Regular disabled). Auto-toggle based on category.
+   const [isDrink, setIsDrink] = useState(true);
 
 
   // useEffect runs when the component opens
