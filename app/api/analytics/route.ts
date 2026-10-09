@@ -264,7 +264,8 @@ export async function GET(request: Request) {
                AND r2.ingredient_id = r.ingredient_id
            )
          JOIN ingredients i ON i.id = r.ingredient_id
-         WHERE ($1::date IS NULL OR o.order_date >= $1::date)
+         WHERE o.status = 'completed'
+           AND ($1::date IS NULL OR o.order_date >= $1::date)
            AND ($2::date IS NULL OR o.order_date <= $2::date)
          GROUP BY i.name
          ORDER BY total_used DESC
