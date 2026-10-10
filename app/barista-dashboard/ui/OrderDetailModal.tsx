@@ -77,20 +77,27 @@ function OrderDetailModal({ order, onClose, onUpdateStatus }: OrderDetailModalPr
      setConfirmingRevert(false);
    };
 
-   const handleDeleteOrder = async () => {
-     if (!order) return;
-     try {
-       const res = await fetch(`/api/orders/${order.id}`, { method: 'DELETE' });
-       if (!res.ok) {
-         const data = await res.json().catch(() => ({}));
-         throw new Error(data.error || 'Failed to delete order');
-       }
-       setDeletingOrder(null);
-       onClose();
-     } catch (error) {
-       console.error('Failed to delete order:', error);
-     }
-   };
+    const handleDeleteOrder = async () => {
+      if (!order) return;
+      try {
+        const res = await fetch(`/api/orders/${order.id}`, { method: 'DELETE' });
+        if (!res.ok) {
+          const data = await res.json().catch(() => ({}));
+          if (res.status === 404) {
+            // Order already deleted, treat as success
+            setDeletingOrder(null);
+            onClose();
+            return;
+          }
+          throw new Error(data.error || 'Failed to delete order');
+        }
+        setDeletingOrder(null);
+        onClose();
+      } catch (error) {
+        console.error('Failed to delete order:', error);
+        // TODO: Show error to user
+      }
+    };
 
   const canStartPreparing = changeComputed;
 
