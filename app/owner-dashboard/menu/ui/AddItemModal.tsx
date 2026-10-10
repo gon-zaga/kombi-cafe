@@ -6,6 +6,7 @@ import { useEffect, useState } from "react";
 import ImagePicker from "@/app/ui/ImagePicker";
 import IngredientPicker from "./IngredientPicker";
 import { useToast } from "@/app/ui/Toast";
+import AddingIngredientModal from "../../inventory/ui/AddingIngredientModal";
 
 
 // Describes what a Category object looks like
@@ -91,6 +92,8 @@ function AddItemModal({ isOpen, onClose, onCreated }: AddItemModalProps) {
 
     // Controls whether the ingredient creation modal is open
     const [isIngredientModalOpen, setIsIngredientModalOpen] = useState(false);
+    // Toast hook for showing success/error messages
+    const { success, error: showError } = useToast();
     // Function that loads categories, sizes, and ingredients
     async function loadOptions() {
       try {
