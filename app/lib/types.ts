@@ -44,26 +44,28 @@ export type OrderAddOn = {
 };
 
 export type OrderSummary = {
-  id: number;
-  orderReference: string;
-  tableNumber?: number | null;
-  // 'completed' means the customer collected it. The order row is kept; the
-  // status only controls whether the barista board still shows it.
-  status: "pending" | "preparing" | "ready" | "completed";
-  createdAt: string;
-  total: number;
-  items: {
-    name: string;
-    size: string;
-    quantity: number;
-    unitPrice: number;
-    addOns: OrderAddOn[];
-    ingredients: string[];
-  }[];
-  // How the customer intends to pay. 'counter' = cash at the counter,
-  // 'gcash' = GCash (no payment is taken here; the staff handles it).
-  paymentMethod?: "counter" | "gcash" | null;
-  // Required when paymentMethod is 'gcash': the reference number the
-  // customer reads from their GCash app, for the staff to check against.
-  gcashReference?: string | null;
-}
+   id: number;
+   orderReference: string;
+   tableNumber?: number | null;
+   // 'completed' means the customer collected it. The order row is kept; the
+   // status only controls whether the barista board still shows it.
+   status: "pending" | "preparing" | "ready" | "completed";
+   createdAt: string;
+   total: number;
+   items: {
+     name: string;
+     size: string;
+     quantity: number;
+     unitPrice: number;
+     addOns: OrderAddOn[];
+     ingredients: string[];
+   }[];
+   // How the customer intends to pay. 'counter' = cash at the counter,
+   // 'gcash' = GCash (no payment is taken here; the staff handles it).
+   paymentMethod?: "counter" | "gcash" | null;
+   // Required when paymentMethod is 'gcash': the reference number the
+   // customer reads from their GCash app, for the staff to check against.
+   gcashReference?: string | null;
+   // Photo of the GCash transaction for verification purposes.
+   gcashPhoto?: string | null;
+ }

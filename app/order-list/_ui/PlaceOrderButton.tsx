@@ -7,65 +7,83 @@
 
 'use client'
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useOrderStore } from "@/store/OrderListStore";
 import { useTableStore } from "@/store/TableStore";
 import PaymentMethodSelector, {
-  type PaymentMethod,
-} from "./PaymentMethodSelector";
+   type PaymentMethod,
+ } from "./PaymentMethodSelector";
 
 function PlaceOrderButton({ grandtotal }: { grandtotal: number }) {
-  const router = useRouter();
-  const orders = useOrderStore((state) => state.orders);
-  const clearOrder = useOrderStore((state) => state.clearOrder);
-  const selectedTable = useTableStore((state) => state.selectedTable);
+   const router = useRouter();
+   const orders = useOrderStore((state) => state.orders);
+   const clearOrder = useOrderStore((state) => state.clearOrder);
+   const selectedTable = useTableStore((state) => state.selectedTable);
 
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [error, setError] = useState("");
-  // The reference field is only meaningful for GCash, but it is kept
-  // uncontrolled here so the parent can clear it if the method changes
-  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("counter");
-  const [gcashReference, setGcashReference] = useState("");
-  const [gcashError, setGcashError] = useState("");
+   const [isSubmitting, setIsSubmitting] = useState(false);
+   const [error, setError] = useState("");
+   // The reference field is only meaningful for GCash, but it is kept
+   // uncontrolled here so the parent can clear it if the method changes
+   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("counter");
+   const [gcashReference, setGcashReference] = useState("");
+   const [gcashError, setGcashError] = useState("");
+   const [gcashPhoto, setGcashPhoto] = useState<string | null>(null);
 
-  const handlePlaceOrder = async () => {
-    setIsSubmitting(true);
-    setError("");
-    setGcashError("");
+   // Clear GCash fields when switching payment method
+   useEffect(() => {
+     if (paymentMethod !== "gcash") {
+       setGcashReference("");
+       setGcashPhoto(null);
+       setGcashError("");
+     }
+   }, [paymentMethod]);
 
-    if (selectedTable === null) {
-      setError("Please select a table first.");
-      setIsSubmitting(false);
-      return;
-    }
+     const handlePlaceOrder = async () => {
+     setIsSubmitting(true);
+     setError("");
+     setGcashError("");
 
-    // A GCash order must carry a reference number the customer reads
-    // from their GCash app. Block the submit here so the field is
-    // visibly required rather than a server round-trip.
-    const trimmed = gcashReference.trim();
-    if (paymentMethod === "gcash" && !/^\d{13}$/.test(trimmed)) {
-      setGcashError("GCash reference number must be exactly 13 digits.");
-      setIsSubmitting(false);
-      return;
-    }
+     if (selectedTable === null) {
+       setError("Please select a table first.");
+       setIsSubmitting(false);
+       return;
+     }
 
-    try {
-      const res = await fetch("/api/orders", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          table_number: selectedTable,
-          items: orders.map((o) => ({
-            itemId: o.itemId,
-            sizeId: o.selectedSize.sizeId,
-            quantity: o.quantity,
-            addOnIds: o.selectedAddOn,
-          })),
-          payment_method: paymentMethod,
-          gcash_reference: paymentMethod === "gcash" ? gcashReference.trim() : null,
-        }),
-      });
+     // A GCash order must carry a reference number the customer reads
+     // from their GCash app. Block the submit here so the field is
+     // visibly required rather than a server round-trip.
+     const trimmed = gcashReference.trim();
+     if (paymentMethod === "gcash" && !/^\d{13}$/.test(trimmed)) {
+       setGcashError("GCash reference number must be exactly 13 digits.");
+       setIsSubmitting(false);
+       return;
+     }
+
+     // Also require a GCash photo when using GCash
+     if (paymentMethod === "gcash" && !gcashPhoto) {
+       setGcashError("Please upload a photo of your GCash transaction.");
+       setIsSubmitting(false);
+       return;
+     }
+
+     try {
+       const res = await fetch("/api/orders", {
+         method: "POST",
+         headers: { "Content-Type": "application/json" },
+         body: JSON.stringify({
+           table_number: selectedTable,
+           items: orders.map((o) => ({
+             itemId: o.itemId,
+             sizeId: o.selectedSize.sizeId,
+             quantity: o.quantity,
+             addOnIds: o.selectedAddOn,
+           })),
+           payment_method: paymentMethod,
+           gcash_reference: paymentMethod === "gcash" ? gcashReference.trim() : null,
+           gcash_photo: paymentMethod === "gcash" ? gcashPhoto : null,
+         }),
+       });
 
       const data = await res.json();
 
@@ -99,13 +117,16 @@ function PlaceOrderButton({ grandtotal }: { grandtotal: number }) {
         </div>
       )}
 
-      <PaymentMethodSelector
-        value={paymentMethod}
-        onChange={setPaymentMethod}
-        reference={gcashReference}
-        onReferenceChange={setGcashReference}
-        error={gcashError}
-      />
+       <PaymentMethodSelector
+         value={paymentMethod}
+         onChange={setPaymentMethod}
+         reference={gcashReference}
+         onReferenceChange={setGcashReference}
+         photo={gcashPhoto}
+         onPhotoChange={setGcashPhoto}
+         error={gcashError}
+         photoError={gcashError}
+       />
 
       <button
         onClick={handlePlaceOrder}

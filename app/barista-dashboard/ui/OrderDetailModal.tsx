@@ -129,22 +129,34 @@ function OrderDetailModal({ order, onClose, onUpdateStatus }: OrderDetailModalPr
               <p className="text-4xl font-mono font-bold text-white tracking-wide">
                 {order.orderReference}
               </p>
-              <div className="flex flex-wrap gap-2 mt-2">
-                {order.tableNumber != null && (
-                  <span className="text-xs font-semibold bg-white/15 text-white rounded-full px-2.5 py-0.5">
-                    Table {order.tableNumber}
-                  </span>
-                )}
-                {order.paymentMethod === "gcash" ? (
-                  <span className="text-xs font-semibold bg-white/15 text-white rounded-full px-2.5 py-0.5">
-                    GCash{order.gcashReference ? ` · Ref ${order.gcashReference}` : ""}
-                  </span>
-                ) : order.paymentMethod === "counter" ? (
-                  <span className="text-xs font-semibold bg-white/15 text-white rounded-full px-2.5 py-0.5">
-                    Counter payment
-                  </span>
-                ) : null}
-              </div>
+             <div className="flex flex-wrap gap-2 mt-2">
+                 {order.tableNumber != null && (
+                   <span className="text-xs font-semibold bg-white/15 text-white rounded-full px-2.5 py-0.5">
+                     Table {order.tableNumber}
+                   </span>
+                 )}
+                 {order.paymentMethod === "gcash" ? (
+                   <>
+                     <span className="text-xs font-semibold bg-white/15 text-white rounded-full px-2.5 py-0.5">
+                       GCash{order.gcashReference ? ` · Ref ${order.gcashReference}` : ""}
+                     </span>
+                     {order.gcashPhoto && (
+                       <div className="mt-2">
+                         <p className="text-xs font-semibold text-white/80">GCash Photo:</p>
+                         <img
+                           src={order.gcashPhoto}
+                           alt="GCash transaction photo"
+                           className="max-w-xs max-h-xs border border-white/20 rounded"
+                         />
+                       </div>
+                     )}
+                   </>
+                 ) : order.paymentMethod === "counter" ? (
+                   <span className="text-xs font-semibold bg-white/15 text-white rounded-full px-2.5 py-0.5">
+                     Counter payment
+                   </span>
+                 ) : null}
+               </div>
             </div>
 
             <div className="mb-4">

@@ -11,18 +11,19 @@ import { getStoreStatus } from "@/app/lib/storeHours";
 
 
 interface PlaceOrderPayload {
-  table_number: number;
-  items: {
-    itemId: number;
-    sizeId: number;
-    quantity: number;
-    addOnIds: number[];
-  }[];
-  /* How the customer intends to pay. 'gcash' requires a reference number.
-     No payment is actually taken -- the staff handles payment at the counter. */
-  payment_method?: 'counter' | 'gcash';
-  gcash_reference?: string | null;
-}
+   table_number: number;
+   items: {
+     itemId: number;
+     sizeId: number;
+     quantity: number;
+     addOnIds: number[];
+   }[];
+   /* How the customer intends to pay. 'gcash' requires a reference number.
+      No payment is actually taken -- the staff handles payment at the counter. */
+   payment_method?: 'counter' | 'gcash';
+   gcash_reference?: string | null;
+   gcash_photo?: string | null;
+ }
 
 /* Which recipe rows apply to a given item + size, and how much each costs.
    No trailing semicolon: this string is also embedded as a subquery. */
@@ -211,68 +212,70 @@ export async function GET(request: Request) {
     );
   }
 
-  try {
-    const result = await pool.query(
-      `
-      SELECT
-        o.id,
-        o.daily_number,
-        o.status,
-        o.table_number,
-        (o.created_at AT TIME ZONE 'UTC') AS created_at,
-        o.total,
-        o.payment_method,
-        o.gcash_reference,
-        COALESCE(
-          json_agg(
-            json_build_object(
-              'name', mi.name,
-              'size', s.label,
-              'quantity', oi.quantity,
-              'unitPrice', oi.unit_price,
-              'addOns', (
-                SELECT COALESCE(
-                  json_agg(
-                    json_build_object(
-                      'name', a.name,
-                      'price', oia.price,
-                      'quantity', oia.quantity
-                    ) ORDER BY oia.id
-                  ),
-                  '[]'::json
-                )
-                FROM order_item_addons oia
-                JOIN add_ons a ON a.id = oia.add_on_id
-                WHERE oia.order_item_id = oi.id
-              )
-            ) ORDER BY oi.id
-          ) FILTER (WHERE oi.id IS NOT NULL),
-          '[]'::json
-        ) AS items
-      FROM orders o
-      LEFT JOIN order_items oi ON oi.order_id = o.id
-      LEFT JOIN menu_items mi ON mi.id = oi.menu_item_id
-      LEFT JOIN sizes s ON s.id = oi.size_id
-      WHERE ($1::date IS NULL OR o.order_date >= $1::date)
-        AND ($2::date IS NULL OR o.order_date <= $2::date)
-        AND ($3::text IS NULL OR o.status = $3)
-      GROUP BY o.id
-      ORDER BY o.created_at DESC
-      `,
-      [from, to, status]
-    );
+   try {
+     const result = await pool.query(
+       `
+       SELECT
+         o.id,
+         o.daily_number,
+         o.status,
+         o.table_number,
+         (o.created_at AT TIME ZONE 'UTC') AS created_at,
+         o.total,
+         o.payment_method,
+         o.gcash_reference,
+         o.gcash_photo,
+         COALESCE(
+           json_agg(
+             json_build_object(
+               'name', mi.name,
+               'size', s.label,
+               'quantity', oi.quantity,
+               'unitPrice', oi.unit_price,
+               'addOns', (
+                 SELECT COALESCE(
+                   json_agg(
+                     json_build_object(
+                       'name', a.name,
+                       'price', oia.price,
+                       'quantity', oia.quantity
+                     ) ORDER BY oia.id
+                   ),
+                   '[]'::json
+                 )
+                 FROM order_item_addons oia
+                 JOIN add_ons a ON a.id = oia.add_on_id
+                 WHERE oia.order_item_id = oi.id
+               )
+             ) ORDER BY oi.id
+           ) FILTER (WHERE oi.id IS NOT NULL),
+           '[]'::json
+         ) AS items
+       FROM orders o
+       LEFT JOIN order_items oi ON oi.order_id = o.id
+       LEFT JOIN menu_items mi ON mi.id = oi.menu_item_id
+       LEFT JOIN sizes s ON s.id = oi.size_id
+       WHERE ($1::date IS NULL OR o.order_date >= $1::date)
+         AND ($2::date IS NULL OR o.order_date <= $2::date)
+         AND ($3::text IS NULL OR o.status = $3)
+       GROUP BY o.id
+       ORDER BY o.created_at DESC
+       `,
+       [from, to, status]
+     );
 
-    const orders: OrderSummary[] = result.rows.map((row) => ({
-      id: row.id,
-      orderReference: String(row.daily_number).padStart(4, "0"),
-      status: row.status,
-      tableNumber: row.table_number,
-      createdAt: new Date(row.created_at).toISOString(),
-      total: Number(row.total),
-      paymentMethod: row.payment_method,
-      gcashReference: row.gcash_reference,
-      items: row.items,
-    }));
+     const orders: OrderSummary[] = result.rows.map((row) => ({
+       id: row.id,
+       orderReference: String(row.daily_number).padStart(4, "0"),
+       status: row.status,
+       tableNumber: row.table_number,
+       createdAt: new Date(row.created_at).toISOString(),
+       total: Number(row.total),
+       paymentMethod: row.payment_method,
+       gcashReference: row.gcash_reference,
+       gcashPhoto: row.gcash_photo,
+       items: row.items,
+     }));
 
     return NextResponse.json(orders);
   } catch (error) {
@@ -285,7 +288,19 @@ export async function GET(request: Request) {
   }
 }
 
+let gcashPhotoColumnAdded = false;
+
 export async function POST(request: Request) {
+  // Ensure the gcash_photo column exists in the orders table
+  if (!gcashPhotoColumnAdded) {
+    try {
+      await pool.query(`ALTER TABLE orders ADD COLUMN IF NOT EXISTS gcash_photo TEXT`);
+      gcashPhotoColumnAdded = true;
+    } catch (e) {
+      console.warn('Failed to ensure gcash_photo column exists:', e);
+    }
+  }
+
   /* Closed store: refuse before reading or touching anything. */
   const { isOpen, systemDown, systemDownMessage } = await getStoreStatus();
   
@@ -364,31 +379,33 @@ if (!isOpen) {
 
       const dailyNumber = dailyNumberResult.rows[0].last_number;
 
-      /* Step 2: insert the order with a placeholder total of 0. */
-      const orderResult = await client.query(
-        `
-        INSERT INTO orders (
-          daily_number,
-          order_date,
-          total,
-          status,
-          table_number,
-          payment_method,
-          gcash_reference
-        )
-        VALUES (
-          $1,
-          (NOW() AT TIME ZONE 'Asia/Manila')::date,
-          0,
-          'pending',
-          $2,
-          $3,
-          $4
-        )
-        RETURNING id;
-        `,
-        [dailyNumber, body.table_number, paymentMethod, gcashReference]
-      );
+       /* Step 2: insert the order with a placeholder total of 0. */
+       const orderResult = await client.query(
+         `
+         INSERT INTO orders (
+           daily_number,
+           order_date,
+           total,
+           status,
+           table_number,
+           payment_method,
+           gcash_reference,
+           gcash_photo
+         )
+         VALUES (
+           $1,
+           (NOW() AT TIME ZONE 'Asia/Manila')::date,
+           0,
+           'pending',
+           $2,
+           $3,
+           $4,
+           $5
+         )
+         RETURNING id;
+         `,
+         [dailyNumber, body.table_number, paymentMethod, gcashReference, body.gcash_photo]
+       );
 
       const orderId = orderResult.rows[0].id;
       let runningTotal = 0;
@@ -484,20 +501,21 @@ if (!isOpen) {
 
       const orderReference = String(dailyNumber).padStart(4, '0');
 
-      /* Return the database ID and the human-readable daily order number. */
-      return NextResponse.json(
-        {
-          message: "Order placed successfully",
-          order_id: orderId,
-          orderReference,
-          table_number: body.table_number,
-          status: 'pending',
-          total: runningTotal,
-          payment_method: paymentMethod,
-          gcash_reference: gcashReference,
-        },
-        { status: 201 }
-      );
+       /* Return the database ID and the human-readable daily order number. */
+       return NextResponse.json(
+         {
+           message: "Order placed successfully",
+           order_id: orderId,
+           orderReference,
+           table_number: body.table_number,
+           status: 'pending',
+           total: runningTotal,
+           payment_method: paymentMethod,
+           gcash_reference: gcashReference,
+           gcash_photo: body.gcash_photo,
+         },
+         { status: 201 }
+       );
     } catch (error) {
       await client.query('ROLLBACK');
       console.error("Failed to place order:", error);
