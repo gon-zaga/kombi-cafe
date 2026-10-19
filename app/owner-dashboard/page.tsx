@@ -166,11 +166,15 @@ export default function OwnerDashboard() {
     fill: COLORS[i % COLORS.length],
   }));
 
-  const hourData = revenueByHour.map((h) => ({
-    hour: `${h.hour}:00`,
-    revenue: Number(h.revenue),
-    orders: Number(h.orders),
-  }));
+   const hourData = revenueByHour.map((h) => ({
+     hour: new Date(0, 0, 0, h.hour).toLocaleTimeString('en-PH', {
+       hour: 'numeric',
+       minute: '2-digit',
+       hour12: true,
+     }),
+     revenue: Number(h.revenue),
+     orders: Number(h.orders),
+   }));
 
    const sortedTrend = [...dailyTrend].sort((a, b) =>
      new Date(a.order_date).getTime() - new Date(b.order_date).getTime()
