@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 
+// Creation of toast notification
 export type ToastType = 'success' | 'error' | 'warning' | 'info';
 
 export interface Toast {

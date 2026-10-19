@@ -1,14 +1,14 @@
 'use client';
 
+import HomeHeader from '@/app/ui/HomeHeader';
 import OrderNowButton from '@/app/ui/OrderNowButton';
-import Header from '@/app/ui/Header';
 
 export default function HomePage() {
   return (
     <div className="bg-cream min-h-screen flex flex-col items-center justify-start">
       {/* Header */}
       <div className="w-full">
-        <Header />
+        <HomeHeader />
       </div>
 
       {/* Homepage Title */}
