@@ -41,7 +41,7 @@ function Header() {
         </span>
       </header>
 
-      <SideNav isOpen={navOpen} onClose={() => setNavOpen(false)} />
+      <SideNav isOpen={navOpen} onClose={() => setNavOpen(false)} showQueueLink={true} />
     </>
   );
 }
