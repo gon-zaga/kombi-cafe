@@ -172,11 +172,18 @@ export default function OwnerDashboard() {
     orders: Number(h.orders),
   }));
 
-  const dailyData = dailyTrend.map((d) => ({
-    date: d.order_date,
-    revenue: Number(d.revenue),
-    orders: Number(d.orders),
-  }));
+   const sortedTrend = [...dailyTrend].sort((a, b) =>
+     new Date(a.order_date).getTime() - new Date(b.order_date).getTime()
+   );
+
+   const dailyData = sortedTrend.map((d) => ({
+     date: new Date(d.order_date).toLocaleDateString('en-PH', {
+       month: 'short',
+       day: 'numeric',
+     }),
+     revenue: Number(d.revenue),
+     orders: Number(d.orders),
+   }));
 
   const staffData = staffPerformance.map((s) => ({
     name: `${s.first_name || s.username}`,
