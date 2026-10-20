@@ -118,24 +118,30 @@ function RecipeEditor({ menuItemId, itemSizes, onChanged }: RecipeEditorProps, r
     }
   };
 
-  const handleDelete = async (recipeId: number) => {
-    try {
-      const response = await fetch(`/api/recipes/${recipeId}`, {
-        method: 'DELETE',
-      });
+   const handleDelete = async (recipeId: number) => {
+     try {
+       const response = await fetch(`/api/recipes/${recipeId}`, {
+         method: 'DELETE',
+       });
 
-      if (!response.ok) {
-        const data = await response.json().catch(() => ({}));
-        throw new Error(data.error || 'Failed to remove recipe');
-      }
+       if (!response.ok) {
+         const data = await response.json().catch(() => ({}));
+         // If the recipe is already gone, treat as success and refresh
+         if (response.status === 404) {
+           await load();
+           onChanged();
+           return;
+         }
+         throw new Error(data.error || 'Failed to remove recipe');
+       }
 
-      await load();
-      onChanged();
-    } catch (err) {
-      console.error(err);
-      setError(err instanceof Error ? err.message : 'Failed to remove recipe');
-    }
-  };
+       await load();
+       onChanged();
+     } catch (err) {
+       console.error(err);
+       setError(err instanceof Error ? err.message : 'Failed to remove recipe');
+     }
+   };
 
   if (loading) {
     return <p className="text-sm text-gray-500">Loading recipes...</p>;

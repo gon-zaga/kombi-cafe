@@ -6,6 +6,8 @@ interface IngredientOption {
   id: number;
   name: string;
   unit: string;
+  stockQty: number;
+  restockThreshold: number;
 }
 
 interface IngredientPickerProps {
@@ -31,6 +33,10 @@ function IngredientPicker({
 
   const selected = ingredients.find((i) => String(i.id) === value);
 
+  // Check if an ingredient is low stock
+  const isLowStock = (ingredient: IngredientOption) => 
+    ingredient.stockQty <= ingredient.restockThreshold;
+
   // Case-insensitive substring match on the name. A menu item with 20+ items
   // is unusable by scrolling, so typing is the primary way to find one.
   const matches = useMemo(() => {
@@ -39,7 +45,7 @@ function IngredientPicker({
     return ingredients.filter((i) => i.name.toLowerCase().includes(q));
   }, [ingredients, query]);
 
-   // Reset highlight when the filtered list changes
+   // Reset highlight when the filtered list (`matches`) changes
    useEffect(() => {
      if (matches.length > 0) {
        setActiveIndex(0);
@@ -69,6 +75,15 @@ function IngredientPicker({
    };
 
    const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+     // ✅ SAFETY: Prevent navigation logic from running when there are no matches
+     if (matches.length === 0) {
+       if (e.key === "Escape") {
+         e.preventDefault();
+         close();
+       }
+       return;
+     }
+
      if (e.key === "ArrowDown") {
        e.preventDefault();
        setActiveIndex((i) => Math.min(i + 1, matches.length - 1));
@@ -78,7 +93,7 @@ function IngredientPicker({
      } else if (e.key === "Enter") {
        e.preventDefault();
        const pick = matches[activeIndex];
-       if (pick) handlePick(pick.id);
+       if (pick && !isLowStock(pick)) handlePick(pick.id);
      } else if (e.key === "Escape") {
        e.preventDefault();
        close();
@@ -126,21 +141,38 @@ function IngredientPicker({
                  </li>
                )}
 
-               {matches.map((i, index) => (
-                 <li key={i.id} role="option" aria-selected={String(i.id) === value}>
-                   <button
-                     type="button"
-                     onClick={() => handlePick(i.id)}
-                     onMouseEnter={() => setActiveIndex(index)}
-                     className={`w-full min-h-[56px] text-left px-5 py-4 text-base hover:bg-amber-50 transition-colors flex items-center justify-between gap-3 ${
-                       index === activeIndex ? "bg-amber-50" : ""
-                     }`}
-                   >
-                     <span className="text-gray-900 font-medium">{i.name}</span>
-                     <span className="text-sm text-gray-500 shrink-0">{i.unit}</span>
-                   </button>
-                 </li>
-               ))}
+               {matches.map((i, index) => {
+                 const itemIsLowStock = isLowStock(i);
+                 return (
+                   <li key={i.id} role="option" aria-selected={String(i.id) === value} aria-disabled={itemIsLowStock}>
+                     {itemIsLowStock ? (
+                       <div
+                         className={`w-full min-h-[56px] text-left px-5 py-4 text-base flex items-center justify-between gap-3 ${
+                           index === activeIndex ? "bg-amber-50" : ""
+                       } opacity-50 cursor-not-allowed`}
+                       >
+                         <span className="text-gray-900 font-medium">{i.name}</span>
+                         <span className="text-sm text-gray-500 shrink-0">{i.unit}</span>
+                         <span className="text-[10px] font-bold uppercase tracking-wide text-white bg-orange-500 rounded-full px-2 py-0.5 ml-2">
+                           Low stock
+                         </span>
+                       </div>
+                     ) : (
+                       <button
+                         type="button"
+                         onClick={() => handlePick(i.id)}
+                         onMouseEnter={() => setActiveIndex(index)}
+                         className={`w-full min-h-[56px] text-left px-5 py-4 text-base hover:bg-amber-50 transition-colors flex items-center justify-between gap-3 ${
+                           index === activeIndex ? "bg-amber-50" : ""
+                         }`}
+                       >
+                         <span className="text-gray-900 font-medium">{i.name}</span>
+                         <span className="text-sm text-gray-500 shrink-0">{i.unit}</span>
+                       </button>
+                     )}
+                   </li>
+                 );
+               })}
              </ul>
            </div>
          </>
