@@ -44,28 +44,36 @@ const recipeCostSql = `
 `;
 
 /* Removes stock for one ordered item's recipe. Throws (which rolls the whole
-   transaction back) when an ingredient can't cover the order. */
+    transaction back) when an ingredient can't cover the order. */
 async function deductRecipeStock(
   client: PoolClient,
   menuItemId: number,
   sizeId: number,
   quantity: number
 ) {
-  const costResult = await client.query(recipeCostSql, [
-    menuItemId,
-    sizeId,
-    quantity,
-  ]);
+  const rowsResult = await client.query(
+    `SELECT i.id, i.name, i.unit, i.stock_qty, i.restock_threshold,
+           SUM(r.quantity_needed) * $3 AS needed
+    FROM recipes r
+    JOIN ingredients i ON i.id = r.ingredient_id
+    WHERE r.menu_item_id = $1
+      AND (r.size_id = $2 OR r.size_id IS NULL)
+      AND NOT EXISTS (
+        SELECT 1 FROM recipes r2
+        WHERE r2.menu_item_id = r.menu_item_id
+          AND r2.size_id = $2
+          AND r2.ingredient_id = r.ingredient_id
+      )
+    GROUP BY i.id, i.name, i.unit, i.stock_qty, i.restock_threshold
+    FOR UPDATE`,
+    [menuItemId, sizeId, quantity]
+  );
 
-  /* No recipes on this item, so nothing to deduct. */
-  if (costResult.rows.length === 0) return;
+  if (rowsResult.rows.length === 0) return;
 
-  /* Check everything before changing anything, so a failure can't leave
-     some ingredients deducted and others not. */
-  const short = costResult.rows.filter(
+  const short = rowsResult.rows.filter(
     (row) =>
-      Number(row.stock_qty) - Number(row.restock_threshold) <
-      Number(row.needed)
+      Number(row.stock_qty) - Number(row.restock_threshold) < Number(row.needed)
   );
 
   if (short.length > 0) {
@@ -79,16 +87,12 @@ async function deductRecipeStock(
     );
   }
 
-  await client.query(
-    `
-    UPDATE ingredients i
-    SET stock_qty = i.stock_qty - c.needed,
-        updated_at = CURRENT_TIMESTAMP
-    FROM (${recipeCostSql}) c
-    WHERE i.id = c.id;
-    `,
-    [menuItemId, sizeId, quantity]
-  );
+  for (const row of rowsResult.rows) {
+    await client.query(
+      `UPDATE ingredients SET stock_qty = stock_qty - $1 WHERE id = $2`,
+      [Number(row.needed), row.id]
+    );
+  }
 }
 
 /* Today in Manila as "YYYY-MM-DD". */
