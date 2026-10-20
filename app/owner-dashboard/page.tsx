@@ -461,7 +461,7 @@ export default function OwnerDashboard() {
                       </BarChart>
                     </ResponsiveContainer>
                   ) : (
-                    <div className="flex items-center justify-center text-center">
+                    <div className="flex items-center justify-center text-center flex-col">
                       <p className="text-gray-600 font-medium">
                         Ingredient consumption chart
                       </p>

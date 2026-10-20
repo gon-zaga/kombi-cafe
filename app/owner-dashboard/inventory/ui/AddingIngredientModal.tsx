@@ -183,27 +183,27 @@ function AddingIngredientModal({
 
   // The modal's user interface
   return (
-    <div
+     <div
 
-      // Creates the dark background behind the modal
-      className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4"
+       // Creates the dark background behind the modal
+       className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-6"
 
-      // Clicking the dark background closes the modal
-      onClick={handleClose}
-    >
+       // Clicking the dark background closes the modal
+       onClick={handleClose}
+     >
 
-      <div
+       <div
 
-        // The actual white modal box
-        className="bg-white w-full max-w-xl rounded-2xl shadow-2xl p-6 max-h-[90vh] overflow-y-auto"
+         // The actual white modal box
+         className="bg-white w-full max-w-3xl rounded-2xl shadow-2xl p-8 max-h-[90vh] overflow-y-auto"
 
-        // Prevent clicking inside the modal
-        // from triggering the outer onClick.
-        //
-        // Without this, clicking an input could
-        // accidentally close the modal.
-        onClick={(e) => e.stopPropagation()}
-      >
+         // Prevent clicking inside the modal
+         // from triggering the outer onClick.
+         //
+         // Without this, clicking an input could
+         // accidentally close the modal.
+         onClick={(e) => e.stopPropagation()}
+       >
 
         {/* Modal header */}
         <div className="flex items-center justify-between mb-4">

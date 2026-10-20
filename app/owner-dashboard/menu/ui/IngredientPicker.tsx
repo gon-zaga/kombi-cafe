@@ -1,8 +1,6 @@
 'use client'
 
-// Searchable ingredient dropdown: type to filter by name, then pick. A plain
-// <select> stops being usable once there are more than a handful of ingredients.
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 interface IngredientOption {
   id: number;
@@ -28,6 +26,8 @@ function IngredientPicker({
 }: IngredientPickerProps) {
   const [query, setQuery] = useState("");
   const [isOpen, setIsOpen] = useState(false);
+  const [activeIndex, setActiveIndex] = useState(0);
+  const listRef = useRef<HTMLUListElement>(null);
 
   const selected = ingredients.find((i) => String(i.id) === value);
 
@@ -39,74 +39,114 @@ function IngredientPicker({
     return ingredients.filter((i) => i.name.toLowerCase().includes(q));
   }, [ingredients, query]);
 
-  const handlePick = (id: number) => {
-    onChange(String(id));
-    setIsOpen(false);
-    setQuery('');
-  };
+   // Reset highlight when the filtered list changes
+   useEffect(() => {
+     if (matches.length > 0) {
+       setActiveIndex(0);
+     } else {
+       setActiveIndex(-1);
+     }
+   }, [matches]);
 
-  return (
-    <div className="relative">
-      <button
-        type="button"
-        onClick={() => setIsOpen((prev) => !prev)}
-        className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm text-left focus:outline-none focus:ring-2 focus:ring-amber-500 flex items-center justify-between gap-2"
-      >
-        <span className={selected ? 'text-gray-900' : 'text-gray-500'}>
-          {selected ? `${selected.name} (${selected.unit})` : placeholder}
-        </span>
-        <span className="text-gray-400 text-xs shrink-0">▾</span>
-      </button>
+   // Keep the highlighted item scrolled into view during keyboard navigation
+   useEffect(() => {
+     if (!isOpen || !listRef.current) return;
+     // Only scroll if activeIndex is a valid index
+     if (activeIndex >= 0 && activeIndex < matches.length) {
+       const el = listRef.current.children[activeIndex] as HTMLElement;
+       el.scrollIntoView({ block: "nearest" });
+     }
+   }, [activeIndex, isOpen, matches]);
 
-      {isOpen && (
-        <>
-          {/* Click-away layer, so clicking elsewhere closes the list */}
-          <div
-            className="fixed inset-0 z-10"
-            onClick={() => {
-              setIsOpen(false);
-              setQuery('');
-            }}
-          />
+   const close = () => {
+     setIsOpen(false);
+     setQuery("");
+   };
 
-          <div className="absolute z-20 left-0 right-0 mt-1 bg-white border border-gray-300 rounded-lg shadow-lg overflow-hidden">
-            <div className="p-2 border-b border-gray-200">
-              <input
-                // autoFocus so the user can type immediately on opening
-                autoFocus
-                type="text"
-                value={query}
-                onChange={(e) => setQuery(e.target.value)}
-                placeholder="Search ingredients..."
-                className="w-full px-2 py-1.5 border border-gray-200 rounded text-sm focus:outline-none focus:ring-1 focus:ring-amber-500"
-              />
-            </div>
+   const handlePick = (id: number) => {
+     onChange(String(id));
+     close();
+   };
 
-            <ul className="max-h-48 overflow-y-auto">
-              {matches.length === 0 && (
-                <li className="px-3 py-2 text-xs text-gray-500">
-                  No ingredient matches &quot;{query}&quot;
-                </li>
-              )}
+   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+     if (e.key === "ArrowDown") {
+       e.preventDefault();
+       setActiveIndex((i) => Math.min(i + 1, matches.length - 1));
+     } else if (e.key === "ArrowUp") {
+       e.preventDefault();
+       setActiveIndex((i) => Math.max(i - 1, 0));
+     } else if (e.key === "Enter") {
+       e.preventDefault();
+       const pick = matches[activeIndex];
+       if (pick) handlePick(pick.id);
+     } else if (e.key === "Escape") {
+       e.preventDefault();
+       close();
+     }
+   };
 
-              {matches.map((i) => (
-                <li key={i.id}>
-                  <button
-                    type="button"
-                    onClick={() => handlePick(i.id)}
-                    className="w-full text-left px-3 py-2 text-sm hover:bg-amber-50 transition-colors flex items-center justify-between gap-2"
-                  >
-                    <span className="text-gray-900 truncate">{i.name}</span>
-                    <span className="text-xs text-gray-500 shrink-0">{i.unit}</span>
-                  </button>
-                </li>
-              ))}
-            </ul>
-          </div>
-        </>
-      )}
-    </div>
-  );
-}
+   return (
+     <div className="relative">
+       <button
+         type="button"
+         onClick={() => setIsOpen((prev) => !prev)}
+         aria-haspopup="listbox"
+         aria-expanded={isOpen}
+         className="w-full min-h-[56px] px-4 py-3 border-2 border-gray-300 rounded-lg text-base text-left focus:outline-none focus:ring-2 focus:ring-amber-500 flex items-center justify-between gap-3"
+       >
+         <span className={selected ? "text-gray-900" : "text-gray-500"}>
+           {selected ? `${selected.name} (${selected.unit})` : placeholder}
+         </span>
+         <span className="text-gray-400 text-lg shrink-0">▾</span>
+       </button>
 
-export default IngredientPicker;
+       {isOpen && (
+         <>
+           {/* Click-away layer, so clicking elsewhere closes the list */}
+           <div className="fixed inset-0 z-10" onClick={close} />
+
+           <div className="absolute z-20 left-0 right-0 mt-2 bg-white border-2 border-gray-300 rounded-lg shadow-lg overflow-hidden">
+             <div className="p-3 border-b border-gray-200">
+               <input
+                 // autoFocus so the user can type immediately on opening
+                 autoFocus
+                 type="text"
+                 value={query}
+                 onChange={(e) => setQuery(e.target.value)}
+                 onKeyDown={handleKeyDown}
+                 placeholder="Search ingredients..."
+                 className="w-full min-h-[52px] px-4 py-3 border-2 border-gray-200 rounded-lg text-base focus:outline-none focus:ring-2 focus:ring-amber-500"
+               />
+             </div>
+
+             <ul ref={listRef} role="listbox" className="max-h-80 overflow-y-auto divide-y divide-gray-100">
+               {matches.length === 0 && (
+                 <li className="px-4 py-4 text-base text-gray-500">
+                   No ingredient matches &quot;{query}&quot;
+                 </li>
+               )}
+
+               {matches.map((i, index) => (
+                 <li key={i.id} role="option" aria-selected={String(i.id) === value}>
+                   <button
+                     type="button"
+                     onClick={() => handlePick(i.id)}
+                     onMouseEnter={() => setActiveIndex(index)}
+                     className={`w-full min-h-[56px] text-left px-5 py-4 text-base hover:bg-amber-50 transition-colors flex items-center justify-between gap-3 ${
+                       index === activeIndex ? "bg-amber-50" : ""
+                     }`}
+                   >
+                     <span className="text-gray-900 font-medium">{i.name}</span>
+                     <span className="text-sm text-gray-500 shrink-0">{i.unit}</span>
+                   </button>
+                 </li>
+               ))}
+             </ul>
+           </div>
+         </>
+       )}
+     </div>
+   );
+ }
+
+ export default IngredientPicker;

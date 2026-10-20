@@ -113,14 +113,14 @@ function EditIngredientForm({
   };
 
   return (
-    <div
-      className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4"
-      onClick={onClose}
-    >
-      <div
-        className="bg-white w-full max-w-md rounded-2xl shadow-2xl p-6 max-h-[90vh] overflow-y-auto"
-        onClick={(e) => e.stopPropagation()}
-      >
+     <div
+       className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-6"
+       onClick={onClose}
+     >
+       <div
+         className="bg-white w-full max-w-3xl rounded-2xl shadow-2xl p-8 max-h-[90vh] overflow-y-auto"
+         onClick={(e) => e.stopPropagation()}
+       >
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-xl font-bold text-gray-900">Edit Ingredient</h2>
           <button
