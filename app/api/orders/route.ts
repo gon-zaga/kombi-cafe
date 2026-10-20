@@ -51,21 +51,31 @@ async function deductRecipeStock(
   sizeId: number,
   quantity: number
 ) {
+  // Lock the affected ingredient rows first (FOR UPDATE can't be combined with GROUP BY)
+  await client.query(
+    `SELECT i.id FROM ingredients i
+     WHERE i.id IN (
+       SELECT ingredient_id FROM recipes
+       WHERE menu_item_id = $1 AND (size_id = $2 OR size_id IS NULL)
+     )
+     FOR UPDATE`,
+    [menuItemId, sizeId]
+  );
+
   const rowsResult = await client.query(
     `SELECT i.id, i.name, i.unit, i.stock_qty, i.restock_threshold,
-           SUM(r.quantity_needed) * $3 AS needed
-    FROM recipes r
-    JOIN ingredients i ON i.id = r.ingredient_id
-    WHERE r.menu_item_id = $1
-      AND (r.size_id = $2 OR r.size_id IS NULL)
-      AND NOT EXISTS (
-        SELECT 1 FROM recipes r2
-        WHERE r2.menu_item_id = r.menu_item_id
-          AND r2.size_id = $2
-          AND r2.ingredient_id = r.ingredient_id
-      )
-    GROUP BY i.id, i.name, i.unit, i.stock_qty, i.restock_threshold
-    FOR UPDATE`,
+            SUM(r.quantity_needed) * $3::numeric AS needed
+     FROM recipes r
+     JOIN ingredients i ON i.id = r.ingredient_id
+     WHERE r.menu_item_id = $1
+       AND (r.size_id = $2 OR r.size_id IS NULL)
+       AND NOT EXISTS (
+         SELECT 1 FROM recipes r2
+         WHERE r2.menu_item_id = r.menu_item_id
+           AND r2.size_id = $2
+           AND r2.ingredient_id = r.ingredient_id
+       )
+     GROUP BY i.id, i.name, i.unit, i.stock_qty, i.restock_threshold`,
     [menuItemId, sizeId, quantity]
   );
 
@@ -76,16 +86,15 @@ async function deductRecipeStock(
       Number(row.stock_qty) - Number(row.restock_threshold) < Number(row.needed)
   );
 
-  if (short.length > 0) {
-    throw new Error(
-      `Not enough stock: ${short
-        .map(
-          (r) =>
-            `${r.name} (needs ${Number(r.needed)}, have ${Number(r.stock_qty)} ${r.unit}, restock threshold: ${Number(r.restock_threshold)})`
-        )
-        .join(', ')}`
-    );
-  }
+   if (short.length > 0) {
+     const details = short.map((r) => {
+       const needed = Number(r.needed);
+       const have = Number(r.stock_qty);
+       const threshold = Number(r.restock_threshold);
+       return r.name + " (needs " + needed + ", have " + have + " " + r.unit + ", restock threshold: " + threshold + ")";
+     });
+     throw new Error("Not enough stock: " + details.join(", "));
+   }
 
   for (const row of rowsResult.rows) {
     await client.query(

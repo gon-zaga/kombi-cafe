@@ -3,6 +3,12 @@ CREATE TABLE IF NOT EXISTS categories (
   id SERIAL PRIMARY KEY,
   name VARCHAR(50) UNIQUE NOT NULL
 );
+
+-- Daily Counters ---
+CREATE TABLE IF NOT EXISTS daily_counters (
+  order_date DATE PRIMARY KEY,
+  last_number INTEGER NOT NULL DEFAULT 0
+);
 -- Staff (Barista / Owner) ---
 CREATE TABLE IF NOT EXISTS staff (
   user_id SERIAL PRIMARY KEY,

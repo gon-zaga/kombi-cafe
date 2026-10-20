@@ -1,96 +1,105 @@
-// Rate limiting for login attempts
-// Tracks failed attempts by IP and username with escalating timeouts
+// Login rate limiting stored in Postgres so it works on serverless hosts (Netlify)
+import pool from "@/app/lib/db";
 
-interface AttemptRecord {
-  count: number;
-  lockedUntil: number; // timestamp when lock expires
+const RESET_AFTER_MS = 30 * 60 * 1000; // forget failures after 30 min of no attempts
+const DURATIONS = [30_000, 60_000, 180_000, 300_000, 1_800_000];
+
+let tableReady = false;
+async function ensureTable() {
+  if (tableReady) return;
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS login_attempts (
+      attempt_key TEXT PRIMARY KEY,
+      count INTEGER NOT NULL DEFAULT 0,
+      locked_until BIGINT NOT NULL DEFAULT 0,
+      last_attempt BIGINT NOT NULL DEFAULT 0
+    )
+  `);
+  tableReady = true;
 }
-
-const attemptStore = new Map<string, AttemptRecord>();
-
-// Cleanup old entries periodically
-setInterval(() => {
-  const now = Date.now();
-  for (const [key, record] of attemptStore.entries()) {
-    if (record.lockedUntil < now && record.count === 0) {
-      attemptStore.delete(key);
-    }
-  }
-}, 60 * 60 * 1000); // every hour
 
 function getKey(ip: string, username: string): string {
   return `${ip}:${username.toLowerCase()}`;
 }
 
+// Lock only on every 5th failure: 5 -> 30s, 10 -> 1m, 15 -> 3m, 20 -> 5m, 25+ -> 30m
 export function getLockDuration(attemptCount: number): number {
-   if (attemptCount < 5) return 0;
-   const level = Math.floor((attemptCount - 5) / 5);
-   const durations = [
-     30 * 1000, // 30 seconds
-     60 * 1000, // 1 minute
-     180 * 1000, // 3 minutes
-     300 * 1000, // 5 minutes
-     1800 * 1000 // 30 minutes
-   ];
-   const index = Math.min(level, durations.length - 1);
-   return durations[index];
- }
+  if (attemptCount < 5 || attemptCount % 5 !== 0) return 0;
+  const level = attemptCount / 5 - 1;
+  return DURATIONS[Math.min(level, DURATIONS.length - 1)];
+}
 
-export function checkRateLimit(ip: string, username: string): { allowed: boolean; remainingTime?: number; attemptCount: number } {
-  const key = getKey(ip, username);
-  const record = attemptStore.get(key);
+export async function checkRateLimit(
+  ip: string,
+  username: string
+): Promise<{ allowed: boolean; remainingTime?: number; attemptCount: number }> {
+  await ensureTable();
   const now = Date.now();
+  const res = await pool.query(
+    `SELECT count, locked_until, last_attempt FROM login_attempts WHERE attempt_key = $1`,
+    [getKey(ip, username)]
+  );
+  if (res.rows.length === 0) return { allowed: true, attemptCount: 0 };
 
-  if (!record) {
+  const row = res.rows[0];
+  const lockedUntil = Number(row.locked_until);
+  const lastAttempt = Number(row.last_attempt);
+
+  if (lockedUntil > now) {
+    return { allowed: false, remainingTime: lockedUntil - now, attemptCount: row.count };
+  }
+
+  if (now - lastAttempt > RESET_AFTER_MS) {
+    await pool.query(`DELETE FROM login_attempts WHERE attempt_key = $1`, [getKey(ip, username)]);
     return { allowed: true, attemptCount: 0 };
   }
 
-  if (record.lockedUntil > now) {
-    return { 
-      allowed: false, 
-      remainingTime: record.lockedUntil - now,
-      attemptCount: record.count
-    };
-  }
-
-  // Lock expired, reset count
-  if (record.count > 0) {
-    attemptStore.set(key, { count: 0, lockedUntil: 0 });
-  }
-
-  return { allowed: true, attemptCount: record.count };
+  return { allowed: true, attemptCount: row.count };
 }
 
-export function recordFailedAttempt(ip: string, username: string): { lockedUntil: number; attemptCount: number } {
+export async function recordFailedAttempt(
+  ip: string,
+  username: string
+): Promise<{ lockedUntil: number; attemptCount: number }> {
+  await ensureTable();
+  const now = Date.now();
   const key = getKey(ip, username);
-  const record = attemptStore.get(key) || { count: 0, lockedUntil: 0 };
-  
-  record.count += 1;
-  
-  const lockDuration = getLockDuration(record.count);
-  if (lockDuration > 0) {
-    record.lockedUntil = Date.now() + lockDuration;
+
+  // Atomic increment, restarting at 1 if the last failure was long ago
+  const res = await pool.query(
+    `INSERT INTO login_attempts (attempt_key, count, locked_until, last_attempt)
+     VALUES ($1, 1, 0, $2)
+     ON CONFLICT (attempt_key) DO UPDATE SET
+       count = CASE WHEN $2 - login_attempts.last_attempt > $3 THEN 1 ELSE login_attempts.count + 1 END,
+       last_attempt = $2
+     RETURNING count`,
+    [key, now, RESET_AFTER_MS]
+  );
+  const count: number = res.rows[0].count;
+
+  let lockedUntil = 0;
+  const duration = getLockDuration(count);
+  if (duration > 0) {
+    lockedUntil = now + duration;
+    await pool.query(`UPDATE login_attempts SET locked_until = $1 WHERE attempt_key = $2`, [lockedUntil, key]);
   }
-  
-  attemptStore.set(key, record);
-  
-  return { lockedUntil: record.lockedUntil, attemptCount: record.count };
+  return { lockedUntil, attemptCount: count };
 }
 
-export function clearAttempts(ip: string, username: string): void {
-  const key = getKey(ip, username);
-  attemptStore.delete(key);
+export async function clearAttempts(ip: string, username: string): Promise<void> {
+  await ensureTable();
+  await pool.query(`DELETE FROM login_attempts WHERE attempt_key = $1`, [getKey(ip, username)]);
 }
 
 export function formatLockTime(ms: number): string {
-   if (ms < 60000) {
-     const seconds = Math.ceil(ms / 1000);
-     return `${seconds} second${seconds !== 1 ? 's' : ''}`;
-   }
-   const minutes = Math.ceil(ms / 60000);
-   if (minutes === 1) return "1 minute";
-   if (minutes < 60) return `${minutes} minutes`;
-   const hours = Math.floor(minutes / 60);
-   const remainingMinutes = minutes % 60;
-   return `${hours} hour${hours > 1 ? 's' : ''}${remainingMinutes > 0 ? ` ${remainingMinutes} minute${remainingMinutes > 1 ? 's' : ''}` : ''}`;
- }
+  if (ms < 60000) {
+    const seconds = Math.ceil(ms / 1000);
+    return `${seconds} second${seconds !== 1 ? "s" : ""}`;
+  }
+  const minutes = Math.ceil(ms / 60000);
+  if (minutes === 1) return "1 minute";
+  if (minutes < 60) return `${minutes} minutes`;
+  const hours = Math.floor(minutes / 60);
+  const rem = minutes % 60;
+  return `${hours} hour${hours > 1 ? "s" : ""}${rem > 0 ? ` ${rem} minute${rem > 1 ? "s" : ""}` : ""}`;
+}
