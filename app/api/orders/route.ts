@@ -88,13 +88,7 @@ async function deductRecipeStock(
   );
 
   if (short.length > 0) {
-    const details = short.map((r) => {
-      const needed = Number(r.needed);
-      const have = Number(r.stock_qty);
-      const threshold = Number(r.restock_threshold);
-      return r.name + " (needs " + needed + ", have " + have + " " + r.unit + ", restock threshold: " + threshold + ")";
-    });
-    throw new Error("Not enough stock: " + details.join(", "));
+    throw new Error("Not enough stock");
   }
 
   const lowStockAlerts: { ingredientId: number; name: string; stockQty: number; threshold: number }[] = [];
