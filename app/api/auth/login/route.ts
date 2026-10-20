@@ -32,7 +32,8 @@ export async function POST(request: Request) {
         { 
           error: `Too many failed attempts. Try again in ${formatLockTime(rateLimit.remainingTime)}.`,
           locked: true,
-          retryAfter: Math.ceil(rateLimit.remainingTime / 1000)
+          retryAfter: Math.ceil(rateLimit.remainingTime / 1000),
+          attemptCount: rateLimit.attemptCount
         },
         { status: 429 }
       );
@@ -45,39 +46,43 @@ export async function POST(request: Request) {
       [username]
     );
 
-    if (result.rows.length === 0) {
-      // Record failed attempt even for non-existent users (but don't reveal if user exists)
-      recordFailedAttempt(ip, username);
-      return NextResponse.json(
-        { error: "Invalid username or password" },
-        { status: 401 }
-      );
-    }
+if (result.rows.length === 0) {
+       // Record failed attempt even for non-existent users (but don't reveal if user exists)
+       const lockInfo = recordFailedAttempt(ip, username);
+       return NextResponse.json(
+         { 
+           error: "Invalid username or password",
+           attemptCount: lockInfo.attemptCount
+         },
+         { status: 401 }
+       );
+     }
 
     const staff = result.rows[0];
     const isValid = await bcrypt.compare(password, staff.password_hash);
 
-    if (!isValid) {
-      // Record failed attempt
-      const lockInfo = recordFailedAttempt(ip, username);
-      const lockDuration = getLockDuration(lockInfo.attemptCount);
-      
-      if (lockDuration > 0) {
-        return NextResponse.json(
-          { 
-            error: `Invalid username or password. Account locked for ${formatLockTime(lockDuration)} after ${lockInfo.attemptCount} failed attempts.`,
-            locked: true,
-            retryAfter: Math.ceil(lockDuration / 1000)
-          },
-          { status: 429 }
-        );
-      }
-
-      return NextResponse.json(
-        { error: "Invalid username or password" },
-        { status: 401 }
-      );
-    }
+if (!isValid) {
+       // Record failed attempt
+       const lockInfo = recordFailedAttempt(ip, username);
+       const lockDuration = getLockDuration(lockInfo.attemptCount);
+       
+       if (lockDuration > 0) {
+         return NextResponse.json(
+           { 
+             error: `Invalid username or password. Account locked for ${formatLockTime(lockDuration)} after ${lockInfo.attemptCount} failed attempts.`,
+             locked: true,
+             retryAfter: Math.ceil(lockDuration / 1000),
+             attemptCount: lockInfo.attemptCount
+           },
+           { status: 429 }
+         );
+       }
+ 
+       return NextResponse.json(
+         { error: "Invalid username or password", attemptCount: lockInfo.attemptCount },
+         { status: 401 }
+       );
+     }
 
     // Success - clear failed attempts
     clearAttempts(ip, username);

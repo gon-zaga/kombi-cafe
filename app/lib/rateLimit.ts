@@ -23,12 +23,18 @@ function getKey(ip: string, username: string): string {
 }
 
 export function getLockDuration(attemptCount: number): number {
-  // 5 attempts = 1 min, 10 attempts = 5 min, 15 attempts = 15 min, etc.
-  const bracket = Math.floor(attemptCount / 5);
-  if (bracket <= 0) return 0;
-  const durations = [60 * 1000, 5 * 60 * 1000, 15 * 60 * 1000, 60 * 60 * 1000];
-  return durations[Math.min(bracket - 1, durations.length - 1)];
-}
+   if (attemptCount < 5) return 0;
+   const level = Math.floor((attemptCount - 5) / 5);
+   const durations = [
+     30 * 1000, // 30 seconds
+     60 * 1000, // 1 minute
+     180 * 1000, // 3 minutes
+     300 * 1000, // 5 minutes
+     1800 * 1000 // 30 minutes
+   ];
+   const index = Math.min(level, durations.length - 1);
+   return durations[index];
+ }
 
 export function checkRateLimit(ip: string, username: string): { allowed: boolean; remainingTime?: number; attemptCount: number } {
   const key = getKey(ip, username);
@@ -77,11 +83,14 @@ export function clearAttempts(ip: string, username: string): void {
 }
 
 export function formatLockTime(ms: number): string {
-  const minutes = Math.ceil(ms / 60000);
-  if (minutes < 1) return "less than a minute";
-  if (minutes === 1) return "1 minute";
-  if (minutes < 60) return `${minutes} minutes`;
-  const hours = Math.floor(minutes / 60);
-  const remainingMinutes = minutes % 60;
-  return `${hours} hour${hours > 1 ? 's' : ''}${remainingMinutes > 0 ? ` ${remainingMinutes} minute${remainingMinutes > 1 ? 's' : ''}` : ''}`;
-}
+   if (ms < 60000) {
+     const seconds = Math.ceil(ms / 1000);
+     return `${seconds} second${seconds !== 1 ? 's' : ''}`;
+   }
+   const minutes = Math.ceil(ms / 60000);
+   if (minutes === 1) return "1 minute";
+   if (minutes < 60) return `${minutes} minutes`;
+   const hours = Math.floor(minutes / 60);
+   const remainingMinutes = minutes % 60;
+   return `${hours} hour${hours > 1 ? 's' : ''}${remainingMinutes > 0 ? ` ${remainingMinutes} minute${remainingMinutes > 1 ? 's' : ''}` : ''}`;
+ }

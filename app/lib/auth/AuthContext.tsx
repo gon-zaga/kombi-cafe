@@ -3,24 +3,28 @@
 import { createContext, useContext, useEffect, useState, ReactNode } from "react";
 
 interface User {
-  userId: number;
-  username: string;
-  role: "barista" | "owner";
-  firstName: string | null;
-  lastName: string | null;
-}
+   userId: number;
+   username: string;
+   role: "barista" | "owner";
+   firstName: string | null;
+   lastName: string | null;
+ }
 
-interface AuthContextType {
-  user: User | null;
-  loading: boolean;
-  login: (username: string, password: string) => Promise<User>;
-  logout: () => Promise<void>;
-  refresh: () => Promise<void>;
-}
+ interface AuthContextType {
+   user: User | null;
+   loading: boolean;
+   login: (username: string, password: string) => Promise<{ user: User; attemptCount: number }>;
+   logout: () => Promise<void>;
+   refresh: () => Promise<void>;
+ }
 
-const AuthContext = createContext<AuthContextType | undefined>(undefined);
+ interface AuthProviderProps {
+   children: ReactNode;
+ }
 
-export function AuthProvider({ children }: { children: ReactNode }) {
+ const AuthContext = createContext<AuthContextType | undefined>(undefined);
+
+export function AuthProvider({ children }: AuthProviderProps) {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -44,23 +48,28 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     fetchUser();
   }, []);
 
-  const login = async (username: string, password: string): Promise<User> => {
-    const res = await fetch("/api/auth/login", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ username, password }),
-      credentials: "include",
-    });
+const login = async (username: string, password: string): Promise<{ user: User; attemptCount: number }> => {
+      const res = await fetch("/api/auth/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ username, password }),
+        credentials: "include",
+      });
 
-    const data = await res.json();
+      const data = await res.json();
 
-    if (!res.ok) {
-      throw new Error(data.error || "Login failed");
-    }
+      if (!res.ok) {
+        // Throw an object with error, attemptCount, and retryAfter if available
+        throw { 
+          error: data.error || "Login failed", 
+          attemptCount: data.attemptCount || 0,
+          retryAfter: data.retryAfter 
+        };
+      }
 
-    setUser(data.user);
-    return data.user;
-  };
+      setUser(data.user);
+      return { user: data.user, attemptCount: 0 };
+    };
 
   const logout = async () => {
     await fetch("/api/auth/logout", { method: "POST", credentials: "include" });

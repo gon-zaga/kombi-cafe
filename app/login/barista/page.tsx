@@ -50,46 +50,81 @@ function BaristaLoginPage() {
     return `${mins}:${secs.toString().padStart(2, '0')}`;
   };
 
-   const handleSubmit = async (e: React.FormEvent) => {
-     e.preventDefault();
-     setError("");
-     setLoading(true);
+    const handleSubmit = async (e: React.FormEvent) => {
+      e.preventDefault();
+      setError("");
+      setLocked(false);
+      setRetryAfter(0);
+      setLoading(true);
 
-     try {
-       const loggedInUser = await login(username, password);
-       // Check if the user is a barista
-       if (loggedInUser.role !== "barista") {
-         await logout();
-         setError("This login is for barista accounts only.");
-         return;
-       }
-       // Redirect to appropriate dashboard based on role
-       const defaultRedirect = loggedInUser.role === "owner" ? "/owner-dashboard" : "/barista-dashboard";
-       router.push(searchParams.get("redirect") || defaultRedirect);
-     } catch (err) {
-       const message = err instanceof Error ? err.message : "Login failed";
-       setError(message);
-       
-       // Check if it's a lockout error (429 status)
-       if (message.includes("locked") || message.includes("Try again in")) {
-         setLocked(true);
-         // Extract retryAfter from error if possible
-         const match = message.match(/(\d+)\s*(minute|second|hour)/i);
-         if (match) {
-           const num = parseInt(match[1]);
-           const unit = match[2].toLowerCase();
-           let seconds = num * 60;
-           if (unit.startsWith('hour')) seconds = num * 3600;
-           else if (unit.startsWith('second')) seconds = num;
-           setRetryAfter(seconds);
-         } else {
-           setRetryAfter(60); // default 1 minute
-         }
-       }
-     } finally {
-       setLoading(false);
-     }
-   };
+      try {
+        const result = await login(username, password);
+        const loggedInUser = result.user;
+        // Check if the user is a barista
+        if (loggedInUser.role !== "barista") {
+          await logout();
+          setError("This login is for barista accounts only.");
+          return;
+        }
+        // Redirect to appropriate dashboard based on role
+        const defaultRedirect = loggedInUser.role === "owner" ? "/owner-dashboard" : "/barista-dashboard";
+        router.push(searchParams.get("redirect") || defaultRedirect);
+      } catch (err) {
+        let message = "Login failed";
+        let attemptCount = 0;
+        let retryAfter = 0;
+        let isLocked = false;
+        
+        // Check if the error is an object with attemptCount (from our custom throw)
+        if (err && typeof err === 'object' && 'attemptCount' in err) {
+          // Type assertion: err is { error: string; attemptCount: number; retryAfter?: number }
+          const e = err as { error: string; attemptCount: number; retryAfter?: number };
+          message = e.error;
+          attemptCount = e.attemptCount;
+          // If we have retryAfter (from a 429 response), use it to set the locked state and retryAfter
+          if (e.retryAfter !== undefined) {
+            isLocked = true;
+            retryAfter = e.retryAfter;
+          }
+        } else if (err instanceof Error) {
+          // Fallback to old error format
+          try {
+            const errorData = JSON.parse(err.message);
+            message = errorData.error;
+            attemptCount = errorData.attemptCount || 0;
+          } catch (e) {
+            // If JSON parsing fails, use the original message
+            message = err.message;
+          }
+        }
+        
+        setError(`${message} (Attempt ${attemptCount})`);
+        
+        // If we haven't set locked state from the error object (i.e., it's a 401 response), check for lockout in message
+        if (!isLocked && (message.includes("locked") || message.includes("Try again in"))) {
+          // Extract retryAfter from error if possible
+          const match = message.match(/(\d+)\s*(minute|second|hour)/i);
+          if (match) {
+            const num = parseInt(match[1]);
+            const unit = match[2].toLowerCase();
+            let seconds = num * 60;
+            if (unit.startsWith('hour')) seconds = num * 3600;
+            else if (unit.startsWith('second')) seconds = num;
+            isLocked = true;
+            retryAfter = seconds;
+          } else {
+            // default to 1 minute if we can't parse
+            isLocked = true;
+            retryAfter = 60;
+          }
+        }
+        
+        setLocked(isLocked);
+        setRetryAfter(retryAfter);
+      } finally {
+        setLoading(false);
+      }
+    };
 
   return (
     <div className="min-h-screen bg-cream flex items-center justify-center p-4">
