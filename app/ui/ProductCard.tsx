@@ -36,18 +36,19 @@ function ProductCard({
 
   const isAvailable = item.isAvailable ?? true;
   const isLowStock = isAvailable && item.isLowStock === true;
+  const isNotPurchasable = !isAvailable || isLowStock;
 
   const body = (
     <>
       <div className="flex justify-center items-center bg-white rounded-xl p-2">
-        <ItemImage
-          src={imageSrc}
-          alt={itemName}
-          width={110}
-          height={110}
-          loading="eager"
-          className={isAvailable ? "" : "opacity-40 grayscale"}
-        />
+         <ItemImage
+           src={imageSrc}
+           alt={itemName}
+           width={110}
+           height={110}
+           loading="eager"
+           className={isNotPurchasable ? "opacity-40 grayscale" : ""}
+         />
       </div>
 
       <div className="flex flex-col items-start gap-0.5">
@@ -65,7 +66,7 @@ function ProductCard({
         {/* Price */}
         <span
           className={`font-bold text-lg ${
-            isAvailable ? "" : "line-through opacity-60"
+            isNotPurchasable ? "line-through opacity-60" : ""
           }`}
         >
           ₱{Number(price).toFixed(2)}
@@ -74,7 +75,7 @@ function ProductCard({
         {/* Product name */}
         <span
           className={`font-medium text-sm ${
-            isAvailable ? "" : "opacity-60"
+            isNotPurchasable ? "opacity-60" : ""
           }`}
         >
           {itemName}
@@ -122,7 +123,7 @@ function ProductCard({
   return (
     <div
       className={`relative bg-[#F4EBD0] rounded-2xl drop-shadow-lg flex flex-col p-3 gap-2 text-dark-brown ${
-        isAvailable ? "" : "opacity-70"
+        isNotPurchasable ? "opacity-70" : ""
       } ${className ?? ""}`}
     >
       {/* NEW badge */}
@@ -139,19 +140,19 @@ function ProductCard({
         </span>
       )}
 
-      {/* Available items are clickable */}
-      {isAvailable ? (
-        <Link
-          href={`/orders/${item.itemId}`}
-          className="flex flex-col gap-2"
-        >
-          {body}
-        </Link>
-      ) : (
-        <div className="flex flex-col gap-2 cursor-not-allowed">
-          {body}
-        </div>
-      )}
+       {/* Available items are clickable */}
+       {isNotPurchasable ? (
+         <div className="flex flex-col gap-2 cursor-not-allowed">
+           {body}
+         </div>
+       ) : (
+         <Link
+           href={`/orders/${item.itemId}`}
+           className="flex flex-col gap-2"
+         >
+           {body}
+         </Link>
+       )}
 
       {/* Optional sublabel */}
       {sublabel && (
