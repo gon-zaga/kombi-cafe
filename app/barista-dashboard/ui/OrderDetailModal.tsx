@@ -20,12 +20,7 @@ interface OrderDetailModalProps {
 }
 
 function OrderDetailModal({ order, onClose, onUpdateStatus }: OrderDetailModalProps) {
-  // Reverting is a correction, not routine flow, so the button turns into an
-  // in-app confirm first, using the shared ConfirmModal so no native dialog is
-  // used. delayMs is 0 because a revert is itself reversible (mark ready again)
-  // and baristas do it often; the 3s lock is for irreversible deletes.
-    const [confirmingRevert, setConfirmingRevert] = useState(false);
-    const [confirmingPreparing, setConfirmingPreparing] = useState(false);
+  const [confirmingPreparing, setConfirmingPreparing] = useState(false);
     const [confirmingReady, setConfirmingReady] = useState(false);
     const [confirmingCompleted, setConfirmingCompleted] = useState(false);
     const [deletingOrder, setDeletingOrder] = useState<OrderSummary | null>(null);
@@ -43,7 +38,7 @@ function OrderDetailModal({ order, onClose, onUpdateStatus }: OrderDetailModalPr
   const changeComputed =
     order !== null && changeState?.orderId === order.id && changeState.computed;
 
-   const handleComputedChange = useCallback((computed) => {
+   const handleComputedChange = useCallback((computed: boolean) => {
      if (order) {
        setChangeState({ orderId: order.id, computed });
      }
@@ -62,7 +57,7 @@ function OrderDetailModal({ order, onClose, onUpdateStatus }: OrderDetailModalPr
      setConfirmingCompleted(false);
    };
 
-   if (!order) return null;
+if (!order) return null;
 
   // 'ready' and 'completed' both end the order's turn, so the parent
   // auto-advances to the next order. 'preparing' keeps this card open on
@@ -71,11 +66,6 @@ function OrderDetailModal({ order, onClose, onUpdateStatus }: OrderDetailModalPr
     if (status === 'ready' || status === 'completed') onClose();
     onUpdateStatus(order.id, status);
   };
-
-   const handleRevert = () => {
-     onUpdateStatus(order.id, 'preparing');
-     setConfirmingRevert(false);
-   };
 
     const handleDeleteOrder = async () => {
       if (!order) return;
@@ -306,38 +296,16 @@ function OrderDetailModal({ order, onClose, onUpdateStatus }: OrderDetailModalPr
                 </button>
               )}
 
-              {order.status === 'ready' && (
-                <button
-                  onClick={() => setConfirmingRevert(true)}
-                  className="w-full text-sm font-medium bg-amber-50 border border-amber-200 text-amber-800 rounded-lg py-3 hover:bg-amber-100 active:scale-95 transition-transform"
-                >
-                  Move Back to Preparing
-                </button>
-              )}
-
               <button
                 onClick={onClose}
                 className="w-full text-sm font-medium bg-gray-100 text-gray-700 rounded-lg py-3 hover:bg-gray-200 active:scale-95 transition-transform"
               >
                 Close
               </button>
-            </div>
-          </div>
-        </div>
+</div>
       </div>
-
-      {/* Revert confirmation: a second overlay stacked above the detail card,
-          so it reads as its own modal rather than part of the order card */}
-       <ConfirmModal
-         isOpen={confirmingRevert}
-         title="Move Back to Preparing?"
-         message={`Order #${order.orderReference} will go back to Preparing and be counted in the queue again.`}
-         confirmLabel="Yes, Move It Back"
-         tone="primary"
-          delayMs={2000}
-         onCancel={() => setConfirmingRevert(false)}
-         onConfirm={handleRevert}
-       />
+    </div>
+  </div>
         <ConfirmModal
           isOpen={deletingOrder !== null}
           title="Delete order?"

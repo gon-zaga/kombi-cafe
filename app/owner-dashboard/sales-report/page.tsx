@@ -376,7 +376,7 @@ export default function SalesReport() {
                      style={{ maxHeight: '480px', overflowY: 'auto' }}
                    >
                       {[...orders]
-                        .sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime())
+                        .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
                         .map((order) => (
                         <div key={order.id} className="border border-brown-800 rounded-lg p-4 mb-4 last:mb-0">
                           <div className="flex items-start justify-between">

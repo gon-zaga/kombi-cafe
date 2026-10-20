@@ -1,8 +1,8 @@
 'use client';
 
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import Image from 'next/image';
-import { motion, AnimatePresence } from 'framer-motion';
+import styles from './Carousel.module.css';
 
 interface Slide {
   src: string;
@@ -15,160 +15,213 @@ interface Slide {
 interface CarouselProps {
   slides: Slide[];
   className?: string;
-  autoPlay?: boolean;
-  interval?: number;
+  slideWidth?: number;
+  gap?: number;
+  animationDuration?: number;
+}
+
+interface AnimationState {
+  animationId: number;
+  lastTime: number;
+  baseElapsed: number; // auto-scroll elapsed time
+  dragOffset: number; // current drag offset in pixels
+  momentumVelocity: number; // px/ms for momentum
+  isDragging: boolean;
+  lastDragX: number;
+  lastDragTime: number;
 }
 
 export default function Carousel({ 
   slides, 
   className = '', 
-  autoPlay = true, 
-  interval = 5000 
+  slideWidth = 400,
+  gap = 24,
+  animationDuration = 20000
 }: CarouselProps) {
-  const [currentIndex, setCurrentIndex] = useState(0);
-  const [isPaused, setIsPaused] = useState(false);
-  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  const resumeTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [isDragging, setIsDragging] = useState(false);
+  const trackRef = useRef<HTMLDivElement>(null);
+  const animRef = useRef<AnimationState>({
+    animationId: 0,
+    lastTime: performance.now(),
+    baseElapsed: 0,
+    dragOffset: 0,
+    momentumVelocity: 0,
+    isDragging: false,
+    lastDragX: 0,
+    lastDragTime: 0,
+  });
 
-  const goToSlide = useCallback((index: number) => {
-    setCurrentIndex(index);
-    handleInteraction();
-  }, []);
+  const totalSlides = slides.length * 2;
+  const trackWidth = (slideWidth + gap) * totalSlides;
+  const animationDistance = (slideWidth + gap) * slides.length;
+  const slideUnit = slideWidth + gap;
 
-  const goToNext = useCallback(() => {
-    setCurrentIndex((prev) => (prev + 1) % slides.length);
-  }, [slides.length]);
+  const DRAG_SENSITIVITY = 1.0; // 1:1 direct drag
+  const MOMENTUM_DECAY = 0.95;
+  const MOMENTUM_THRESHOLD = 0.5;
 
-  const goToPrev = useCallback(() => {
-    setCurrentIndex((prev) => (prev - 1 + slides.length) % slides.length);
-  }, [slides.length]);
-
-  const handleInteraction = useCallback(() => {
-    setIsPaused(true);
-    if (resumeTimeoutRef.current) {
-      clearTimeout(resumeTimeoutRef.current);
+  const applyTransform = (translateX: number) => {
+    const track = trackRef.current;
+    if (track) {
+      track.style.transform = `translateX(${translateX}px)`;
     }
-    resumeTimeoutRef.current = setTimeout(() => {
-      setIsPaused(false);
-    }, interval);
-  }, [interval]);
+  };
 
-  const startAutoPlay = useCallback(() => {
-    if (!autoPlay || slides.length <= 1) return;
-    
-    intervalRef.current = setInterval(() => {
-      if (!isPaused) {
-        goToNext();
+  const getAutoScrollTranslateX = (elapsed: number) => {
+    const progress = (elapsed % animationDuration) / animationDuration;
+    return -progress * animationDistance;
+  };
+
+  useEffect(() => {
+    const track = trackRef.current;
+    if (!track) return;
+
+    const ref = animRef.current;
+    ref.lastTime = performance.now();
+
+    const animate = (currentTime: number) => {
+      const deltaTime = currentTime - ref.lastTime;
+      ref.lastTime = currentTime;
+
+      let translateX = 0;
+
+      if (ref.isDragging) {
+        // During drag: use base auto-scroll position + drag offset
+        const autoTranslateX = getAutoScrollTranslateX(ref.baseElapsed);
+        translateX = autoTranslateX + ref.dragOffset;
+      } else if (Math.abs(ref.momentumVelocity) > MOMENTUM_THRESHOLD) {
+        // Momentum phase: apply decaying velocity
+        ref.baseElapsed += ref.momentumVelocity;
+        ref.momentumVelocity *= MOMENTUM_DECAY;
+        translateX = getAutoScrollTranslateX(ref.baseElapsed);
+      } else {
+        // Normal auto-scroll
+        ref.baseElapsed += deltaTime;
+        translateX = getAutoScrollTranslateX(ref.baseElapsed);
       }
-    }, interval);
-  }, [autoPlay, slides.length, interval, isPaused, goToNext]);
+      
+      applyTransform(translateX);
+      ref.animationId = requestAnimationFrame(animate);
+    };
 
-  const stopAutoPlay = useCallback(() => {
-    if (intervalRef.current) {
-      clearInterval(intervalRef.current);
-      intervalRef.current = null;
+    ref.animationId = requestAnimationFrame(animate);
+    return () => cancelAnimationFrame(ref.animationId);
+  }, [animationDuration, animationDistance, slides.length]);
+
+  const handlePointerDown = (e: React.PointerEvent) => {
+    const ref = animRef.current;
+    ref.isDragging = true;
+    ref.lastDragX = e.clientX;
+    ref.lastDragTime = performance.now();
+    ref.dragOffset = 0;
+    ref.momentumVelocity = 0;
+    setIsDragging(true);
+    (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
+    e.preventDefault();
+  };
+
+  const handlePointerMove = (e: React.PointerEvent) => {
+    const ref = animRef.current;
+    if (!ref.isDragging) return;
+    
+    const currentTime = performance.now();
+    const deltaX = (e.clientX - ref.lastDragX) * DRAG_SENSITIVITY;
+    const deltaTime = currentTime - ref.lastDragTime;
+    
+    // Update drag offset for direct manipulation
+    ref.dragOffset += deltaX;
+    
+    // Calculate velocity for momentum (px/ms)
+    if (deltaTime > 0) {
+      const velocity = deltaX / deltaTime;
+      ref.momentumVelocity = velocity;
     }
-    if (resumeTimeoutRef.current) {
-      clearTimeout(resumeTimeoutRef.current);
-      resumeTimeoutRef.current = null;
-    }
-  }, []);
+    
+    ref.lastDragX = e.clientX;
+    ref.lastDragTime = currentTime;
+  };
 
-  useEffect(() => {
-    startAutoPlay();
-    return () => stopAutoPlay();
-  }, [startAutoPlay, stopAutoPlay]);
+  const handlePointerUp = (e: React.PointerEvent) => {
+    const ref = animRef.current;
+    if (!ref.isDragging) return;
+    
+    // Apply drag offset to base elapsed so auto-scroll continues from new position
+    const currentTranslateX = getAutoScrollTranslateX(ref.baseElapsed);
+    const newTranslateX = currentTranslateX + ref.dragOffset;
+    
+    // Convert back to elapsed time
+    const progress = -newTranslateX / animationDistance;
+    ref.baseElapsed = (progress % 1 + 1) % 1 * animationDuration;
+    ref.dragOffset = 0;
+    
+    ref.isDragging = false;
+    setIsDragging(false);
+    (e.currentTarget as HTMLElement).releasePointerCapture(e.pointerId);
+  };
 
-  useEffect(() => {
-    stopAutoPlay();
-    startAutoPlay();
-  }, [currentIndex, startAutoPlay, stopAutoPlay]);
+  const handlePointerLeave = (e: React.PointerEvent) => {
+    const ref = animRef.current;
+    if (!ref.isDragging) return;
+    
+    // Same as pointer up - commit drag offset and start momentum
+    const currentTranslateX = getAutoScrollTranslateX(ref.baseElapsed);
+    const newTranslateX = currentTranslateX + ref.dragOffset;
+    const progress = -newTranslateX / animationDistance;
+    ref.baseElapsed = (progress % 1 + 1) % 1 * animationDuration;
+    ref.dragOffset = 0;
+    
+    ref.isDragging = false;
+    setIsDragging(false);
+  };
+
+  const duplicatedSlides = [...slides, ...slides];
 
   return (
     <div
-      className={`relative overflow-hidden rounded-2xl shadow-md ${className}`}
-      onMouseEnter={() => setIsPaused(true)}
-      onMouseLeave={() => setIsPaused(false)}
+      className={`${styles.carousel} ${className}`}
+      style={{ 
+        cursor: isDragging ? 'grabbing' : 'grab',
+        touchAction: 'none'
+      } as React.CSSProperties}
+      onPointerDown={handlePointerDown}
+      onPointerMove={handlePointerMove}
+      onPointerUp={handlePointerUp}
+      onPointerLeave={handlePointerLeave}
+      onPointerCancel={handlePointerLeave}
     >
-      <AnimatePresence mode="wait">
-        <motion.div
-          key={currentIndex}
-          initial={{ opacity: 0, x: 50 }}
-          animate={{ opacity: 1, x: 0 }}
-          exit={{ opacity: 0, x: -50 }}
-          transition={{ duration: 0.3, ease: 'easeInOut' }}
-          className="relative h-64 sm:h-72 md:h-80 bg-[#E8D9B8]"
-        >
-          <Image
-            src={slides[currentIndex].src}
-            alt={slides[currentIndex].alt}
-            fill
-            className="object-cover"
-            sizes="(max-width: 768px) 100vw, (max-width: 1024px) 50vw, 33vw"
-          />
-
-          <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/10 to-transparent" />
-
-          <div className="absolute bottom-0 left-0 right-0 p-4 md:p-5 text-white">
-            <p className="text-[10px] md:text-xs uppercase tracking-[0.2em] mb-1 text-white/80">
-              {slides[currentIndex].subtitle}
-            </p>
-
-            <h2 className="font-roboto-slab text-xl md:text-2xl font-bold">
-              {slides[currentIndex].title}
-            </h2>
-
-            <p className="mt-1 text-xs md:text-sm text-white/90">
-              {slides[currentIndex].description}
-            </p>
-          </div>
-        </motion.div>
-      </AnimatePresence>
-
-      {slides.length > 1 && (
-        <>
-          <button
-            onClick={() => {
-              goToPrev();
-              handleInteraction();
-            }}
-            className="absolute left-2 top-1/2 -translate-y-1/2 z-10 p-2 rounded-full bg-black/30 hover:bg-black/50 text-white transition-colors"
-            aria-label="Previous slide"
+      <div 
+        ref={trackRef}
+        className={styles.track}
+        style={{
+          width: `${trackWidth}px`,
+          gap: `${gap}px`,
+        } as React.CSSProperties}
+      >
+        {duplicatedSlides.map((slide, index) => (
+          <div 
+            key={index} 
+            className={styles.slide}
+            style={{ width: `${slideWidth}px`, flexShrink: 0 } as React.CSSProperties}
           >
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-            </svg>
-          </button>
-
-          <button
-            onClick={() => {
-              goToNext();
-              handleInteraction();
-            }}
-            className="absolute right-2 top-1/2 -translate-y-1/2 z-10 p-2 rounded-full bg-black/30 hover:bg-black/50 text-white transition-colors"
-            aria-label="Next slide"
-          >
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-            </svg>
-          </button>
-
-          <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-2 z-10">
-            {slides.map((_, index) => (
-              <button
-                key={index}
-                onClick={() => goToSlide(index)}
-                className={`w-2 h-2 rounded-full transition-all ${
-                  index === currentIndex
-                    ? 'bg-white w-6'
-                    : 'bg-white/50 hover:bg-white/75'
-                }`}
-                aria-label={`Go to slide ${index + 1}`}
+            <div className={styles.imageWrapper}>
+              <Image
+                src={slide.src}
+                alt={slide.alt}
+                width={slideWidth}
+                height={384}
+                className={styles.image}
+                sizes={`${slideWidth}px`}
               />
-            ))}
+              <div className={styles.gradientOverlay} />
+            </div>
+            <div className={styles.caption}>
+              <p className={styles.subtitle}>{slide.subtitle}</p>
+              <h2 className={styles.title}>{slide.title}</h2>
+              <p className={styles.description}>{slide.description}</p>
+            </div>
           </div>
-        </>
-      )}
+        ))}
+      </div>
     </div>
   );
 }

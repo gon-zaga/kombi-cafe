@@ -27,14 +27,20 @@ const slides: Slide[] = [
     subtitle: 'Made with Care',
     description: 'Your next coffee break starts here.'
   },
-  // Add more slides here as needed:
-  // {
-  //   src: '/new-promo.jpg',
-  //   alt: 'New promotion',
-  //   title: 'New Item',
-  //   subtitle: 'Limited Time',
-  //   description: 'Try our latest creation today.'
-  // },
+  {
+    src: '/promotions-drink.jpg',
+    alt: 'Cold brew selection',
+    title: 'Cold Brew',
+    subtitle: 'Refreshingly Smooth',
+    description: 'Steeped 18 hours for perfect flavor.'
+  },
+  {
+    src: '/promotion-snacks.jpg',
+    alt: 'Fresh pastries',
+    title: 'Fresh Pastries',
+    subtitle: 'Baked Daily',
+    description: 'Croissants, muffins, and more.'
+  },
 ];
 
 export default function HomePage() {
