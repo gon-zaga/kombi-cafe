@@ -29,6 +29,8 @@ interface IngredientOption {
   id: number;
   name: string;
   unit: string;
+  stockQty: number;
+  restockThreshold: number;
 }
 
 
@@ -548,30 +550,35 @@ function AddItemModal({ isOpen, onClose, onCreated }: AddItemModalProps) {
                  </select>
                </div>
 
-               <button
-                 onClick={() => {
-                   // Validate and add the row
-                   const ingredientIdNum = Number(tempIngredientId);
-                   const quantityNum = Number(tempQuantity);
-                   const sizeIdValue = tempSizeId === '' || tempSizeId === null ? null : Number(tempSizeId);
-                   if (!ingredientIdNum || isNaN(ingredientIdNum) || quantityNum <= 0 || isNaN(quantityNum)) {
-                     // Should not happen if we disable button, but just in case
-                     return;
-                   }
-                   setRecipeRows(prev => [
-                     ...prev,
-                     { ingredientId: ingredientIdNum, quantityNeeded: quantityNum, sizeId: sizeIdValue }
-                   ]);
-                   // Reset temporary form
-                   setTempIngredientId('');
-                   setTempQuantity('');
-                   setTempSizeId('');
-                 }}
-                 disabled={tempIngredientId === '' || tempQuantity === '' || Number(tempQuantity) <= 0}
-                 className="px-4 py-2 text-sm font-medium text-white bg-amber-600 rounded-lg hover:bg-amber-700 transition-colors disabled:opacity-50"
-               >
-                 {tempIngredientId === '' || tempQuantity === '' || Number(tempQuantity) <= 0 ? 'Adding...' : 'Add to Recipe'}
-               </button>
+                <button
+                  onClick={() => {
+                    // Validate and add the row
+                    const ingredientIdNum = Number(tempIngredientId);
+                    const quantityNum = Number(tempQuantity);
+                    const sizeIdValue = tempSizeId === '' || tempSizeId === null ? null : Number(tempSizeId);
+                    if (!ingredientIdNum || isNaN(ingredientIdNum) || quantityNum <= 0 || isNaN(quantityNum)) {
+                      // Should not happen if we disable button, but just in case
+                      return;
+                    }
+                    const ing = ingredients.find((i) => String(i.id) === tempIngredientId);
+                    if (ing && ing.stockQty <= ing.restockThreshold) {
+                      showError('Cannot add ingredient because it is low in stock.');
+                      return;
+                    }
+                    setRecipeRows(prev => [
+                      ...prev,
+                      { ingredientId: ingredientIdNum, quantityNeeded: quantityNum, sizeId: sizeIdValue }
+                    ]);
+                    // Reset temporary form
+                    setTempIngredientId('');
+                    setTempQuantity('');
+                    setTempSizeId('');
+                  }}
+                  disabled={tempIngredientId === '' || tempQuantity === '' || Number(tempQuantity) <= 0 || !!ingredients.find(i => String(i.id) === tempIngredientId && i.stockQty <= i.restockThreshold)}
+                  className="px-4 py-2 text-sm font-medium text-white bg-amber-600 rounded-lg hover:bg-amber-700 transition-colors disabled:opacity-50"
+                >
+                  {tempIngredientId === '' || tempQuantity === '' || Number(tempQuantity) <= 0 || !!ingredients.find(i => String(i.id) === tempIngredientId && i.stockQty <= i.restockThreshold) ? 'Adding...' : 'Add to Recipe'}
+                </button>
              </div>
            </div>
           {/* Available for ordering checkbox */}

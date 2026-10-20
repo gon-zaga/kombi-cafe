@@ -74,49 +74,56 @@ function RecipeEditor({ menuItemId, itemSizes, onChanged }: RecipeEditorProps, r
       ? 'All sizes'
       : itemSizes.find((s) => s.sizeId === id)?.size ?? `Size #${id}`;
 
-  const handleAdd = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setError("");
+   const handleAdd = async (e: React.FormEvent) => {
+     e.preventDefault();
+     setError("");
 
-    const qty = Number(quantityNeeded);
-    if (!ingredientId || quantityNeeded === "" || isNaN(qty) || qty <= 0) {
-      setError('Pick an ingredient and enter a quantity greater than 0.');
-      return;
-    }
+     const qty = Number(quantityNeeded);
+     if (!ingredientId || quantityNeeded === "" || isNaN(qty) || qty <= 0) {
+       setError('Pick an ingredient and enter a quantity greater than 0.');
+       return;
+     }
 
-    setSaving(true);
+     // Prevent adding low‑stock ingredients
+     const ing = ingredients.find((i) => String(i.id) === ingredientId);
+     if (ing && ing.stockQty <= ing.restockThreshold) {
+       setError('Cannot add ingredient because it is low in stock.');
+       return;
+     }
 
-    try {
-      const response = await fetch('/api/recipes', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          menuItemId,
-          ingredientId: Number(ingredientId),
-          quantityNeeded: qty,
-          // Empty string means "all sizes", which the API turns into NULL
-          sizeId: sizeId === '' ? null : Number(sizeId),
-        }),
-      });
+     setSaving(true);
 
-      if (!response.ok) {
-        const data = await response.json().catch(() => ({}));
-        throw new Error(data.error || 'Failed to add recipe');
-      }
+     try {
+       const response = await fetch('/api/recipes', {
+         method: 'POST',
+         headers: { 'Content-Type': 'application/json' },
+         body: JSON.stringify({
+           menuItemId,
+           ingredientId: Number(ingredientId),
+           quantityNeeded: qty,
+           // Empty string means "all sizes", which the API turns into NULL
+           sizeId: sizeId === '' ? null : Number(sizeId),
+         }),
+       });
 
-      setIngredientId('');
-      setQuantityNeeded('');
-      setSizeId('');
+       if (!response.ok) {
+         const data = await response.json().catch(() => ({}));
+         throw new Error(data.error || 'Failed to add recipe');
+       }
 
-      await load();
-      onChanged();
-    } catch (err) {
-      console.error(err);
-      setError(err instanceof Error ? err.message : 'Failed to add recipe');
-    } finally {
-      setSaving(false);
-    }
-  };
+       setIngredientId('');
+       setQuantityNeeded('');
+       setSizeId('');
+
+       await load();
+       onChanged();
+     } catch (err) {
+       console.error(err);
+       setError(err instanceof Error ? err.message : 'Failed to add recipe');
+     } finally {
+       setSaving(false);
+     }
+   };
 
    const handleDelete = async (recipeId: number) => {
      try {
