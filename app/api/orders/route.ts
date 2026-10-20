@@ -44,13 +44,14 @@ const recipeCostSql = `
 `;
 
 /* Removes stock for one ordered item's recipe. Throws (which rolls the whole
-    transaction back) when an ingredient can't cover the order. */
+    transaction back) when an ingredient can't cover the order.
+    Returns array of ingredients that crossed the low-stock threshold (were above, now at/below). */
 async function deductRecipeStock(
   client: PoolClient,
   menuItemId: number,
   sizeId: number,
   quantity: number
-) {
+): Promise<{ ingredientId: number; name: string; stockQty: number; threshold: number }[]> {
   // Lock the affected ingredient rows first (FOR UPDATE can't be combined with GROUP BY)
   await client.query(
     `SELECT i.id FROM ingredients i
@@ -79,29 +80,47 @@ async function deductRecipeStock(
     [menuItemId, sizeId, quantity]
   );
 
-  if (rowsResult.rows.length === 0) return;
+  if (rowsResult.rows.length === 0) return [];
 
   const short = rowsResult.rows.filter(
     (row) =>
-      Number(row.stock_qty) - Number(row.restock_threshold) < Number(row.needed)
+      Number(row.stock_qty) < Number(row.needed)
   );
 
-   if (short.length > 0) {
-     const details = short.map((r) => {
-       const needed = Number(r.needed);
-       const have = Number(r.stock_qty);
-       const threshold = Number(r.restock_threshold);
-       return r.name + " (needs " + needed + ", have " + have + " " + r.unit + ", restock threshold: " + threshold + ")";
-     });
-     throw new Error("Not enough stock: " + details.join(", "));
-   }
+  if (short.length > 0) {
+    const details = short.map((r) => {
+      const needed = Number(r.needed);
+      const have = Number(r.stock_qty);
+      const threshold = Number(r.restock_threshold);
+      return r.name + " (needs " + needed + ", have " + have + " " + r.unit + ", restock threshold: " + threshold + ")";
+    });
+    throw new Error("Not enough stock: " + details.join(", "));
+  }
+
+  const lowStockAlerts: { ingredientId: number; name: string; stockQty: number; threshold: number }[] = [];
 
   for (const row of rowsResult.rows) {
+    const currentStock = Number(row.stock_qty);
+    const needed = Number(row.needed);
+    const threshold = Number(row.restock_threshold);
+    const newStock = currentStock - needed;
+
     await client.query(
       `UPDATE ingredients SET stock_qty = stock_qty - $1 WHERE id = $2`,
-      [Number(row.needed), row.id]
+      [needed, row.id]
     );
+
+    if (currentStock > threshold && newStock <= threshold) {
+      lowStockAlerts.push({
+        ingredientId: row.id,
+        name: row.name,
+        stockQty: newStock,
+        threshold,
+      });
+    }
   }
+
+  return lowStockAlerts;
 }
 
 /* Today in Manila as "YYYY-MM-DD". */
@@ -435,6 +454,7 @@ if (!isOpen) {
 
       const orderId = orderResult.rows[0].id;
       let runningTotal = 0;
+      const allLowStockAlerts: { ingredientId: number; name: string; stockQty: number; threshold: number }[] = [];
 
       /* Step 3 + 4: price each item and add-on server-side. */
       for (const item of body.items) {
@@ -480,14 +500,15 @@ if (!isOpen) {
 
         const orderItemId = orderItemResult.rows[0].id;
 
-        /* Deduct recipe ingredients before the order can commit.
+/* Deduct recipe ingredients before the order can commit.
            A size-specific recipe overrides the general recipe for the same ingredient. */
-        await deductRecipeStock(
-          client,
-          item.itemId,
-          item.sizeId,
-          item.quantity
-        );
+          const alerts = await deductRecipeStock(
+            client,
+            item.itemId,
+            item.sizeId,
+            item.quantity
+          );
+          allLowStockAlerts.push(...alerts);
 
         for (const addOnId of item.addOnIds) {
           const addOnPriceResult = await client.query(
@@ -539,6 +560,7 @@ if (!isOpen) {
            payment_method: paymentMethod,
            gcash_reference: gcashReference,
            gcash_photo: body.gcash_photo,
+           lowStockAlerts: allLowStockAlerts,
          },
          { status: 201 }
        );
