@@ -6,7 +6,7 @@
 // no longer remembers which section it was in. Today's best sellers surface at
 // the top. Requires a table to be selected first; redirects to table-select
 // otherwise.
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Header from '@/app/ui/Header';
 import BestSellers from '@/app/ui/BestSellers';
@@ -17,6 +17,7 @@ import ViewOrderBar from '@/app/ui/ViewOrderBar';
 import ChangeTableModal from '@/app/ui/ChangeTableModal';
 import { useTableStore } from '@/store/TableStore';
 import type { MenuItem as MenuItemType } from "@/app/lib/types";
+import { usePolling } from '@/app/lib/usePolling';
 
 export default function Home() {
   const [active, setActive] = useState("All");
@@ -34,23 +35,20 @@ export default function Home() {
     }
   }, [selectedTable, router]);
 
-  useEffect(() => {
-    async function fetchMenu() {
-      try {
-        // ?unavailable=true so items the owner switched off are still listed, marked
-        // Unavailable, instead of vanishing from the menu
-        const response = await fetch('/api/menu?unavailable=true');
-        const data = await response.json();
-        setMenuItems(data);
-      } catch (error) {
-        console.error("Failed to fetch menu:", error);
-      } finally {
-        setLoading(false);
-      }
+  const fetchMenu = useCallback(async () => {
+    try {
+      const response = await fetch('/api/menu?unavailable=true', { cache: 'no-store' });
+      if (!response.ok) throw new Error(`Request failed (${response.status})`);
+      const data = await response.json();
+      if (Array.isArray(data)) setMenuItems(data);
+    } catch (error) {
+      console.error("Failed to fetch menu:", error);
+    } finally {
+      setLoading(false);
     }
-
-    fetchMenu();
   }, []);
+
+  usePolling(fetchMenu, 5000);
 
   // Search is category-independent: a match in any section counts, so the bar
   // is the only thing that changes the displayed grid

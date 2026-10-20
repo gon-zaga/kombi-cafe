@@ -1,7 +1,7 @@
 'use client'
 
 // Customer order page: loads one menu item + add-ons, then lets the user pick size/add-ons and add to cart
-import React, { useEffect, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import ItemHeader from "./_ui/ItemHeader";
 import ItemInfo from "./_ui/ItemInfo";
 import SizeSelector from "./_ui/SizeSelector";
@@ -12,6 +12,7 @@ import ChangeTableModal from "../../ui/ChangeTableModal";
 import { useTableStore } from "@/store/TableStore";
 import { MenuItem } from "@/app/lib/types";
 import type { Size } from "./_ui/SizeSelector";
+import { usePolling } from "@/app/lib/usePolling";
 
 // Types for our data fetching
 type Recipe = {
@@ -62,201 +63,108 @@ export default function OrderPage({ params }: { params: Promise<{ itemId: number
   const basePrice = selectedSize?.price ?? 0;
   const totalPrice = (basePrice + addOnsTotal) * quantity;
 
-   useEffect(() => {
-     let isMounted = true;
+useEffect(() => {
+      let isMounted = true;
 
-     async function fetchItemData() {
-       try {
-         // ?unavailable=true so a switched-off item can be shown with an explanation
-         // instead of the misleading "Item not found"
-         const menuResponse = await fetch('/api/menu?unavailable=true');
-         const menuData: MenuItem[] = await menuResponse.json();
-         const foundItem = menuData.find((entry) => entry.itemId === Number(itemId));
+      async function fetchItemData() {
+        try {
+          // ?unavailable=true so a switched-off item can be shown with an explanation
+          // instead of the misleading "Item not found"
+          const menuResponse = await fetch('/api/menu?unavailable=true');
+          const menuData: MenuItem[] = await menuResponse.json();
+          const foundItem = menuData.find((entry) => entry.itemId === Number(itemId));
 
-         if (!isMounted) return;
+          if (!isMounted) return;
 
-         if (foundItem) {
-           setItem(foundItem);
-           setSelectedSize(foundItem.sizes[0] ?? null);
-         } else {
-           setItem(null);
-           setSelectedSize(null);
-         }
-       } catch (error) {
-         console.error(' Failed to fetch menu item:', error);
-         if (isMounted) {
-           setItem(null);
-           setSelectedSize(null);
-         }
-       } finally {
-         if (isMounted) {
-           setLoading(false);
-         }
-       }
-     }
+          if (foundItem) {
+            setItem(foundItem);
+            setSelectedSize(foundItem.sizes[0] ?? null);
+          } else {
+            setItem(null);
+            setSelectedSize(null);
+          }
+        } catch (error) {
+          console.error(' Failed to fetch menu item:', error);
+          if (isMounted) {
+            setItem(null);
+            setSelectedSize(null);
+          }
+        } finally {
+          if (isMounted) {
+            setLoading(false);
+          }
+        }
+      }
 
-     async function fetchAddOns() {
-       try {
-         const response = await fetch('/api/add-ons');
-         const data = await response.json();
-         if (isMounted) {
-           setAddOns(data);
-         }
-       } catch (error) {
-         console.error('Failed to fetch add-ons:', error);
-       }
-     }
+      async function fetchAddOns() {
+        try {
+          const response = await fetch('/api/add-ons');
+          const data = await response.json();
+          if (isMounted) {
+            setAddOns(data);
+          }
+        } catch (error) {
+          console.error('Failed to fetch add-ons:', error);
+        }
+      }
 
-      async function fetchStockData() {
-       if (!item || !selectedSize) {
-         // No item or size selected yet, reset to default
-         if (isMounted) {
-           setMaxOrderableQuantity(99);
-           setStockLoading(false);
-         }
-         return;
-       }
-       
-       if (isMounted) setStockLoading(true);
-       
-       try {
-         // Fetch recipes for this item
-         const recipeResponse = await fetch(`/api/recipes?menuItemId=${itemId}`);
-         const recipes: Recipe[] = await recipeResponse.json();
-         
-         // Filter recipes for the selected size (or size_id = null which applies to all sizes)
-         const sizeSpecificRecipes = recipes.filter(
-           recipe => selectedSize !== null && (recipe.sizeId === selectedSize.sizeId || recipe.sizeId === null)
-         );
-         
-         // Fetch all ingredient stock data
-         const ingredientResponse = await fetch('/api/ingredients');
-         const ingredients: IngredientStock[] = await ingredientResponse.json();
-         
-         // Create a map for quick ingredient lookup by id
-         const ingredientMap = new Map(
-           ingredients.map(ing => [ing.id, ing])
-         );
-         
-         // Calculate maximum orderable quantity based on restock thresholds
-         let calculatedMax = 99; // Default high limit
-         
-         for (const recipe of sizeSpecificRecipes) {
-           const ingredient = ingredientMap.get(recipe.ingredientId);
-           if (!ingredient) continue;
-           
-           // If we don't have enough stock to even meet the restock threshold for one unit
-           const availableForOrdering = ingredient.stockQty - ingredient.restockThreshold;
-           if (availableForOrdering < 0) {
-             // Stock is already below threshold - can't order any
-             calculatedMax = 0;
-             break;
-           }
-           
-           // Maximum units we could order based on this ingredient
-           const maxForThisIngredient = Math.floor(availableForOrdering / recipe.quantityNeeded);
-           calculatedMax = Math.min(calculatedMax, maxForThisIngredient);
-         }
-         
-         if (isMounted) {
-           setMaxOrderableQuantity(calculatedMax);
-           setStockLoading(false);
-         }
-       } catch (error) {
-         console.error('Failed to fetch stock data:', error);
-         if (isMounted) {
-           // On error, fall back to default but indicate potential issue
-           setMaxOrderableQuantity(99);
-           setStockLoading(false);
-         }
-       }
-     }
+      // Fetch all data
+      fetchItemData();
+      fetchAddOns();
 
-     // Fetch all data
-     fetchItemData();
-     fetchAddOns();
-     
-     // Stock data fetching will be triggered separately when item/size changes
+      return () => {
+        isMounted = false;
+      };
+    }, [itemId]);
 
-     return () => {
-       isMounted = false;
-     };
-   }, [itemId]);
+    // Re-reads stock and item flags so the max quantity and Low stock/Unavailable state follow other customers' orders
+    const refreshStock = useCallback(async () => {
+      if (!item || !selectedSize) return;
 
-   // Recalculate max orderable quantity when item or size changes
-   useEffect(() => {
-     if (!item || !selectedSize) {
-       // Reset to default when no item/size
-       setMaxOrderableQuantity(99);
-       return;
-     }
+      try {
+        const [recipeRes, ingredientRes, menuRes] = await Promise.all([
+          fetch(`/api/recipes?menuItemId=${itemId}`, { cache: 'no-store' }),
+          fetch('/api/ingredients', { cache: 'no-store' }),
+          fetch('/api/menu?unavailable=true', { cache: 'no-store' }),
+        ]);
+        if (!recipeRes.ok || !ingredientRes.ok) throw new Error('Stock request failed');
 
-     // Fetch stock data to calculate max orderable quantity
-     let isMounted = true;
-     setStockLoading(true);
-     
-      async function fetchStockData() {
-       try {
-         // Fetch recipes for this item
-         const recipeResponse = await fetch(`/api/recipes?menuItemId=${itemId}`);
-         const recipes: Recipe[] = await recipeResponse.json();
-         
-         // Filter recipes for the selected size (or size_id = null which applies to all sizes)
-         const sizeSpecificRecipes = recipes.filter(
-           recipe => selectedSize !== null && (recipe.sizeId === selectedSize.sizeId || recipe.sizeId === null)
-         );
-         
-         // Fetch all ingredient stock data
-         const ingredientResponse = await fetch('/api/ingredients');
-         const ingredients: IngredientStock[] = await ingredientResponse.json();
-         
-         // Create a map for quick ingredient lookup by id
-         const ingredientMap = new Map(
-           ingredients.map(ing => [ing.id, ing])
-         );
-         
-         // Calculate maximum orderable quantity based on restock thresholds
-         let calculatedMax = 99; // Default high limit
-         
-         for (const recipe of sizeSpecificRecipes) {
-           const ingredient = ingredientMap.get(recipe.ingredientId);
-           if (!ingredient) continue;
-           
-           // If we don't have enough stock to even meet the restock threshold for one unit
-           const availableForOrdering = ingredient.stockQty - ingredient.restockThreshold;
-           if (availableForOrdering < 0) {
-             // Stock is already below threshold - can't order any
-             calculatedMax = 0;
-             break;
-           }
-           
-           // Maximum units we could order based on this ingredient
-           const maxForThisIngredient = Math.floor(availableForOrdering / recipe.quantityNeeded);
-           calculatedMax = Math.min(calculatedMax, maxForThisIngredient);
-         }
-         
-         if (isMounted) {
-           setMaxOrderableQuantity(calculatedMax);
-           setStockLoading(false);
-         }
-       } catch (error) {
-         console.error('Failed to fetch stock data:', error);
-         if (isMounted) {
-           // On error, fall back to default but indicate potential issue
-           setMaxOrderableQuantity(99);
-           setStockLoading(false);
-         }
-       }
-     }
+        const recipes: Recipe[] = await recipeRes.json();
+        const ingredients: IngredientStock[] = await ingredientRes.json();
+        const ingredientMap = new Map(ingredients.map((ing) => [ing.id, ing]));
 
-     fetchStockData();
-     
-     return () => {
-       isMounted = false;
-     };
-   }, [item, selectedSize]);
+        let calculatedMax = 99;
+        for (const recipe of recipes.filter(
+          (r) => r.sizeId === selectedSize.sizeId || r.sizeId === null
+        )) {
+          const ingredient = ingredientMap.get(recipe.ingredientId);
+          if (!ingredient) continue;
 
-   // Adjust quantity when max orderable quantity changes to ensure it's within bounds
+          const available = ingredient.stockQty - ingredient.restockThreshold;
+          if (available < 0) {
+            calculatedMax = 0;
+            break;
+          }
+          calculatedMax = Math.min(calculatedMax, Math.floor(available / recipe.quantityNeeded));
+        }
+        setMaxOrderableQuantity(calculatedMax);
+
+        // Update flags only; the selected size must not reset
+        if (menuRes.ok) {
+          const menu: MenuItem[] = await menuRes.json();
+          const fresh = menu.find((m) => m.itemId === Number(itemId));
+          if (fresh) setItem(fresh);
+        }
+      } catch (error) {
+        console.error('Failed to refresh stock:', error);
+      } finally {
+        setStockLoading(false);
+      }
+    }, [item, selectedSize, itemId]);
+
+    usePolling(refreshStock, 5000, item !== null && selectedSize !== null);
+
+    // Adjust quantity when max orderable quantity changes to ensure it's within bounds
    useEffect(() => {
      if (quantity > maxOrderableQuantity) {
        setQuantity(Math.max(1, maxOrderableQuantity));

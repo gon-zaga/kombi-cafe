@@ -8,6 +8,7 @@ import AddingIngredientModal from "./ui/AddingIngredientModal";
 import RestockModal from "./ui/RestockModal";
 import EditIngredientModal from "./ui/EditIngredientModal";
 import ConfirmModal from "@/app/ui/ConfirmModal";
+import { usePolling } from "@/app/lib/usePolling";
 
 interface Ingredient {
   id: number;
@@ -57,6 +58,8 @@ const [searchTerm, setSearchTerm] = useState("");
   useEffect(() => {
     fetchIngredients();
   }, [fetchIngredients]);
+
+  usePolling(fetchIngredients, 5000);
 
   // Runs only after the ConfirmModal countdown finishes. DELETE refuses with a
   // 409 when the ingredient is still used by a recipe, so that message is shown

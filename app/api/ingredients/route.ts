@@ -5,6 +5,8 @@ import pool from "@/app/lib/db";
 // Import NextResponse so we can send responses from our API
 import { NextResponse } from "next/server";
 
+export const dynamic = "force-dynamic";
+
 // Defines the structure/type of an ingredient object
 export type Ingredient = {
   id: number;

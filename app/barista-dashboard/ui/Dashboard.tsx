@@ -56,6 +56,19 @@ export default function BaristaPage() {
     return active;
   }, []);
 
+  // Fetch current ingredient stock levels
+  const fetchIngredients = useCallback(async () => {
+    try {
+      const response = await fetch('/api/ingredients');
+      if (!response.ok) return;
+      // We don't need to store the data here - the owner dashboard will poll it
+      // This just ensures the API is called to refresh any cached data
+      await response.json();
+    } catch (error) {
+      console.error('Failed to fetch ingredients:', error);
+    }
+  }, []);
+
   useEffect(() => {
     // setOrders happens inside the async callback, not in the effect body,
     // so this is a subscription to an external system, not a cascading render
@@ -152,6 +165,8 @@ export default function BaristaPage() {
 
     setActionError('');
     await fetchOrders();
+    // Refresh inventory so owner dashboard sees updated stock immediately
+    await fetchIngredients();
   }
 
   return (
