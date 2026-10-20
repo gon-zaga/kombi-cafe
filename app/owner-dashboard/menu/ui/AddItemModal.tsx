@@ -208,13 +208,13 @@ function AddItemModal({ isOpen, onClose, onCreated }: AddItemModalProps) {
       }));
 
 
-     // Check if the required information was provided
-     if (!name || !categoryId || !imageUrl || sizes.length === 0) {
-       showError(
-         "Please fill in the item name, category, image, and at least one size with a price."
-       );
-       return;
-     }
+      // Check if the required information was provided
+      if (!name || !categoryId || !imageUrl || sizes.length === 0 || recipeRows.length === 0) {
+        showError(
+          "Please fill in the item name, category, image, at least one size with a price, and at least one ingredient."
+        );
+        return;
+      }
 
 
     // Tell the UI that the form is being submitted
@@ -436,19 +436,20 @@ function AddItemModal({ isOpen, onClose, onCreated }: AddItemModalProps) {
                       {disabled && (isDrink ? " (drinks only)" : " (snacks only)")}
                     </span>
 
-                    {selectedSizes[s.id] && (
-                      <input
-                        type="number"
-                        min="0"
-                        step="0.01"
-                        value={prices[s.id] ?? ''}
-                        onChange={(e) =>
-                          setPrices(prev => ({ ...prev, [s.id]: e.target.value }))
-                        }
-                        placeholder="Price"
-                        className="flex-1 px-2 py-1 border border-gray-300 rounded-lg text-sm"
-                      />
-                    )}
+{selectedSizes[s.id] && (
+  <input
+    type="number"
+    min="0"
+    step="0.01"
+    value={prices[s.id] ?? ''}
+    onChange={(e) =>
+      setPrices(prev => ({ ...prev, [s.id]: e.target.value }))
+    }
+    placeholder="Price"
+    className="flex-1 px-2 py-1 border border-gray-300 rounded-lg text-sm"
+    disabled={!isDrink}
+  />
+)}
                   </div>
                 );
               })}

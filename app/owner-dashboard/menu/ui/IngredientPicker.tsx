@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import { useToast } from "@/app/ui/Toast";
 
 interface IngredientOption {
   id: number;
@@ -26,6 +27,7 @@ function IngredientPicker({
   onChange,
   placeholder = "Select ingredient",
 }: IngredientPickerProps) {
+  const { error: showErrorToast } = useToast();
   const [query, setQuery] = useState("");
   const [isOpen, setIsOpen] = useState(false);
   const [activeIndex, setActiveIndex] = useState(0);
@@ -90,11 +92,14 @@ function IngredientPicker({
      } else if (e.key === "ArrowUp") {
        e.preventDefault();
        setActiveIndex((i) => Math.max(i - 1, 0));
-     } else if (e.key === "Enter") {
-       e.preventDefault();
-       const pick = matches[activeIndex];
-       if (pick && !isLowStock(pick)) handlePick(pick.id);
-     } else if (e.key === "Escape") {
+      } else if (e.key === "Enter") {
+        e.preventDefault();
+        const pick = matches[activeIndex];
+        if (pick && !isLowStock(pick)) handlePick(pick.id);
+        else if (pick && isLowStock(pick)) {
+          showErrorToast('Cannot add ingredient because it is low in stock.');
+        }
+      } else if (e.key === "Escape") {
        e.preventDefault();
        close();
      }
