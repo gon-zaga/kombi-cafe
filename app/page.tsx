@@ -2,6 +2,40 @@
 
 import HomeHeader from '@/app/ui/HomeHeader';
 import OrderNowButton from '@/app/ui/OrderNowButton';
+import Carousel from '@/app/ui/Carousel';
+
+interface Slide {
+  src: string;
+  alt: string;
+  title: string;
+  subtitle: string;
+  description: string;
+}
+
+const slides: Slide[] = [
+  {
+    src: '/promotions-drink.jpg',
+    alt: 'Signature coffee',
+    title: 'Signature Coffee',
+    subtitle: 'Customer Favorite',
+    description: 'Rich flavors, crafted just for you.'
+  },
+  {
+    src: '/promotion-snacks.jpg',
+    alt: 'Featured cafe snacks',
+    title: 'Cafe Snacks',
+    subtitle: 'Made with Care',
+    description: 'Your next coffee break starts here.'
+  },
+  // Add more slides here as needed:
+  // {
+  //   src: '/new-promo.jpg',
+  //   alt: 'New promotion',
+  //   title: 'New Item',
+  //   subtitle: 'Limited Time',
+  //   description: 'Try our latest creation today.'
+  // },
+];
 
 export default function HomePage() {
   return (
@@ -22,61 +56,9 @@ export default function HomePage() {
         </p>
       </section>
 
-      {/* Featured Drinks - Compact Vertical Layout */}
-      <section className="w-full max-w-2xl mx-auto px-4 md:px-6 mb-6">
-        <div className="flex flex-col gap-4">
-
-          {/* Featured Drink 1 */}
-          <div className="group relative overflow-hidden rounded-2xl shadow-md h-64 sm:h-72 md:h-80 bg-[#E8D9B8]">
-            <img
-              src="/promotions-drink.jpg"
-              alt="Signature coffee"
-              className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
-            />
-
-            <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/10 to-transparent" />
-
-            <div className="absolute bottom-0 left-0 p-4 md:p-5 text-white">
-              <p className="text-[10px] md:text-xs uppercase tracking-[0.2em] mb-1 text-white/80">
-                Customer Favorite
-              </p>
-
-              <h2 className="font-roboto-slab text-xl md:text-2xl font-bold">
-                Signature Coffee
-              </h2>
-
-              <p className="mt-1 text-xs md:text-sm text-white/90">
-                Rich flavors, crafted just for you.
-              </p>
-            </div>
-          </div>
-
-          {/* Featured Drink 2 */}
-          <div className="group relative overflow-hidden rounded-2xl shadow-md h-64 sm:h-72 md:h-80 bg-[#E8D9B8]">
-            <img
-              src="/promotion-snacks.jpg"
-              alt="Featured cafe snacks"
-              className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
-            />
-
-            <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/10 to-transparent" />
-
-            <div className="absolute bottom-0 left-0 p-4 md:p-5 text-white">
-              <p className="text-[10px] md:text-xs uppercase tracking-[0.2em] mb-1 text-white/80">
-                Made with Care
-              </p>
-
-              <h2 className="font-roboto-slab text-xl md:text-2xl font-bold">
-                Cafe Snacks
-              </h2>
-
-              <p className="mt-1 text-xs md:text-sm text-white/90">
-                Your next coffee break starts here.
-              </p>
-            </div>
-          </div>
-
-        </div>
+      {/* Featured Drinks - Carousel */}
+      <section className="w-full max-w-[1400px] mx-auto px-4 md:px-6 mb-6">
+        <Carousel slides={slides} />
       </section>
 
       {/* Order Button */}

@@ -53,7 +53,7 @@ export default function SideNav({ isOpen, onClose, showQueueLink = false }: Side
         {/* Content (empty for now) */}
         <div className="flex flex-col p-6">
           {/* Put your nav links here later */}
-          <Link href="/side-navigation" className="px-4 py-2 hover:bg-[#E8D9B5]" >Staff Access</Link>
+          <Link href="/login?showLogin=true" className="px-4 py-2 hover:bg-[#E8D9B5]" >Login</Link>
           {showQueueLink && (
             <Link href="/order-queue" className="px-4 py-2 hover:bg-[#E8D9B5]" >Order Queue</Link>
           )}
