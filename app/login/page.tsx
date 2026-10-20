@@ -60,12 +60,6 @@ function LoginPage() {
       try {
         const result = await login(username, password);
         const loggedInUser = result.user;
-        // Check if the user is an owner
-        if (loggedInUser.role !== "owner") {
-          await logout();
-          setError("This login is for owner accounts only.");
-          return;
-        }
         // Redirect to appropriate dashboard based on role
         const defaultRedirect = loggedInUser.role === "owner" ? "/owner-dashboard" : "/barista-dashboard";
         router.push(searchParams.get("redirect") || defaultRedirect);
@@ -145,10 +139,10 @@ function LoginPage() {
            Back
          </button>
 
-        <div className="text-center mb-8">
-          <h1 className="text-3xl font-bold text-dark-brown">Kombi Cafe</h1>
-          <p className="text-gray-600 mt-2">Owner Login</p>
-        </div>
+<div className="text-center mb-8">
+           <h1 className="text-3xl font-bold text-dark-brown">Kombi Cafe</h1>
+           <p className="text-gray-600 mt-2">Staff Login</p>
+         </div>
 
         {error && (
           <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg mb-6 text-sm">

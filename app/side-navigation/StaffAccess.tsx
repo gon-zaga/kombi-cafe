@@ -1,17 +1,11 @@
 'use client'
-import { useState } from "react";
 import { useRouter } from "next/navigation";
 
 function StaffAccess() {
-  const [role, setRole] = useState<"barista" | "owner" | null>(null);
   const router = useRouter();
 
-  const handleLogin = (targetRole: "barista" | "owner") => {
-    setRole(targetRole);
-    const loginUrl = targetRole === "barista" 
-      ? "/login/barista?showLogin=true" 
-      : "/login?showLogin=true";
-    router.push(loginUrl);
+  const handleLogin = () => {
+    router.push("/login?showLogin=true");
   };
 
   return (
@@ -33,25 +27,13 @@ function StaffAccess() {
         {/* Title */}
         <span className="text-3xl font-semibold text-center mb-6">Staff Access</span>
 
-        {/* Role Buttons */}
-        <div className="flex justify-center gap-2 mb-6">
-          <button
-            onClick={() => handleLogin("barista")}
-            className={`px-5 py-2 rounded-full font-medium text-sm transition-colors ${
-              role === "barista" ? "bg-dark-brown text-white" : "bg-white text-amber-700"
-            }`}
-          >
-            Barista
-          </button>
-          <button
-            onClick={() => handleLogin("owner")}
-            className={`px-5 py-2 rounded-full font-medium text-sm transition-colors ${
-              role === "owner" ? "bg-dark-brown text-white" : "bg-white text-amber-800"
-            }`}
-          >
-            Owner
-          </button>
-        </div>
+        {/* Login Button */}
+        <button
+          onClick={handleLogin}
+          className="w-full px-5 py-3 bg-amber-800 text-white rounded-full font-medium text-sm transition-colors hover:bg-amber-700"
+        >
+          Login
+        </button>
       </div>
     </div>
   );
