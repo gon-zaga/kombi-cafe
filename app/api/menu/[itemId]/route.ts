@@ -273,10 +273,11 @@ export async function PATCH(
     }
 
     await client.query("COMMIT");
+    console.log('PATCH transaction committed');
     return NextResponse.json({ success: true });
   } catch (error) {
     await client.query("ROLLBACK");
-    console.error("Failed to update menu item:", error);
+    console.error("PATCH transaction rolled back:", error);
     return NextResponse.json({ error: "Failed to update menu item" }, { status: 500 });
   } finally {
     client.release();
