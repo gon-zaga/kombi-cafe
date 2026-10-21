@@ -28,18 +28,18 @@ const slides: Slide[] = [
     description: 'Your next coffee break starts here.'
   },
   {
-    src: '/promotions-drink.jpg',
+    src: '/cold.jpg',
     alt: 'Cold brew selection',
     title: 'Cold Brew',
     subtitle: 'Refreshingly Smooth',
-    description: 'Steeped 18 hours for perfect flavor.'
+    description: 'Steeped for perfect flavor.'
   },
   {
-    src: '/promotion-snacks.jpg',
-    alt: 'Fresh pastries',
+    src: '/piza.jpg',
+    alt: 'Fresh from the oven',
     title: 'Fresh Pastries',
-    subtitle: 'Baked Daily',
-    description: 'Croissants, muffins, and more.'
+    subtitle: 'Cooked Daily',
+    description: 'Pizza and more.'
   },
 ];
 

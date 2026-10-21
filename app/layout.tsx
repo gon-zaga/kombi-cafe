@@ -79,6 +79,11 @@ export default function RootLayout({
           <StoreStatusRedirectClient />
           <StoreGate>{children}</StoreGate>
         </AuthProvider>
+        <footer className="mt-auto shrink-0 bg-dark-brown border-t border-dark-brown/20 py-4 px-4 text-center">
+          <p className="text-white text-sm font-roboto-condensed">
+            Copyright &copy; 2026 Kombi Coffee. All Rights Reserved.
+          </p>
+        </footer>
       </body>
     </html>
   );
