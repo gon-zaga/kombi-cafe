@@ -35,6 +35,8 @@ export type MenuItem = {
   }[];
   // Type discriminator: 'menu_item' for regular items, 'addon' for add-ons
   type: 'menu_item' | 'addon';
+  // Unique key for React rendering (negative for add-ons to avoid collision with menu_items)
+  uniqueKey: number;
   // Add-on specific fields (only populated when type === 'addon')
   stockQty?: number;
   restockThreshold?: number;

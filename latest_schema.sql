@@ -91,7 +91,8 @@ CREATE TABLE IF NOT EXISTS add_ons (
   price NUMERIC(10, 2) NOT NULL,
   is_available BOOLEAN DEFAULT TRUE,
   stock_qty NUMERIC(10, 2) NOT NULL DEFAULT 0 CHECK (stock_qty >= 0),
-  restock_threshold NUMERIC(10, 2) NOT NULL DEFAULT 10
+  restock_threshold NUMERIC(10, 2) NOT NULL DEFAULT 10,
+  image_url TEXT
 );
 CREATE INDEX IF NOT EXISTS idx_add_ons_low_stock
   ON add_ons (stock_qty) WHERE stock_qty <= restock_threshold;

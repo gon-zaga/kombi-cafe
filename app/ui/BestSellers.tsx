@@ -63,7 +63,7 @@ export default function BestSellers({ menuItems }: { menuItems: MenuItem[] }) {
 
       <div className="flex gap-3 overflow-x-auto pb-1">
         {top.map((item) => (
-          <div key={item.itemId} className="min-w-[130px] flex flex-col">
+          <div key={item.uniqueKey} className="min-w-[130px] flex flex-col">
             <ProductCard
               item={item}
               tag="best"

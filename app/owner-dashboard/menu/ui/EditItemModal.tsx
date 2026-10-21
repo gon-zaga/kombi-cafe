@@ -40,12 +40,19 @@ function EditItemModal({ isOpen, onClose, item, onUpdated }: EditItemModalProps)
   // e.g. { 1: "90", 2: "80" }
   const [prices, setPrices] = useState<Record<number, string>>({});
 
+  // Add-on specific fields
+  const [stockQty, setStockQty] = useState("");
+  const [restockThreshold, setRestockThreshold] = useState("");
+
   const [submitting, setSubmitting] = useState(false);
   const { success, error: showError } = useToast();
 
   // "Regular" size (oz === null && temperature === null) is for snacks only.
   // Determine from category: snacks category enables Regular, others disable it.
   const [isDrink, setIsDrink] = useState(true);
+
+  // Check if current item is an add-on
+  const isAddon = item?.type === 'addon';
 
   // Runs when the modal opens or the item changes
   useEffect(() => {
@@ -71,45 +78,58 @@ function EditItemModal({ isOpen, onClose, item, onUpdated }: EditItemModalProps)
         // doesn't silently turn an unavailable item back on
         setIsAvailable(item!.isAvailable);
 
-        const matchedCat = cats.find(c => c.name === item!.category);
-        setCategoryId(matchedCat ? String(matchedCat.id) : "");
-
-        // Initialize isDrink based on category: snacks enable Regular
-        if (matchedCat) {
-          const isSnackCategory = matchedCat.name.toLowerCase().includes('snack');
-          setIsDrink(!isSnackCategory);
-        }
-
-        const sel: Record<number, boolean> = {};
-        const pr: Record<number, string> = {};
-
-        for (const s of sizes) {
-          const match = item!.sizes.find(itemSize => itemSize.size === s.label);
-          if (match) {
-            sel[s.id] = true;
-            pr[s.id] = String(match.price);
+        if (isAddon) {
+          // For add-ons, use virtual "addon" category
+          setCategoryId("addon");
+          // Pre-fill add-on specific fields
+          setStockQty(item.stockQty?.toString() ?? "");
+          setRestockThreshold(item.restockThreshold?.toString() ?? "");
+          // Set price from the first size
+          if (item.sizes[0]) {
+            setPrices({ 0: String(item.sizes[0].price) });
+            setSelectedSizes({ 0: true });
           }
-        }
+        } else {
+          const matchedCat = cats.find(c => c.name === item!.category);
+          setCategoryId(matchedCat ? String(matchedCat.id) : "");
 
-        setSelectedSizes(sel);
-        setPrices(pr);
+          // Initialize isDrink based on category: snacks enable Regular
+          if (matchedCat) {
+            const isSnackCategory = matchedCat.name.toLowerCase().includes('snack');
+            setIsDrink(!isSnackCategory);
+          }
+
+          const sel: Record<number, boolean> = {};
+          const pr: Record<number, string> = {};
+
+          for (const s of sizes) {
+            const match = item!.sizes.find(itemSize => itemSize.size === s.label);
+            if (match) {
+              sel[s.id] = true;
+              pr[s.id] = String(match.price);
+            }
+          }
+
+          setSelectedSizes(sel);
+          setPrices(pr);
+        }
       } catch (err) {
         console.error("Failed to load edit form data:", err);
       }
     }
 
     loadOptionsAndPrefill();
-  }, [isOpen, item]);
+  }, [isOpen, item, isAddon]);
 
   // Auto-update isDrink when category changes: Regular size only for snacks
   useEffect(() => {
-    if (!categoryId) return;
+    if (!categoryId || isAddon) return;
     const cat = categories.find(c => c.id === Number(categoryId));
     if (cat) {
       const isSnackCategory = cat.name.toLowerCase().includes('snack');
       setIsDrink(!isSnackCategory);
     }
-  }, [categoryId, categories]);
+  }, [categoryId, categories, isAddon]);
 
   if (!isOpen || !item) return null;
 
@@ -131,24 +151,40 @@ function EditItemModal({ isOpen, onClose, item, onUpdated }: EditItemModalProps)
         price: Number(prices[s.id] || 0)
       }));
 
-     if (!name || !categoryId || !imageUrl || sizes.length === 0) {
-       showError("Please fill in the item name, category, image, and at least one size with a price.");
-       return;
-     }
+    if (isAddon) {
+      if (!name || sizes.length === 0) {
+        showError("Please fill in the item name and price.");
+        return;
+      }
+    } else {
+      if (!name || !categoryId || !imageUrl || sizes.length === 0) {
+        showError("Please fill in the item name, category, image, and at least one size with a price.");
+        return;
+      }
+    }
 
     setSubmitting(true);
 
     try {
+      const body: any = {
+        name,
+        imageUrl: imageUrl || undefined,
+        isAvailable,
+        sizes,
+      };
+
+      if (isAddon) {
+        body.categoryId = "addon";
+        body.stockQty = Number(stockQty) || 0;
+        body.restockThreshold = Number(restockThreshold) || 10;
+      } else {
+        body.categoryId = Number(categoryId);
+      }
+
       const response = await fetch(`/api/menu/${item.itemId}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          name,
-          categoryId: Number(categoryId),
-          imageUrl: imageUrl || undefined,
-          isAvailable,
-          sizes,
-        }),
+        body: JSON.stringify(body),
       });
 
       if (!response.ok) {
@@ -157,7 +193,7 @@ function EditItemModal({ isOpen, onClose, item, onUpdated }: EditItemModalProps)
       }
 
       onUpdated();
-      success("Menu item updated successfully!");
+      success(isAddon ? "Add-on updated successfully!" : "Menu item updated successfully!");
       handleClose();
     } catch (err) {
       console.error(err);
@@ -208,6 +244,7 @@ function EditItemModal({ isOpen, onClose, item, onUpdated }: EditItemModalProps)
               className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500"
             >
               <option value="">Select category</option>
+              {isAddon && <option value="addon">Add-ons</option>}
               {categories.map((c) => (
                 <option key={c.id} value={c.id}>{c.name}</option>
               ))}
@@ -215,59 +252,111 @@ function EditItemModal({ isOpen, onClose, item, onUpdated }: EditItemModalProps)
           </div>
 
           {/* File picker + pasted path. Whichever is used, the value is a
-              string stored in menu_items.image_url. */}
-          <ImagePicker
-            label="Item Image"
-            value={imageUrl}
-            onChange={setImageUrl}
-            itemName={name}
-          />
+              string stored in menu_items.image_url. - Hidden for add-ons */}
+          {!isAddon && (
+            <ImagePicker
+              label="Item Image"
+              value={imageUrl}
+              onChange={setImageUrl}
+              itemName={name}
+            />
+          )}
 
-          <div>
-            <label className="block text-sm font-semibold text-gray-900 mb-2">Sizes & Prices</label>
-            <div className="space-y-2">
-              {sizeOptions.map((s) => {
-                const isRegular = s.oz === null && s.temperature === null;
-                const isDrinkSize = s.oz !== null;
-                // Snacks: only Regular enabled. Drinks: only drink sizes enabled.
-                const disabled = isDrink ? isRegular : isDrinkSize;
+          {/* Sizes & Prices - only show for non-addon items */}
+          {!isAddon && (
+            <div>
+              <label className="block text-sm font-semibold text-gray-900 mb-2">Sizes & Prices</label>
+              <div className="space-y-2">
+                {sizeOptions.map((s) => {
+                  const isRegular = s.oz === null && s.temperature === null;
+                  const isDrinkSize = s.oz !== null;
+                  // Snacks: only Regular enabled. Drinks: only drink sizes enabled.
+                  const disabled = isDrink ? isRegular : isDrinkSize;
 
-                return (
-                  <div key={s.id} className="flex items-center gap-2">
-                    <input
-                      type="checkbox"
-                      checked={!!selectedSizes[s.id]}
-                      onChange={() => !disabled && toggleSize(s.id)}
-                      disabled={disabled}
-                      className={`w-4 h-4 text-amber-600 border-gray-300 rounded focus:ring-amber-500 ${
-                        disabled ? "opacity-40 cursor-not-allowed" : ""
-                      }`}
-                    />
-
-                    <span className="text-sm text-gray-700 w-32">
-                      {s.label}
-                      {s.oz ? ` (${s.oz}oz ${s.temperature ?? ''})` : ''}
-                      {disabled && (isDrink ? " (drinks only)" : " (snacks only)")}
-                    </span>
-
-                    {selectedSizes[s.id] && (
+                  return (
+                    <div key={s.id} className="flex items-center gap-2">
                       <input
-                        type="number"
-                        min="0"
-                        step="0.01"
-                        value={prices[s.id] ?? ''}
-                        onChange={(e) =>
-                          setPrices(prev => ({ ...prev, [s.id]: e.target.value }))
-                        }
-                        placeholder="Price"
-                        className="flex-1 px-2 py-1 border border-gray-300 rounded-lg text-sm"
+                        type="checkbox"
+                        checked={!!selectedSizes[s.id]}
+                        onChange={() => !disabled && toggleSize(s.id)}
+                        disabled={disabled}
+                        className={`w-4 h-4 text-amber-600 border-gray-300 rounded focus:ring-amber-500 ${
+                          disabled ? "opacity-40 cursor-not-allowed" : ""
+                        }`}
                       />
-                    )}
-                  </div>
-                );
-              })}
+
+                      <span className="text-sm text-gray-700 w-32">
+                        {s.label}
+                        {s.oz ? ` (${s.oz}oz ${s.temperature ?? ''})` : ''}
+                        {disabled && (isDrink ? " (drinks only)" : " (snacks only)")}
+                      </span>
+
+                      {selectedSizes[s.id] && (
+                        <input
+                          type="number"
+                          min="0"
+                          step="0.01"
+                          value={prices[s.id] ?? ''}
+                          onChange={(e) =>
+                            setPrices(prev => ({ ...prev, [s.id]: e.target.value }))
+                          }
+                          placeholder="Price"
+                          className="flex-1 px-2 py-1 border border-gray-300 rounded-lg text-sm"
+                        />
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
             </div>
-          </div>
+          )}
+
+          {/* Add-on Price - only show for addon items */}
+          {isAddon && (
+            <div>
+              <label className="block text-sm font-semibold text-gray-900 mb-2">Price</label>
+              <input
+                type="number"
+                min="0"
+                step="0.01"
+                value={prices[0] ?? ''}
+                onChange={(e) => setPrices(prev => ({ ...prev, [0]: e.target.value }))}
+                placeholder="Price"
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500"
+                required
+              />
+            </div>
+          )}
+
+          {/* Add-on Stock Fields - only show for addon items */}
+          {isAddon && (
+            <div className="space-y-2">
+              <div>
+                <label className="block text-sm font-semibold text-gray-900 mb-1">Stock Quantity</label>
+                <input
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  value={stockQty}
+                  onChange={(e) => setStockQty(e.target.value)}
+                  placeholder="e.g. 100"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-semibold text-gray-900 mb-1">Restock Threshold</label>
+                <input
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  value={restockThreshold}
+                  onChange={(e) => setRestockThreshold(e.target.value)}
+                  placeholder="e.g. 10"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500"
+                />
+              </div>
+            </div>
+          )}
 
           <div>
             <label className="flex items-center">

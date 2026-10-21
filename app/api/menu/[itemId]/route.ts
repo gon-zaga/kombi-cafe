@@ -1,8 +1,124 @@
 // Fetches a single menu item by itemId, joined with category/size/price data.
+// Supports both menu_items and add_ons tables.
 import pool from "@/app/lib/db";
 import { validateImageValue } from "@/app/lib/imageValue";
 import type { MenuRow, MenuItem } from "@/app/lib/types";
 import { NextRequest, NextResponse } from "next/server";
+
+async function fetchMenuItem(id: number): Promise<MenuItem | null> {
+  const result = await pool.query(
+    `
+    SELECT
+      mi.id AS item_id,
+      mi.name AS item_name,
+      mi.image_url AS item_img,
+      mi.is_available AS is_available,
+      c.name AS category,
+      s.id AS size_id,
+      s.label AS size,
+      s.oz AS oz,
+      s.temperature AS temperature,
+       mis.price AS price,
+
+       -- Same low-stock rule as /api/menu: one recipe ingredient at or below
+      -- its restock threshold is enough
+      EXISTS (
+        SELECT 1
+        FROM recipes r
+        JOIN ingredients ing ON ing.id = r.ingredient_id
+        WHERE r.menu_item_id = mi.id
+          AND ing.stock_qty <= ing.restock_threshold
+      ) AS is_low_stock,
+       -- Get ingredient names for this menu item
+       COALESCE(
+         json_agg(ing.name) FILTER (WHERE ing.id IS NOT NULL),
+         '[]'::json
+       ) AS ingredients
+    FROM menu_items AS mi
+    JOIN categories AS c ON mi.category_id = c.id
+    JOIN menu_item_sizes AS mis ON mi.id = mis.menu_item_id
+    JOIN sizes AS s ON mis.size_id = s.id
+    LEFT JOIN recipes r ON r.menu_item_id = mi.id
+    LEFT JOIN ingredients ing ON ing.id = r.ingredient_id
+    WHERE mi.id = $1
+    GROUP BY mi.id, mi.name, mi.image_url, mi.is_available, c.name, s.id, s.label, s.oz, s.temperature, mis.price
+    ORDER BY s.id;
+    `,
+    [id]
+  );
+
+  if (result.rows.length === 0) {
+    return null;
+  }
+
+  const rows: MenuRow[] = result.rows;
+  const first = rows[0];
+
+  return {
+    itemId: first.item_id,
+    itemName: first.item_name,
+    itemImg: first.item_img,
+    category: first.category,
+    isAvailable: first.is_available,
+    isLowStock: first.is_low_stock,
+    ingredients: first.ingredients ?? [],
+    sizes: rows.map((row) => ({
+      sizeId: row.size_id,
+      size: row.size,
+      oz: row.oz === null ? null : Number(row.oz),
+      temperature: row.temperature,
+      price: Number(row.price),
+    })),
+    type: 'menu_item',
+    uniqueKey: first.item_id,
+  };
+}
+
+async function fetchAddOn(id: number): Promise<MenuItem | null> {
+  const result = await pool.query(
+    `
+    SELECT
+      id AS item_id,
+      name AS item_name,
+      image_url AS item_img,
+      is_available AS is_available,
+      'Add-ons' AS category,
+      price,
+      stock_qty,
+      restock_threshold,
+      (stock_qty <= restock_threshold) AS is_low_stock
+    FROM add_ons
+    WHERE id = $1
+    `,
+    [id]
+  );
+
+  if (result.rows.length === 0) {
+    return null;
+  }
+
+  const row = result.rows[0];
+  return {
+    itemId: row.item_id,
+    itemName: row.item_name,
+    itemImg: row.item_img,
+    category: row.category,
+    isAvailable: row.is_available,
+    isLowStock: row.is_low_stock,
+    ingredients: [],
+    sizes: [{
+      sizeId: 0,
+      size: 'Regular',
+      oz: null,
+      temperature: null,
+      price: Number(row.price),
+    }],
+    type: 'addon',
+    uniqueKey: -row.item_id,
+    stockQty: Number(row.stock_qty),
+    restockThreshold: Number(row.restock_threshold),
+  };
+}
 
 export async function GET(
   request: NextRequest,
@@ -15,71 +131,18 @@ export async function GET(
     return NextResponse.json({ error: "Invalid itemId" }, { status: 400 });
   }
 
-   try {
-     const result = await pool.query(
-       `
-       SELECT
-         mi.id AS item_id,
-         mi.name AS item_name,
-         mi.image_url AS item_img,
-         mi.is_available AS is_available,
-         c.name AS category,
-         s.id AS size_id,
-         s.label AS size,
-         s.oz AS oz,
-         s.temperature AS temperature,
-          mis.price AS price,
-
-          -- Same low-stock rule as /api/menu: one recipe ingredient at or below
-         -- its restock threshold is enough
-         EXISTS (
-           SELECT 1
-           FROM recipes r
-           JOIN ingredients ing ON ing.id = r.ingredient_id
-           WHERE r.menu_item_id = mi.id
-             AND ing.stock_qty <= ing.restock_threshold
-         ) AS is_low_stock,
-          -- Get ingredient names for this menu item
-          COALESCE(
-            json_agg(ing.name) FILTER (WHERE ing.id IS NOT NULL),
-            '[]'::json
-          ) AS ingredients
-       FROM menu_items AS mi
-       JOIN categories AS c ON mi.category_id = c.id
-       JOIN menu_item_sizes AS mis ON mi.id = mis.menu_item_id
-       JOIN sizes AS s ON mis.size_id = s.id
-       LEFT JOIN recipes r ON r.menu_item_id = mi.id
-       LEFT JOIN ingredients ing ON ing.id = r.ingredient_id
-       WHERE mi.id = $1 AND mi.is_available = TRUE
-       GROUP BY mi.id, mi.name, mi.image_url, mi.is_available, c.name, s.id, s.label, s.oz, s.temperature, mis.price
-       ORDER BY s.id;
-       `,
-       [id]
-     );
-
-    if (result.rows.length === 0) {
-      return NextResponse.json({ error: "Item not found" }, { status: 404 });
+  try {
+    // Try menu item first
+    let item = await fetchMenuItem(id);
+    
+    // If not found, try add-on
+    if (!item) {
+      item = await fetchAddOn(id);
     }
 
-     const rows: MenuRow[] = result.rows;
-     const first = rows[0];
-
-     const item: MenuItem = {
-       itemId: first.item_id,
-       itemName: first.item_name,
-       itemImg: first.item_img,
-       category: first.category,
-       isAvailable: first.is_available,
-       isLowStock: first.is_low_stock,
-       ingredients: first.ingredients ?? [],
-       sizes: rows.map((row) => ({
-         sizeId: row.size_id,
-         size: row.size,
-         oz: row.oz === null ? null : Number(row.oz),
-         temperature: row.temperature,
-         price: Number(row.price),
-       })),
-     };
+    if (!item) {
+      return NextResponse.json({ error: "Item not found" }, { status: 404 });
+    }
 
     return NextResponse.json(item);
   } catch (error) {
@@ -104,36 +167,106 @@ export async function PATCH(
   const client = await pool.connect();
   try {
     const body = await request.json();
-    const { name, categoryId, imageUrl, isAvailable, sizes } = body;
+    const { name, categoryId, imageUrl, isAvailable, sizes, recipes, stockQty, restockThreshold } = body;
+
+    // Determine if this is an add-on or menu item
+    // Check add_ons first since IDs can collide
+    const existingAddon = await client.query(`SELECT 1 FROM add_ons WHERE id = $1`, [id]);
+    const isAddon = existingAddon.rowCount > 0;
 
     // Same check as POST /api/menu: only an uploaded file, an http(s) link, or
     // a /public path is storable
     const imageError = validateImageValue(imageUrl);
     if (imageError) {
-      await client.query("ROLLBACK");
       return NextResponse.json({ error: imageError }, { status: 400 });
     }
 
     await client.query("BEGIN");
 
-    await client.query(
-      `UPDATE menu_items
-       SET name = COALESCE($1, name),
-           category_id = COALESCE($2, category_id),
-           image_url = COALESCE($3, image_url),
-           is_available = COALESCE($4, is_available)
-       WHERE id = $5`,
-      [name ?? null, categoryId ?? null, imageUrl ?? null, isAvailable ?? null, id]
-    );
+    if (isAddon) {
+      // Update add-on
+      const updates: string[] = [];
+      const values: any[] = [];
+      let paramIndex = 1;
 
-    if (Array.isArray(sizes)) {
-      await client.query(`DELETE FROM menu_item_sizes WHERE menu_item_id = $1`, [id]);
-      for (const s of sizes) {
+      if (name !== undefined) {
+        updates.push(`name = $${paramIndex++}`);
+        values.push(name);
+      }
+      if (sizes?.[0]?.price !== undefined) {
+        updates.push(`price = $${paramIndex++}`);
+        values.push(Number(sizes[0].price));
+      }
+      if (imageUrl !== undefined) {
+        updates.push(`image_url = $${paramIndex++}`);
+        values.push(imageUrl);
+      }
+      if (isAvailable !== undefined) {
+        updates.push(`is_available = $${paramIndex++}`);
+        values.push(isAvailable);
+      }
+      if (stockQty !== undefined) {
+        updates.push(`stock_qty = $${paramIndex++}`);
+        values.push(Number(stockQty));
+      }
+      if (restockThreshold !== undefined) {
+        updates.push(`restock_threshold = $${paramIndex++}`);
+        values.push(Number(restockThreshold));
+      }
+
+      if (updates.length > 0) {
+        values.push(id);
         await client.query(
-          `INSERT INTO menu_item_sizes (menu_item_id, size_id, price)
-           VALUES ($1, $2, $3)`,
-          [id, s.sizeId, s.price]
+          `UPDATE add_ons SET ${updates.join(', ')} WHERE id = $${paramIndex}`,
+          values
         );
+      }
+    } else {
+      // Update menu item (existing logic)
+      await client.query(
+        `UPDATE menu_items
+         SET name = COALESCE($1, name),
+             category_id = COALESCE($2, category_id),
+             image_url = COALESCE($3, image_url),
+             is_available = COALESCE($4, is_available)
+         WHERE id = $5`,
+        [name ?? null, categoryId ?? null, imageUrl ?? null, isAvailable ?? null, id]
+      );
+
+      if (Array.isArray(sizes)) {
+        await client.query(`DELETE FROM menu_item_sizes WHERE menu_item_id = $1`, [id]);
+        for (const s of sizes) {
+          await client.query(
+            `INSERT INTO menu_item_sizes (menu_item_id, size_id, price)
+             VALUES ($1, $2, $3)`,
+            [id, s.sizeId, s.price]
+          );
+        }
+      }
+
+      if (Array.isArray(recipes)) {
+        await client.query(`DELETE FROM recipes WHERE menu_item_id = $1`, [id]);
+        for (const r of recipes) {
+          const { ingredientId, quantityNeeded, sizeId } = r;
+          if (!ingredientId || quantityNeeded === undefined || Number(quantityNeeded) <= 0) {
+            throw new Error('Invalid recipe: ingredientId and quantityNeeded > 0 are required');
+          }
+          const sizeIdValue = sizeId === null || sizeId === '' ? null : Number(sizeId);
+          await client.query(
+            `
+            INSERT INTO recipes (menu_item_id, size_id, ingredient_id, quantity_needed)
+            VALUES ($1, $2, $3, $4)
+            ON CONFLICT (menu_item_id, COALESCE(size_id, 0), ingredient_id)
+            DO UPDATE SET quantity_needed = EXCLUDED.quantity_needed
+            `,
+            [
+              id,
+              sizeIdValue,
+              Number(ingredientId),
+              Number(quantityNeeded)
+            ]
+          );
+        }
       }
     }
 
@@ -146,14 +279,9 @@ export async function PATCH(
   } finally {
     client.release();
   }
-
-  
 }
 
-
-// app/api/menu/[itemId]/route.ts
-
-// DELETE removes one menu item from the database.
+// DELETE removes one menu item or add-on from the database.
 // If past orders still reference the item,
 // PostgreSQL will return a foreign key error.
 
@@ -182,61 +310,69 @@ export async function DELETE(
     );
   }
 
+  const client = await pool.connect();
   try {
-    // Delete the menu item with the matching ID.
-    //
-    // $1 is replaced by the value inside [id].
-    const result = await pool.query(
-      `DELETE FROM menu_items WHERE id = $1`,
-      [id]
-    );
+    await client.query("BEGIN");
 
-    // rowCount tells us how many rows were deleted.
-    //
-    // If it is 0, no menu item with that ID exists.
+    // Check if it's a menu item or add-on
+    // Check add_ons first since IDs can collide
+    const addonCheck = await client.query(`SELECT 1 FROM add_ons WHERE id = $1`, [id]);
+    const isAddon = addonCheck.rowCount > 0;
+
+    let result;
+    if (isAddon) {
+      // Check for existing orders referencing this add-on
+      const orderCheck = await client.query(
+        `SELECT 1 FROM order_item_addons oia
+         JOIN order_items oi ON oi.id = oia.order_item_id
+         WHERE oia.add_on_id = $1
+         LIMIT 1`,
+        [id]
+      );
+      if ((orderCheck.rowCount ?? 0) > 0) {
+        await client.query("ROLLBACK");
+        return NextResponse.json(
+          {
+            error: "This add-on has past orders. Mark it unavailable instead."
+          },
+          { status: 409 }
+        );
+      }
+      result = await client.query(`DELETE FROM add_ons WHERE id = $1`, [id]);
+    } else {
+      result = await client.query(`DELETE FROM menu_items WHERE id = $1`, [id]);
+    }
+
     if (result.rowCount === 0) {
+      await client.query("ROLLBACK");
       return NextResponse.json(
         { error: "Item not found" },
         { status: 404 }
       );
     }
 
-    // The item was successfully deleted.
-    return NextResponse.json({
-      success: true
-    });
-
+    await client.query("COMMIT");
+    return NextResponse.json({ success: true });
   } catch (error) {
+    await client.query("ROLLBACK");
 
     // PostgreSQL error code 23503 means
     // a foreign key constraint was violated.
-    //
-    // This can happen when an old order still
-    // references this menu item.
     if ((error as { code?: string }).code === '23503') {
-
-      // Return HTTP 409 Conflict.
       return NextResponse.json(
         {
           error: "This item has past orders. Mark it unavailable instead."
         },
-        {
-          status: 409
-        }
+        { status: 409 }
       );
     }
 
-    // Print unexpected errors in the server console.
-    console.error(
-      "Failed to delete menu item:",
-      error
-    );
-
-    // Return a general server error.
+    console.error("Failed to delete menu item:", error);
     return NextResponse.json(
       { error: "Failed to delete menu item" },
       { status: 500 }
     );
+  } finally {
+    client.release();
   }
 }
-

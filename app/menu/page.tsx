@@ -191,7 +191,7 @@ export default function Home() {
         <div className="px-5 grid grid-cols-2 gap-4">
           {searchedItems.map((item) => (
             <ProductCard
-              key={item.itemId}
+              key={item.uniqueKey}
               item={item}
             />
           ))}

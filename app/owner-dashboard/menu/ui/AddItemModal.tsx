@@ -1,4 +1,3 @@
-
 // This tells Next.js that this component runs in the browser
 'use client'
 
@@ -55,7 +54,7 @@ function AddItemModal({ isOpen, onClose, onCreated }: AddItemModalProps) {
   // Stores the value entered in the Item Name field
   const [name, setName] = useState("");
 
-  // Stores the selected category ID
+  // Stores the selected category ID (string, can be "addon" for virtual category)
   const [categoryId, setCategoryId] = useState("");
 
   // Stores the image URL entered by the user
@@ -76,6 +75,9 @@ function AddItemModal({ isOpen, onClose, onCreated }: AddItemModalProps) {
    const [prices, setPrices] =
      useState<Record<number, string>>({});
 
+   // Add-on specific fields
+   const [stockQty, setStockQty] = useState("");
+   const [restockThreshold, setRestockThreshold] = useState("");
 
    // Tracks whether the form is currently being submitted
    const [submitting, setSubmitting] = useState(false);
@@ -123,39 +125,44 @@ function AddItemModal({ isOpen, onClose, onCreated }: AddItemModalProps) {
     }
 
 
+    // "Regular" size (oz === null && temperature === null) is for snacks only.
+    // Default to drink mode (Regular disabled). Auto-toggle based on category.
+    const [isDrink, setIsDrink] = useState(true);
 
-   // "Regular" size (oz === null && temperature === null) is for snacks only.
-   // Default to drink mode (Regular disabled). Auto-toggle based on category.
-   const [isDrink, setIsDrink] = useState(true);
-
+    // Check if current selection is add-on virtual category
+    const isAddon = categoryId === "addon";
 
   // useEffect runs when the component opens
   useEffect(() => {
 
 
+      // Don't load the options if the modal isn't open
+      if (!isOpen) return;
 
 
-     // Don't load the options if the modal isn't open
-     if (!isOpen) return;
-
-
-
-
-    // Run the function
-    loadOptions();
+      // Run the function
+      loadOptions();
 
   // Run this effect whenever isOpen changes
   }, [isOpen]);
 
   // Auto-update isDrink when category changes: Regular size only for snacks
   useEffect(() => {
-    if (!categoryId) return;
+    if (!categoryId || isAddon) return;
     const cat = categories.find(c => c.id === Number(categoryId));
     if (cat) {
       const isSnackCategory = cat.name.toLowerCase().includes('snack');
       setIsDrink(!isSnackCategory);
     }
-  }, [categoryId, categories]);
+  }, [categoryId, categories, isAddon]);
+
+  // Reset add-on specific fields when switching away from add-on
+  useEffect(() => {
+    if (!isAddon) {
+      setStockQty("");
+      setRestockThreshold("");
+    }
+  }, [isAddon]);
 
 
   // If the modal isn't open, don't display anything
@@ -170,6 +177,8 @@ function AddItemModal({ isOpen, onClose, onCreated }: AddItemModalProps) {
     setIsAvailable(true);
     setSelectedSizes({});
     setPrices({});
+    setStockQty("");
+    setRestockThreshold("");
   };
 
 
@@ -209,11 +218,20 @@ function AddItemModal({ isOpen, onClose, onCreated }: AddItemModalProps) {
 
 
       // Check if the required information was provided
-      if (!name || !categoryId || !imageUrl || sizes.length === 0 || recipeRows.length === 0) {
-        showError(
-          "Please fill in the item name, category, image, at least one size with a price, and at least one ingredient."
-        );
-        return;
+      if (isAddon) {
+        // Add-on validation: name, price (from sizes), imageUrl optional
+        if (!name || sizes.length === 0) {
+          showError("Please fill in the item name and price.");
+          return;
+        }
+      } else {
+        // Menu item validation
+        if (!name || !categoryId || !imageUrl || sizes.length === 0 || recipeRows.length === 0) {
+          showError(
+            "Please fill in the item name, category, image, at least one size with a price, and at least one ingredient."
+          );
+          return;
+        }
       }
 
 
@@ -238,8 +256,8 @@ function AddItemModal({ isOpen, onClose, onCreated }: AddItemModalProps) {
          body: JSON.stringify({
            name,
 
-           // Convert categoryId from a string to a number
-           categoryId: Number(categoryId),
+           // Convert categoryId from a string to a number (or "addon" for virtual category)
+           categoryId: isAddon ? "addon" : Number(categoryId),
 
            // If there is no image URL, send undefined
            imageUrl: imageUrl || undefined,
@@ -253,8 +271,11 @@ function AddItemModal({ isOpen, onClose, onCreated }: AddItemModalProps) {
              quantityNeeded: row.quantityNeeded,
              sizeId: row.sizeId,
            })),
+           // Add-on specific fields
+           stockQty: isAddon ? Number(stockQty) || 0 : undefined,
+           restockThreshold: isAddon ? Number(restockThreshold) || 10 : undefined,
          }),
-      });
+       });
 
 
       // Check if the server returned an error
@@ -274,7 +295,7 @@ function AddItemModal({ isOpen, onClose, onCreated }: AddItemModalProps) {
       onCreated();
 
       // Show success toast
-      success("Menu item created successfully!");
+      success(isAddon ? "Add-on created successfully!" : "Menu item created successfully!");
 
       // Close the modal after successful creation
       handleClose();
@@ -384,6 +405,11 @@ function AddItemModal({ isOpen, onClose, onCreated }: AddItemModalProps) {
                 Select a category
               </option>
 
+              {/* Virtual Add-ons category */}
+              <option value="addon">
+                Add-ons
+              </option>
+
               {/* Create an option for every category */}
               {categories.map((c) => (
                 <option
@@ -399,42 +425,45 @@ function AddItemModal({ isOpen, onClose, onCreated }: AddItemModalProps) {
 
 
           {/* File picker + pasted path. Whichever is used, the value is a
-              string stored in menu_items.image_url. */}
-          <ImagePicker label="Image" value={imageUrl} onChange={setImageUrl} itemName={name} />
+              string stored in menu_items.image_url. - Hidden for add-ons */}
+          {!isAddon && (
+            <ImagePicker label="Image" value={imageUrl} onChange={setImageUrl} itemName={name} />
+          )}
 
 
-          {/* Sizes and Prices */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Available Sizes & Prices
-            </label>
+          {/* Sizes and Prices - only show for non-addon items */}
+          {!isAddon && (
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Available Sizes & Prices
+              </label>
 
-            <div className="space-y-2">
+              <div className="space-y-2">
 
-              {/* Create a row for every available size */}
-              {sizeOptions.map((s) => {
-                const isRegular = s.oz === null && s.temperature === null;
-                const isDrinkSize = s.oz !== null;
-                // Snacks: only Regular enabled. Drinks: only drink sizes enabled.
-                const disabled = isDrink ? isRegular : isDrinkSize;
+                {/* Create a row for every available size */}
+                {sizeOptions.map((s) => {
+                  const isRegular = s.oz === null && s.temperature === null;
+                  const isDrinkSize = s.oz !== null;
+                  // Snacks: only Regular enabled. Drinks: only drink sizes enabled.
+                  const disabled = isDrink ? isRegular : isDrinkSize;
 
-                return (
-                  <div key={s.id} className="flex items-center gap-2">
-                    <input
-                      type="checkbox"
-                      checked={!!selectedSizes[s.id]}
-                      onChange={() => !disabled && toggleSize(s.id)}
-                      disabled={disabled}
-                      className={`w-4 h-4 text-amber-600 border-gray-300 rounded focus:ring-amber-500 ${
-                        disabled ? "opacity-40 cursor-not-allowed" : ""
-                      }`}
-                    />
+                  return (
+                    <div key={s.id} className="flex items-center gap-2">
+                      <input
+                        type="checkbox"
+                        checked={!!selectedSizes[s.id]}
+                        onChange={() => !disabled && toggleSize(s.id)}
+                        disabled={disabled}
+                        className={`w-4 h-4 text-amber-600 border-gray-300 rounded focus:ring-amber-500 ${
+                          disabled ? "opacity-40 cursor-not-allowed" : ""
+                        }`}
+                      />
 
-                    <span className="text-sm text-gray-700 w-32">
-                      {s.label}
-                      {s.oz ? ` (${s.oz}oz ${s.temperature ?? ''})` : ''}
-                      {disabled && (isDrink ? " (drinks only)" : " (snacks only)")}
-                    </span>
+                      <span className="text-sm text-gray-700 w-32">
+                        {s.label}
+                        {s.oz ? ` (${s.oz}oz ${s.temperature ?? ''})` : ''}
+                        {disabled && (isDrink ? " (drinks only)" : " (snacks only)")}
+                      </span>
 
 {selectedSizes[s.id] && (
   <input
@@ -450,203 +479,260 @@ function AddItemModal({ isOpen, onClose, onCreated }: AddItemModalProps) {
     disabled={!isDrink}
   />
 )}
-                  </div>
-                );
-              })}
+                    </div>
+                  );
+                })}
 
+              </div>
             </div>
-          </div>
+          )}
 
-           {/* Ingredients (at least one required) */}
-           <div>
-             <label className="block text-sm font-medium text-gray-700 mb-2">
-               Ingredients
-             </label>
-             <div className="space-y-2">
-               {recipeRows.length === 0 ? (
-                 <p className="text-xs text-gray-500">
-                   No ingredients added yet. Please add at least one ingredient.
-                 </p>
-               ) : (
-                 <ul className="space-y-1">
-                   {recipeRows.map((row) => {
-                     const ingredient = ingredients.find(i => i.id === row.ingredientId);
-                     const sizeLabel = row.sizeId === null ? 'All sizes' : sizeOptions.find(s => s.id === row.sizeId)?.label ?? `Size #${row.sizeId}`;
-                     return (
-                       <li key={`${row.ingredientId}-${row.sizeId}`} className="flex items-center justify-between bg-gray-50 rounded-lg px-3 py-2">
-                         <div className="min-w-0">
-                           <span className="text-sm text-gray-900 font-medium">
-                             {ingredient?.name ?? 'Unknown'}
-                           </span>
-                           <span className="text-sm text-gray-600">
-                             {' '}
-                             — {row.quantityNeeded} {ingredient?.unit ?? ''}
-                           </span>
-                           <span className="block text-xs text-gray-500">
-                             {sizeLabel}
-                           </span>
-       </div>
-       <AddingIngredientModal
-         isOpen={isIngredientModalOpen}
-         onClose={() => setIsIngredientModalOpen(false)}
-         onAdded={loadOptions}
-       />
-                         <button
-                           onClick={() => {
-                             setRecipeRows(prev => prev.filter(r => !(r.ingredientId === row.ingredientId && r.sizeId === row.sizeId)));
-                           }}
-                           className="text-xs text-red-700 bg-red-50 px-2 py-1 rounded hover:bg-red-100 transition-colors shrink-0"
-                         >
-                           Remove
-                         </button>
-                       </li>
-                     );
-                   })}
-                 </ul>
-               )}
-             </div>
+          {/* Add-on Price - only show for addon items */}
+          {isAddon && (
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Price
+              </label>
+              <input
+                type="number"
+                min="0"
+                step="0.01"
+                value={prices[0] ?? ''}
+                onChange={(e) => setPrices(prev => ({ ...prev, [0]: e.target.value }))}
+                placeholder="Price"
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500"
+                required
+              />
+            </div>
+          )}
 
-             <div className="space-y-2">
-               <div className="flex items-center justify-between">
-                 <label className="block text-sm font-semibold text-gray-900">
-                   Add Ingredient
-                 </label>
+          {/* Add-on Stock Fields - only show for addon items */}
+          {isAddon && (
+            <div className="space-y-2">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Initial Stock Quantity
+                </label>
+                <input
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  value={stockQty}
+                  onChange={(e) => setStockQty(e.target.value)}
+                  placeholder="e.g. 100"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Restock Threshold
+                </label>
+                <input
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  value={restockThreshold}
+                  onChange={(e) => setRestockThreshold(e.target.value)}
+                  placeholder="e.g. 10"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500"
+                />
+              </div>
+            </div>
+          )}
+
+          {/* Ingredients (at least one required) - only show for non-addon items */}
+          {!isAddon && (
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Ingredients
+              </label>
+              <div className="space-y-2">
+                {recipeRows.length === 0 ? (
+                  <p className="text-xs text-gray-500">
+                    No ingredients added yet. Please add at least one ingredient.
+                  </p>
+                ) : (
+                  <ul className="space-y-1">
+                    {recipeRows.map((row) => {
+                      const ingredient = ingredients.find(i => i.id === row.ingredientId);
+                      const sizeLabel = row.sizeId === null ? 'All sizes' : sizeOptions.find(s => s.id === row.sizeId)?.label ?? `Size #${row.sizeId}`;
+                      return (
+                        <li key={`${row.ingredientId}-${row.sizeId}`} className="flex items-center justify-between bg-gray-50 rounded-lg px-3 py-2">
+                          <div className="min-w-0">
+                            <span className="text-sm text-gray-900 font-medium">
+                              {ingredient?.name ?? 'Unknown'}
+                            </span>
+                            <span className="text-sm text-gray-600">
+                              {' '}
+                              — {row.quantityNeeded} {ingredient?.unit ?? ''}
+                            </span>
+                            <span className="block text-xs text-gray-500">
+                              {sizeLabel}
+                            </span>
+                </div>
+                <AddingIngredientModal
+                  isOpen={isIngredientModalOpen}
+                  onClose={() => setIsIngredientModalOpen(false)}
+                  onAdded={loadOptions}
+                />
+                          <button
+                            onClick={() => {
+                              setRecipeRows(prev => prev.filter(r => !(r.ingredientId === row.ingredientId && r.sizeId === row.sizeId)));
+                            }}
+                            className="text-xs text-red-700 bg-red-50 px-2 py-1 rounded hover:bg-red-100 transition-colors shrink-0"
+                          >
+                            Remove
+                          </button>
+                        </li>
+                      );
+                    })}
+                  </ul>
+                )}
+              </div>
+
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <label className="block text-sm font-semibold text-gray-900">
+                    Add Ingredient
+                  </label>
+                  <button
+                    type="button"
+                    onClick={() => setIsIngredientModalOpen(true)}
+                    className="text-xs text-amber-700 bg-amber-50 px-2 py-1 rounded hover:bg-amber-100 transition-colors"
+                  >
+                    + New Ingredient
+                  </button>
+                </div>
+
+                <IngredientPicker
+                  ingredients={ingredients}
+                  value={tempIngredientId}
+                  onChange={setTempIngredientId}
+                />
+
+                <div className="flex gap-2">
+                  <input
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    value={tempQuantity}
+                    onChange={(e) => setTempQuantity(e.target.value)}
+                    placeholder="Quantity"
+                    className="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-amber-500"
+                  />
+
+                  <select
+                    value={tempSizeId}
+                    onChange={(e) => setTempSizeId(e.target.value)}
+                    className="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-amber-500"
+                  >
+                    <option value="">All sizes</option>
+                    {sizeOptions.map((s) => (
+                      <option key={s.id} value={s.id}>
+                        {s.label} only
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
                  <button
-                   type="button"
-                   onClick={() => setIsIngredientModalOpen(true)}
-                   className="text-xs text-amber-700 bg-amber-50 px-2 py-1 rounded hover:bg-amber-100 transition-colors"
+                   onClick={() => {
+                     // Validate and add the row
+                     const ingredientIdNum = Number(tempIngredientId);
+                     const quantityNum = Number(tempQuantity);
+                     const sizeIdValue = tempSizeId === '' || tempSizeId === null ? null : Number(tempSizeId);
+                     if (!ingredientIdNum || isNaN(ingredientIdNum) || quantityNum <= 0 || isNaN(quantityNum)) {
+                       // Should not happen if we disable button, but just in case
+                       return;
+                     }
+                     const ing = ingredients.find((i) => String(i.id) === tempIngredientId);
+                     if (ing && ing.stockQty <= ing.restockThreshold) {
+                       showError('Cannot add ingredient because it is low in stock.');
+                       return;
+                     }
+                     setRecipeRows(prev => [
+                       ...prev,
+                       { ingredientId: ingredientIdNum, quantityNeeded: quantityNum, sizeId: sizeIdValue }
+                     ]);
+                     // Reset temporary form
+                     setTempIngredientId('');
+                     setTempQuantity('');
+                     setTempSizeId('');
+                   }}
+                   disabled={tempIngredientId === '' || tempQuantity === '' || Number(tempQuantity) <= 0 || !!ingredients.find(i => String(i.id) === tempIngredientId && i.stockQty <= i.restockThreshold)}
+                   className="px-4 py-2 text-sm font-medium text-white bg-amber-600 rounded-lg hover:bg-amber-700 transition-colors disabled:opacity-50"
                  >
-                   + New Ingredient
+                   {tempIngredientId === '' || tempQuantity === '' || Number(tempQuantity) <= 0 || !!ingredients.find(i => String(i.id) === tempIngredientId && i.stockQty <= i.restockThreshold) ? 'Adding...' : 'Add to Recipe'}
                  </button>
-               </div>
+              </div>
+            </div>
+          )}
+           {/* Available for ordering checkbox */}
+           <div>
+             <label className="flex items-center">
 
-               <IngredientPicker
-                 ingredients={ingredients}
-                 value={tempIngredientId}
-                 onChange={setTempIngredientId}
+               <input
+                 type="checkbox"
+
+                 // Checked if the item is available
+                 checked={isAvailable}
+
+                 // Update availability when clicked
+                 onChange={(e) =>
+                   setIsAvailable(e.target.checked)
+                 }
+
+                 className="w-4 h-4 text-amber-600 border-gray-300 rounded focus:ring-amber-500"
                />
 
-               <div className="flex gap-2">
-                 <input
-                   type="number"
-                   min="0"
-                   step="0.01"
-                   value={tempQuantity}
-                   onChange={(e) => setTempQuantity(e.target.value)}
-                   placeholder="Quantity"
-                   className="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-amber-500"
-                 />
+               <span className="ml-2 text-sm text-gray-700">
+                 Available for ordering
+               </span>
 
-                 <select
-                   value={tempSizeId}
-                   onChange={(e) => setTempSizeId(e.target.value)}
-                   className="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-amber-500"
-                 >
-                   <option value="">All sizes</option>
-                   {sizeOptions.map((s) => (
-                     <option key={s.id} value={s.id}>
-                       {s.label} only
-                     </option>
-                   ))}
-                 </select>
-               </div>
-
-                <button
-                  onClick={() => {
-                    // Validate and add the row
-                    const ingredientIdNum = Number(tempIngredientId);
-                    const quantityNum = Number(tempQuantity);
-                    const sizeIdValue = tempSizeId === '' || tempSizeId === null ? null : Number(tempSizeId);
-                    if (!ingredientIdNum || isNaN(ingredientIdNum) || quantityNum <= 0 || isNaN(quantityNum)) {
-                      // Should not happen if we disable button, but just in case
-                      return;
-                    }
-                    const ing = ingredients.find((i) => String(i.id) === tempIngredientId);
-                    if (ing && ing.stockQty <= ing.restockThreshold) {
-                      showError('Cannot add ingredient because it is low in stock.');
-                      return;
-                    }
-                    setRecipeRows(prev => [
-                      ...prev,
-                      { ingredientId: ingredientIdNum, quantityNeeded: quantityNum, sizeId: sizeIdValue }
-                    ]);
-                    // Reset temporary form
-                    setTempIngredientId('');
-                    setTempQuantity('');
-                    setTempSizeId('');
-                  }}
-                  disabled={tempIngredientId === '' || tempQuantity === '' || Number(tempQuantity) <= 0 || !!ingredients.find(i => String(i.id) === tempIngredientId && i.stockQty <= i.restockThreshold)}
-                  className="px-4 py-2 text-sm font-medium text-white bg-amber-600 rounded-lg hover:bg-amber-700 transition-colors disabled:opacity-50"
-                >
-                  {tempIngredientId === '' || tempQuantity === '' || Number(tempQuantity) <= 0 || !!ingredients.find(i => String(i.id) === tempIngredientId && i.stockQty <= i.restockThreshold) ? 'Adding...' : 'Add to Recipe'}
-                </button>
-             </div>
+             </label>
            </div>
-          {/* Available for ordering checkbox */}
-          <div>
-            <label className="flex items-center">
-
-              <input
-                type="checkbox"
-
-                // Checked if the item is available
-                checked={isAvailable}
-
-                // Update availability when clicked
-                onChange={(e) =>
-                  setIsAvailable(e.target.checked)
-                }
-
-                className="w-4 h-4 text-amber-600 border-gray-300 rounded focus:ring-amber-500"
-              />
-
-              <span className="ml-2 text-sm text-gray-700">
-                Available for ordering
-              </span>
-
-            </label>
-          </div>
 
 
-          {/* Cancel and Add Item buttons */}
-          <div className="flex gap-2 pt-4">
+           {/* Cancel and Add Item buttons */}
+           <div className="flex gap-2 pt-4">
 
-            {/* Cancel button */}
-            <button
-              type="button"
-              onClick={handleClose}
-              className="flex-1 px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors"
-            >
-              Cancel
-            </button>
+             {/* Cancel button */}
+             <button
+               type="button"
+               onClick={handleClose}
+               className="flex-1 px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors"
+             >
+               Cancel
+             </button>
 
 
-            {/* Submit button */}
-            <button
-              type="submit"
+             {/* Submit button */}
+             <button
+               type="submit"
 
-              // Disable the button while submitting
-              disabled={submitting}
+               // Disable the button while submitting
+               disabled={submitting}
 
-              className="flex-1 px-4 py-2 text-sm font-medium text-white bg-amber-600 rounded-lg hover:bg-amber-700 transition-colors disabled:opacity-50"
-            >
+               className="flex-1 px-4 py-2 text-sm font-medium text-white bg-amber-600 rounded-lg hover:bg-amber-700 transition-colors disabled:opacity-50"
+             >
 
-              {/* Change button text while submitting */}
-              {submitting
-                ? "Adding..."
-                : "Add Item"}
+               {/* Change button text while submitting */}
+               {submitting
+                 ? "Adding..."
+                 : isAddon
+                 ? "Add Add-on"
+                 : "Add Item"}
 
-            </button>
+             </button>
 
-          </div>
+           </div>
 
-        </form>
-      </div>
-    </div>
+         </form>
+       </div>
+     </div>
   );
 }
 
 
 // Make this component available for other files to import
 export default AddItemModal;
-

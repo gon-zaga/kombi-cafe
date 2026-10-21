@@ -10,6 +10,7 @@ function FilterBar ({currentAvailbility, currentCategory, onAvailabilityChange, 
   
   const categories = [
     "All",
+    "Add-ons",
     "Kaffee",
     "Klassik Kaffee",
     "Specialty Kaffee",

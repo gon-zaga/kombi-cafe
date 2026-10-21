@@ -9,8 +9,8 @@ function MenuItem({ active, menuItems }: { active: string, menuItems: MenuItemTy
   return (
     <div className="px-5 grid grid-cols-2 gap-4">
       {active === "All"
-        ? menuItems.map((item) => <ProductCard item={item} key={item.itemId} />)
-        : filtered.map((item) => <ProductCard item={item} key={item.itemId} />)}
+        ? menuItems.map((item) => <ProductCard item={item} key={item.uniqueKey} />)
+        : filtered.map((item) => <ProductCard item={item} key={item.uniqueKey} />)}
     </div>
   );
 }

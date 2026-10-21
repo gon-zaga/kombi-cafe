@@ -1,13 +1,9 @@
 import type { MouseEvent } from "react"
 import ItemImage from "@/app/ui/ItemImage"
+import type { MenuItem } from "@/app/lib/types"
 
 interface MenuItemCardProps {
-  item: {
-    itemId: number
-    itemName: string
-    category: string | null
-    itemImg: string | null
-  }
+  item: MenuItem
   isAvailable: boolean
   onToggle: (checked: boolean) => void
   onEdit: () => void
@@ -36,6 +32,8 @@ function MenuItemCard({
     onEdit()
   }
 
+  const isAddon = item.type === 'addon';
+
   return (
     // The ring + cursor make the card's clickable area obvious, instead of it
     // being an unlabelled box.
@@ -48,22 +46,38 @@ function MenuItemCard({
 
       {/* Top row: Image + Details + Toggle */}
       <div className="flex flex-row items-center gap-4">
-        {/* Image */}
-        <div className="shrink-0">
-          <ItemImage
-            src={item.itemImg}
-            alt={item.itemName}
-            width={80}
-            height={80}
-            className="rounded-lg object-cover"
-          />
-        </div>
+        {/* Image - only for menu items, not add-ons */}
+        {!isAddon && (
+          <div className="shrink-0">
+            <ItemImage
+              src={item.itemImg}
+              alt={item.itemName}
+              width={80}
+              height={80}
+              className="rounded-lg object-cover"
+            />
+          </div>
+        )}
 
         {/* Details */}
         <div className="flex-1 flex flex-col gap-1 min-w-0">
           <span className="font-semibold text-gray-900 truncate">{item.itemName}</span>
           <span className="text-sm text-gray-600 truncate">{item.category}</span>
-          <span className="text-xs text-gray-400">Click card to edit</span>
+          {isAddon && item.stockQty !== undefined && (
+            <div className="flex items-center gap-2 text-xs">
+              <span className={`text-gray-600 ${item.isLowStock ? 'text-red-600 font-medium' : ''}`}>
+                Stock: {item.stockQty} / Threshold: {item.restockThreshold}
+              </span>
+              {item.isLowStock && (
+                <span className="text-red-600 bg-red-50 px-1.5 py-0.5 rounded text-xs font-medium">
+                  Low Stock
+                </span>
+              )}
+            </div>
+          )}
+          {!isAddon && (
+            <span className="text-xs text-gray-400">Click card to edit</span>
+          )}
         </div>
 
         {/* Available Toggle */}
@@ -89,16 +103,25 @@ function MenuItemCard({
         </div>
       </div>
 
+      {/* Price display for add-ons */}
+      {isAddon && item.sizes[0] && (
+        <div className="text-right text-sm font-medium text-gray-900">
+          ₱{item.sizes[0].price.toFixed(2)}
+        </div>
+      )}
+
       {/* Bottom row: Action Buttons */}
       {/* The whole row is one control region, so a click on any of these
           buttons can never reach the card's Edit handler */}
       <div className="flex flex-row gap-2 justify-end" data-card-control>
-        <button
-          onClick={onIngredients}
-          className="px-3 py-1.5 text-sm font-medium text-purple-700 bg-purple-50 rounded-lg hover:bg-purple-100 transition-colors"
-        >
-          Ingredients
-        </button>
+        {!isAddon && (
+          <button
+            onClick={onIngredients}
+            className="px-3 py-1.5 text-sm font-medium text-purple-700 bg-purple-50 rounded-lg hover:bg-purple-100 transition-colors"
+          >
+            Ingredients
+          </button>
+        )}
         <button
           onClick={onEdit}
           className="px-3 py-1.5 text-sm font-medium text-blue-700 bg-blue-50 rounded-lg hover:bg-blue-100 transition-colors"

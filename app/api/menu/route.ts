@@ -9,90 +9,141 @@ import { validateImageValue } from "@/app/lib/imageValue";
 //                         silently hiding a drink the owner just switched off
 //   (no params)        -> available items only
 // Every item carries isLowStock, computed from its recipe ingredients.
+// Add-ons are also included with type='addon' and their stock fields.
 export async function GET(request: Request) {
   const params = new URL(request.url).searchParams;
   const all = params.get("all") === "true";
   const includeUnavailable = params.get("unavailable") === "true";
 
-  // $1 true = owner view (no availability filter), $2 true = customer view that
-  // wants unavailable items shown too
-   const result = await pool.query(
-     `
-     SELECT
-       mi.id AS item_id,
-       mi.name AS item_name,
-       mi.image_url AS item_img,
-       mi.is_available AS is_available,
-       c.name AS category,
-       s.id AS size_id,
-       s.label AS size,
-       s.oz AS oz,
-       s.temperature AS temperature,
-        mis.price AS price,
+  // Fetch menu items with sizes and recipes
+  const menuResult = await pool.query(
+    `
+    SELECT
+      mi.id AS item_id,
+      mi.name AS item_name,
+      mi.image_url AS item_img,
+      mi.is_available AS is_available,
+      c.name AS category,
+      s.id AS size_id,
+      s.label AS size,
+      s.oz AS oz,
+      s.temperature AS temperature,
+       mis.price AS price,
 
-        -- Low stock = at least ONE ingredient in the item's recipe is at or below
-       -- its restock threshold. Size-specific recipe rows are counted too, so an
-       -- item can read as low because of one size only; this is a warning, not a
-       -- block. The order API is what actually refuses an order on a shortage.
-       -- An item with no recipe rows at all is never "low" -- there is nothing to
-       -- be short of.
-       EXISTS (
-         SELECT 1
-         FROM recipes r
-         JOIN ingredients ing ON ing.id = r.ingredient_id
-         WHERE r.menu_item_id = mi.id
-           AND ing.stock_qty <= ing.restock_threshold
-       ) AS is_low_stock,
-        -- Get ingredient names for this menu item
-        COALESCE(
-          json_agg(ing.name) FILTER (WHERE ing.id IS NOT NULL),
-          '[]'::json
-        ) AS ingredients
-     FROM menu_items AS mi
-     JOIN categories AS c ON mi.category_id = c.id
-     JOIN menu_item_sizes AS mis ON mi.id = mis.menu_item_id
-     JOIN sizes AS s ON mis.size_id = s.id
-     LEFT JOIN recipes r ON r.menu_item_id = mi.id
-     LEFT JOIN ingredients ing ON ing.id = r.ingredient_id
-     WHERE ($1::boolean OR $2::boolean OR mi.is_available = TRUE)
-     GROUP BY mi.id, mi.name, mi.image_url, mi.is_available, c.name, s.id, s.label, s.oz, s.temperature, mis.price
-     ORDER BY mi.id, s.id
-     `,
-     [all, includeUnavailable]
-   );
-  const rows: MenuRow[] = result.rows;
+       -- Low stock = at least ONE ingredient in the item's recipe is at or below
+      -- its restock threshold. Size-specific recipe rows are counted too, so an
+      -- item can read as low because of one size only; this is a warning, not a
+      -- block. The order API is what actually refuses an order on a shortage.
+      -- An item with no recipe rows at all is never "low" -- there is nothing to
+      -- be short of.
+      EXISTS (
+        SELECT 1
+        FROM recipes r
+        JOIN ingredients ing ON ing.id = r.ingredient_id
+        WHERE r.menu_item_id = mi.id
+          AND ing.stock_qty <= ing.restock_threshold
+      ) AS is_low_stock,
+       -- Get ingredient names for this menu item
+       COALESCE(
+         json_agg(ing.name) FILTER (WHERE ing.id IS NOT NULL),
+         '[]'::json
+       ) AS ingredients
+    FROM menu_items AS mi
+    JOIN categories AS c ON mi.category_id = c.id
+    JOIN menu_item_sizes AS mis ON mi.id = mis.menu_item_id
+    JOIN sizes AS s ON mis.size_id = s.id
+    LEFT JOIN recipes r ON r.menu_item_id = mi.id
+    LEFT JOIN ingredients ing ON ing.id = r.ingredient_id
+    WHERE ($1::boolean OR $2::boolean OR mi.is_available = TRUE)
+    GROUP BY mi.id, mi.name, mi.image_url, mi.is_available, c.name, s.id, s.label, s.oz, s.temperature, mis.price
+    ORDER BY mi.id, s.id
+    `,
+    [all, includeUnavailable]
+  );
 
-   const grouped: Record<number, MenuItem> = {};
+  // Fetch add-ons
+  const addonResult = await pool.query(
+    `
+    SELECT
+      id AS item_id,
+      name AS item_name,
+      image_url AS item_img,
+      is_available AS is_available,
+      'Add-ons' AS category,
+      price,
+      stock_qty,
+      restock_threshold,
+      (stock_qty <= restock_threshold) AS is_low_stock
+    FROM add_ons
+    WHERE ($1::boolean OR $2::boolean OR is_available = TRUE)
+    ORDER BY name
+    `,
+    [all, includeUnavailable]
+  );
 
-   for (const row of rows) {
-     if (!grouped[row.item_id]) {
-       grouped[row.item_id] = {
-         itemId: row.item_id,
-         itemName: row.item_name,
-         itemImg: row.item_img,
-         category: row.category,
-         isAvailable: row.is_available,
-         isLowStock: row.is_low_stock,
-         ingredients: row.ingredients ?? [],
-         sizes: [],
-       };
-     }
+  const menuRows: MenuRow[] = menuResult.rows;
+  const addonRows = addonResult.rows;
 
-     grouped[row.item_id].sizes.push({
-       sizeId: row.size_id,
-       size: row.size,
-       oz: row.oz === null ? null : Number(row.oz),
-       temperature: row.temperature,
-       price: Number(row.price),
-     });
-   }
+  const grouped: Record<number, MenuItem> = {};
+
+  // Process menu items
+  for (const row of menuRows) {
+    if (!grouped[row.item_id]) {
+      grouped[row.item_id] = {
+        itemId: row.item_id,
+        itemName: row.item_name,
+        itemImg: row.item_img,
+        category: row.category,
+        isAvailable: row.is_available,
+        isLowStock: row.is_low_stock,
+        ingredients: row.ingredients ?? [],
+        sizes: [],
+        type: 'menu_item',
+        uniqueKey: row.item_id,
+      };
+    }
+
+    grouped[row.item_id].sizes.push({
+      sizeId: row.size_id,
+      size: row.size,
+      oz: row.oz === null ? null : Number(row.oz),
+      temperature: row.temperature,
+      price: Number(row.price),
+    });
+  }
+
+  // Process add-ons
+  for (const row of addonRows) {
+    // Use negative IDs for add-ons to avoid collision with menu_items
+    const key = -row.item_id;
+    grouped[key] = {
+      itemId: row.item_id,
+      itemName: row.item_name,
+      itemImg: row.item_img,
+      category: row.category,
+      isAvailable: row.is_available,
+      isLowStock: row.is_low_stock,
+      ingredients: [],
+      sizes: [{
+        sizeId: 0,
+        size: 'Regular',
+        oz: null,
+        temperature: null,
+        price: Number(row.price),
+      }],
+      type: 'addon',
+      uniqueKey: -row.item_id,
+      stockQty: Number(row.stock_qty),
+      restockThreshold: Number(row.restock_threshold),
+    };
+  }
 
   return Response.json(Object.values(grouped));
 }
 
 
 
-// POST = used to create/add a new menu item
+// POST = used to create/add a new menu item or add-on
 export async function POST(request: Request) {
 
   // Get a database client from the connection pool
@@ -104,23 +155,35 @@ export async function POST(request: Request) {
      const body = await request.json();
 
      // Get the values from the request
-     const { name, categoryId, imageUrl, isAvailable, sizes, recipes } = body;
+     const { name, categoryId, imageUrl, isAvailable, sizes, recipes, stockQty, restockThreshold } = body;
 
+     // Detect if this is an add-on (virtual category "addon")
+     const isAddon = categoryId === "addon" || categoryId === 0 || categoryId === "0";
 
      // Check if the required information was provided
-     if (
-       !name ||
-       !categoryId ||
-       !Array.isArray(sizes) ||
-       sizes.length === 0 ||
-       !Array.isArray(recipes) ||
-       recipes.length === 0
-     ) {
-       // 400 = Bad Request
-       return Response.json(
-         { error: "Missing required fields: at least one ingredient is required" },
-         { status: 400 }
-       );
+     if (isAddon) {
+       // Add-on validation: name, price (from sizes[0].price), imageUrl optional
+       if (!name || !Array.isArray(sizes) || sizes.length === 0) {
+         return Response.json(
+           { error: "Missing required fields: name and price are required" },
+           { status: 400 }
+         );
+       }
+     } else {
+       // Menu item validation: name, categoryId, sizes, recipes
+       if (
+         !name ||
+         !categoryId ||
+         !Array.isArray(sizes) ||
+         sizes.length === 0 ||
+         !Array.isArray(recipes) ||
+         recipes.length === 0
+       ) {
+         return Response.json(
+           { error: "Missing required fields: at least one ingredient is required" },
+           { status: 400 }
+         );
+       }
      }
 
     // The image field accepts three shapes: an inline data URL from the file
@@ -137,71 +200,94 @@ export async function POST(request: Request) {
     // Everything after this should succeed, or everything will be undone
     await client.query("BEGIN");
 
+    let itemId: number;
 
-    // Insert the main menu item into the menu_items table
-    const itemResult = await client.query(
-      `INSERT INTO menu_items (name, category_id, image_url, is_available)
-       VALUES ($1, $2, $3, $4)
-       RETURNING id`,
+    if (isAddon) {
+      // Insert into add_ons table
+      const price = Number(sizes[0].price);
+      const stock = Number(stockQty) || 0;
+      const threshold = Number(restockThreshold) || 10;
 
-      // These values replace $1, $2, $3, and $4
-      [
-        name,
-        categoryId,
+      const itemResult = await client.query(
+        `INSERT INTO add_ons (name, price, image_url, is_available, stock_qty, restock_threshold)
+         VALUES ($1, $2, $3, $4, $5, $6)
+         RETURNING id`,
 
-        // Use the provided image, or use a default image
-        imageUrl || "/drinks/no-drink-image.svg",
+        [
+          name,
+          price,
+          imageUrl || "/drinks/no-drink-image.svg",
+          isAvailable ?? true,
+          stock,
+          threshold
+        ]
+      );
 
-        // Use the provided availability, or default to true
-        isAvailable ?? true
-      ]
-    );
-
-
-    // Get the ID of the newly created menu item
-    const menuItemId = itemResult.rows[0].id;
-
-
-     // Loop through every size that was provided
-     // Example: Small, Medium, Large
-     for (const s of sizes) {
-
-       // Add each size and its price to menu_item_sizes
-       await client.query(
-         `INSERT INTO menu_item_sizes (menu_item_id, size_id, price)
-          VALUES ($1, $2, $3)`,
- 
-         // Connect the size to the menu item and save its price
-         [menuItemId, s.sizeId, s.price]
-       );
-     }
-
-
-     // Insert each recipe row
-     for (const r of recipes) {
-       const { ingredientId, quantityNeeded, sizeId } = r;
-       // Validate required fields
-       if (!ingredientId || quantityNeeded === undefined || Number(quantityNeeded) <= 0) {
-         throw new Error('Invalid recipe: ingredientId and quantityNeeded > 0 are required');
-       }
-       const sizeIdValue = sizeId === null || sizeId === '' ? null : Number(sizeId);
- 
-       await client.query(
-         `
-         INSERT INTO recipes (menu_item_id, size_id, ingredient_id, quantity_needed)
+      itemId = itemResult.rows[0].id;
+    } else {
+      // Insert the main menu item into the menu_items table
+      const itemResult = await client.query(
+        `INSERT INTO menu_items (name, category_id, image_url, is_available)
          VALUES ($1, $2, $3, $4)
-         ON CONFLICT (menu_item_id, COALESCE(size_id, 0), ingredient_id)
-         DO UPDATE SET quantity_needed = EXCLUDED.quantity_needed
-         `,
-         [
-           menuItemId,
-           sizeIdValue,
-           Number(ingredientId),
-           Number(quantityNeeded)
-         ]
-       );
-     }
+         RETURNING id`,
 
+        // These values replace $1, $2, $3, and $4
+        [
+          name,
+          categoryId,
+
+          // Use the provided image, or use a default image
+          imageUrl || "/drinks/no-drink-image.svg",
+
+          // Use the provided availability, or default to true
+          isAvailable ?? true
+        ]
+      );
+
+      // Get the ID of the newly created menu item
+      itemId = itemResult.rows[0].id;
+
+
+       // Loop through every size that was provided
+       // Example: Small, Medium, Large
+       for (const s of sizes) {
+
+         // Add each size and its price to menu_item_sizes
+         await client.query(
+           `INSERT INTO menu_item_sizes (menu_item_id, size_id, price)
+            VALUES ($1, $2, $3)`,
+      
+           // Connect the size to the menu item and save its price
+           [itemId, s.sizeId, s.price]
+         );
+       }
+
+
+       // Insert each recipe row
+       for (const r of recipes) {
+         const { ingredientId, quantityNeeded, sizeId } = r;
+         // Validate required fields
+         if (!ingredientId || quantityNeeded === undefined || Number(quantityNeeded) <= 0) {
+           throw new Error('Invalid recipe: ingredientId and quantityNeeded > 0 are required');
+         }
+         const sizeIdValue = sizeId === null || sizeId === '' ? null : Number(sizeId);
+     
+         await client.query(
+           `
+           INSERT INTO recipes (menu_item_id, size_id, ingredient_id, quantity_needed)
+           VALUES ($1, $2, $3, $4)
+           ON CONFLICT (menu_item_id, COALESCE(size_id, 0), ingredient_id)
+           DO UPDATE SET quantity_needed = EXCLUDED.quantity_needed
+           `,
+           [
+             itemId,
+             sizeIdValue,
+             Number(ingredientId),
+             Number(quantityNeeded)
+           ]
+         );
+       }
+    }
 
     // Save all the changes permanently
     await client.query("COMMIT");
@@ -210,7 +296,7 @@ export async function POST(request: Request) {
     // Send the new menu item's ID back to the frontend
     // 201 = Created successfully
     return Response.json(
-      { id: menuItemId },
+      { id: itemId, type: isAddon ? 'addon' : 'menu_item' },
       { status: 201 }
     );
 

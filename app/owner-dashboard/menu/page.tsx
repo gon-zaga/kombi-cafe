@@ -322,8 +322,8 @@ const handleDelete = async (item: MenuItem) => {
         {filteredItems.map(item => (
 
           <MenuItemCard
-            // React needs a unique key for every item
-            key={item.itemId}
+            // React needs a unique key for every item (uniqueKey handles add-on ID collision)
+            key={item.uniqueKey}
 
             // Give the menu item information to the card
             item={item}
