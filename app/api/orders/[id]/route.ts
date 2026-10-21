@@ -182,9 +182,9 @@ export async function PATCH(
   try {
     const result = await pool.query(
       `UPDATE orders
-       SET status = $1,
-           processed_by = COALESCE($2, processed_by),
-           completed_at = CASE WHEN $1 = 'completed' THEN NOW() AT TIME ZONE 'UTC' ELSE completed_at END
+       SET status = $1::varchar,
+           processed_by = COALESCE($2::int, processed_by),
+           completed_at = CASE WHEN $1::varchar = 'completed' THEN NOW() AT TIME ZONE 'UTC' ELSE completed_at END
        WHERE id = $3
        RETURNING id, daily_number, status, total, processed_by, completed_at`,
       [status, processedBy, orderId]
