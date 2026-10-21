@@ -40,7 +40,7 @@ async function fetchMenuItem(id: number): Promise<MenuItem | null> {
     JOIN sizes AS s ON mis.size_id = s.id
     LEFT JOIN recipes r ON r.menu_item_id = mi.id
     LEFT JOIN ingredients ing ON ing.id = r.ingredient_id
-    WHERE mi.id = $1
+    WHERE mi.id = $1 AND mi.deleted_at IS NULL
     GROUP BY mi.id, mi.name, mi.image_url, mi.is_available, c.name, s.id, s.label, s.oz, s.temperature, mis.price
     ORDER BY s.id;
     `,
@@ -88,7 +88,7 @@ async function fetchAddOn(id: number): Promise<MenuItem | null> {
       restock_threshold,
       (stock_qty <= restock_threshold) AS is_low_stock
     FROM add_ons
-    WHERE id = $1
+    WHERE id = $1 AND deleted_at IS NULL
     `,
     [id]
   );
@@ -144,7 +144,6 @@ export async function GET(
       return NextResponse.json({ error: "Item not found" }, { status: 404 });
     }
 
-    console.log('GET /api/menu/[itemId]:', { id, isAvailable: item.isAvailable });
     return NextResponse.json(item);
   } catch (error) {
     console.error("Failed to fetch item:", error);
@@ -165,15 +164,13 @@ export async function PATCH(
     return NextResponse.json({ error: "Invalid itemId" }, { status: 400 });
   }
 
+  // Explicit type from query param to avoid ID collision between menu_items and add_ons
+  const isAddon = request.nextUrl.searchParams.get("type") === "addon";
+
   const client = await pool.connect();
   try {
     const body = await request.json();
     const { name, categoryId, imageUrl, isAvailable, sizes, recipes, stockQty, restockThreshold } = body;
-
-    // Determine if this is an add-on or menu item
-    // Check add_ons first since IDs can collide
-    const existingAddon = await client.query(`SELECT 1 FROM add_ons WHERE id = $1`, [id]);
-    const isAddon = existingAddon.rowCount > 0;
 
     // Same check as POST /api/menu: only an uploaded file, an http(s) link, or
     // a /public path is storable
@@ -224,7 +221,6 @@ export async function PATCH(
       }
     } else {
       // Update menu item (existing logic)
-      console.log('PATCH menu item:', { id, name, categoryId, imageUrl, isAvailable });
       await client.query(
         `UPDATE menu_items
          SET name = COALESCE($1, name),
@@ -273,109 +269,42 @@ export async function PATCH(
     }
 
     await client.query("COMMIT");
-    console.log('PATCH transaction committed');
     return NextResponse.json({ success: true });
   } catch (error) {
     await client.query("ROLLBACK");
-    console.error("PATCH transaction rolled back:", error);
+    console.error("Failed to update menu item:", error);
     return NextResponse.json({ error: "Failed to update menu item" }, { status: 500 });
   } finally {
     client.release();
   }
 }
 
-// DELETE removes one menu item or add-on from the database.
-// If past orders still reference the item,
-// PostgreSQL will return a foreign key error.
-
+// Soft delete: hides the item everywhere but keeps the row so past orders and reports stay correct
 export async function DELETE(
   request: NextRequest,
   { params }: { params: Promise<{ itemId: string }> }
 ) {
-  // Get the itemId from the URL.
-  //
-  // Example:
-  // /api/menu/5
-  //
-  // itemId = "5"
   const { itemId } = await params;
-
-  // Convert the itemId from a string to a number.
-  //
-  // "5" → 5
   const id = Number(itemId);
-
-  // Check if the ID is a valid number.
   if (isNaN(id)) {
-    return NextResponse.json(
-      { error: "Invalid itemId" },
-      { status: 400 }
-    );
+    return NextResponse.json({ error: "Invalid itemId" }, { status: 400 });
   }
 
-  const client = await pool.connect();
+  const table = request.nextUrl.searchParams.get("type") === "addon" ? "add_ons" : "menu_items";
+
   try {
-    await client.query("BEGIN");
-
-    // Check if it's a menu item or add-on
-    // Check add_ons first since IDs can collide
-    const addonCheck = await client.query(`SELECT 1 FROM add_ons WHERE id = $1`, [id]);
-    const isAddon = addonCheck.rowCount > 0;
-
-    let result;
-    if (isAddon) {
-      // Check for existing orders referencing this add-on
-      const orderCheck = await client.query(
-        `SELECT 1 FROM order_item_addons oia
-         JOIN order_items oi ON oi.id = oia.order_item_id
-         WHERE oia.add_on_id = $1
-         LIMIT 1`,
-        [id]
-      );
-      if ((orderCheck.rowCount ?? 0) > 0) {
-        await client.query("ROLLBACK");
-        return NextResponse.json(
-          {
-            error: "This add-on has past orders. Mark it unavailable instead."
-          },
-          { status: 409 }
-        );
-      }
-      result = await client.query(`DELETE FROM add_ons WHERE id = $1`, [id]);
-    } else {
-      result = await client.query(`DELETE FROM menu_items WHERE id = $1`, [id]);
-    }
+    const result = await pool.query(
+      `UPDATE ${table} SET deleted_at = NOW(), is_available = FALSE
+       WHERE id = $1 AND deleted_at IS NULL`,
+      [id]
+    );
 
     if (result.rowCount === 0) {
-      await client.query("ROLLBACK");
-      return NextResponse.json(
-        { error: "Item not found" },
-        { status: 404 }
-      );
+      return NextResponse.json({ error: "Item not found" }, { status: 404 });
     }
-
-    await client.query("COMMIT");
     return NextResponse.json({ success: true });
   } catch (error) {
-    await client.query("ROLLBACK");
-
-    // PostgreSQL error code 23503 means
-    // a foreign key constraint was violated.
-    if ((error as { code?: string }).code === '23503') {
-      return NextResponse.json(
-        {
-          error: "This item has past orders. Mark it unavailable instead."
-        },
-        { status: 409 }
-      );
-    }
-
     console.error("Failed to delete menu item:", error);
-    return NextResponse.json(
-      { error: "Failed to delete menu item" },
-      { status: 500 }
-    );
-  } finally {
-    client.release();
+    return NextResponse.json({ error: "Failed to delete menu item" }, { status: 500 });
   }
 }

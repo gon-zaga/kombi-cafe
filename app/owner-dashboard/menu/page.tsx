@@ -81,22 +81,26 @@ export default function MenuManagement() {
   const [actionError, setActionError] = useState("");
 
 
-  const { error: showError } = useToast();
+const { error: showError } = useToast();
+
+  // Helper to build the correct API URL with type param for add-ons
+  const itemUrl = (item: MenuItem) =>
+    `/api/menu/${item.itemId}${item.type === 'addon' ? '?type=addon' : ''}`;
 
   // Function used to get menu items from the API
-const fetchMenu = useCallback(async () => {
-  try {
-      const response = await fetch('/api/menu?all=true');
-      const data: MenuItem[] = await response.json();
-      setMenuItems(data);
+ const fetchMenu = useCallback(async () => {
+   try {
+       const response = await fetch('/api/menu?all=true');
+       const data: MenuItem[] = await response.json();
+       setMenuItems(data);
 
-    setItemAvailability(Object.fromEntries(data.map(i => [i.itemId, i.isAvailable])));
-  } catch (error) {
-    console.error("Failed to fetch menu items:", error);
-  } finally {
-    setLoading(false);
-  }
-}, []);
+     setItemAvailability(Object.fromEntries(data.map(i => [i.uniqueKey, i.isAvailable])));
+   } catch (error) {
+     console.error("Failed to fetch menu items:", error);
+   } finally {
+     setLoading(false);
+   }
+ }, []);
 
 
   // Run fetchMenu when the component first loads
@@ -133,7 +137,7 @@ const fetchMenu = useCallback(async () => {
     //
     // If no value exists yet, assume it is available.
     const isAvailable =
-      itemAvailability[item.itemId] ?? true;
+      itemAvailability[item.uniqueKey] ?? true;
 
 
     // If the user selected "Available",
@@ -157,10 +161,10 @@ const fetchMenu = useCallback(async () => {
 
 
   // Called when the availability switch/checkbox is changed
-  const handleToggleAvailability = async (itemId: number, checked: boolean) => {
-  setItemAvailability(prev => ({ ...prev, [itemId]: checked })); // optimistic
+  const handleToggleAvailability = async (item: MenuItem, checked: boolean) => {
+  setItemAvailability(prev => ({ ...prev, [item.uniqueKey]: checked })); // optimistic
   try {
-    const res = await fetch(`/api/menu/${itemId}`, {
+    const res = await fetch(itemUrl(item), {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ isAvailable: checked }),
@@ -169,7 +173,7 @@ const fetchMenu = useCallback(async () => {
     showError(`${checked ? "Item is now available" : "Item is now unavailable"}`, { type: checked ? 'success' : 'error' });
   } catch (error) {
     console.error("Failed to update availability:", error);
-    setItemAvailability(prev => ({ ...prev, [itemId]: !checked })); // revert
+    setItemAvailability(prev => ({ ...prev, [item.uniqueKey]: !checked })); // revert
     showError("Failed to update availability");
   }
 };
@@ -179,7 +183,7 @@ const fetchMenu = useCallback(async () => {
 const handleDelete = async (item: MenuItem) => {
   setActionError("");
   try {
-    const res = await fetch(`/api/menu/${item.itemId}`, { method: 'DELETE' });
+    const res = await fetch(itemUrl(item), { method: 'DELETE' });
 
     if (!res.ok) {
       const data = await res.json().catch(() => ({}));
@@ -330,7 +334,7 @@ const handleDelete = async (item: MenuItem) => {
 
             // Give the card its current availability status
             isAvailable={
-              itemAvailability[item.itemId] ?? true
+              itemAvailability[item.uniqueKey] ?? true
             }
             
 
@@ -340,7 +344,7 @@ const handleDelete = async (item: MenuItem) => {
             // We then call handleToggleAvailability()
             onToggle={(checked) =>
               handleToggleAvailability(
-                item.itemId,
+                item,
                 checked
               )
             }
@@ -424,7 +428,7 @@ const handleDelete = async (item: MenuItem) => {
         title="Delete menu item?"
         message={
           deletingItem
-            ? `"${deletingItem.itemName}" will be removed from the menu permanently.`
+            ? `"${deletingItem.itemName}" will be removed from the menu. Your past orders and sales numbers stay the same.`
             : ""
         }
         confirmLabel="Delete"

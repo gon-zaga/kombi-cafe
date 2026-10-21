@@ -54,14 +54,13 @@ export async function GET(request: Request) {
     JOIN sizes AS s ON mis.size_id = s.id
     LEFT JOIN recipes r ON r.menu_item_id = mi.id
     LEFT JOIN ingredients ing ON ing.id = r.ingredient_id
-    WHERE ($1::boolean OR $2::boolean OR mi.is_available = TRUE)
+    WHERE mi.deleted_at IS NULL
+      AND ($1::boolean OR $2::boolean OR mi.is_available = TRUE)
     GROUP BY mi.id, mi.name, mi.image_url, mi.is_available, c.name, s.id, s.label, s.oz, s.temperature, mis.price
     ORDER BY mi.id, s.id
     `,
     [all, includeUnavailable]
   );
-
-  console.log('GET /api/menu:', { all, includeUnavailable, rows: menuResult.rows.length });
 
   // Fetch add-ons
   const addonResult = await pool.query(
@@ -77,13 +76,12 @@ export async function GET(request: Request) {
       restock_threshold,
       (stock_qty <= restock_threshold) AS is_low_stock
     FROM add_ons
-    WHERE ($1::boolean OR $2::boolean OR is_available = TRUE)
+    WHERE deleted_at IS NULL
+      AND ($1::boolean OR $2::boolean OR is_available = TRUE)
     ORDER BY name
     `,
     [all, includeUnavailable]
   );
-
-  console.log('GET /api/menu addons:', { all, includeUnavailable, rows: addonResult.rows.length });
 
   const menuRows: MenuRow[] = menuResult.rows;
   const addonRows = addonResult.rows;

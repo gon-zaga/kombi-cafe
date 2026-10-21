@@ -14,7 +14,7 @@ export async function GET() {
     const result = await pool.query(`
       SELECT id AS "addOnsId", name, price, image_url
       FROM add_ons 
-      WHERE is_available = true
+      WHERE is_available = true AND deleted_at IS NULL
       ORDER BY name
     `);
 

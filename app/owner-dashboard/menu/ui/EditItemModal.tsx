@@ -181,7 +181,7 @@ function EditItemModal({ isOpen, onClose, item, onUpdated }: EditItemModalProps)
         body.categoryId = Number(categoryId);
       }
 
-      const response = await fetch(`/api/menu/${item.itemId}`, {
+      const response = await fetch(`/api/menu/${item.itemId}${isAddon ? '?type=addon' : ''}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(body),
