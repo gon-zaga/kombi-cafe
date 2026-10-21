@@ -289,16 +289,17 @@ export async function GET(request: Request) {
    try {
      const result = await pool.query(
        `
-       SELECT
-         o.id,
-         o.daily_number,
-         o.status,
-         o.table_number,
-         (o.created_at AT TIME ZONE 'UTC') AS created_at,
-         o.total,
-         o.payment_method,
-         o.gcash_reference,
-         o.gcash_photo,
+SELECT
+          o.id,
+          o.daily_number,
+          o.status,
+          o.table_number,
+          (o.created_at AT TIME ZONE 'UTC') AS created_at,
+          (o.completed_at AT TIME ZONE 'UTC') AS completed_at,
+          o.total,
+          o.payment_method,
+          o.gcash_reference,
+          o.gcash_photo,
 COALESCE(
             json_agg(
               json_build_object(
@@ -351,18 +352,19 @@ COALESCE(
        [from, to, status]
      );
 
-     const orders: OrderSummary[] = result.rows.map((row) => ({
-       id: row.id,
-       orderReference: String(row.daily_number).padStart(4, "0"),
-       status: row.status,
-       tableNumber: row.table_number,
-       createdAt: new Date(row.created_at).toISOString(),
-       total: Number(row.total),
-       paymentMethod: row.payment_method,
-       gcashReference: row.gcash_reference,
-       gcashPhoto: row.gcash_photo,
-       items: row.items,
-     }));
+const orders: OrderSummary[] = result.rows.map((row) => ({
+        id: row.id,
+        orderReference: String(row.daily_number).padStart(4, "0"),
+        status: row.status,
+        tableNumber: row.table_number,
+        createdAt: new Date(row.created_at).toISOString(),
+        completedAt: row.completed_at ? new Date(row.completed_at).toISOString() : null,
+        total: Number(row.total),
+        paymentMethod: row.payment_method,
+        gcashReference: row.gcash_reference,
+        gcashPhoto: row.gcash_photo,
+        items: row.items,
+      }));
 
     return NextResponse.json(orders);
   } catch (error) {

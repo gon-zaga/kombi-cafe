@@ -111,6 +111,7 @@ CREATE TABLE IF NOT EXISTS orders (
   payment_method VARCHAR(20) DEFAULT 'counter' CHECK (payment_method IN ('counter', 'gcash')),
   gcash_reference VARCHAR(50),
   created_at TIMESTAMP DEFAULT NOW(),
+  completed_at TIMESTAMP,
   UNIQUE (daily_number, order_date)
 );
 -- Order Items ---

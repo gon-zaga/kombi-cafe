@@ -58,6 +58,7 @@ export type OrderSummary = {
    // status only controls whether the barista board still shows it.
    status: "pending" | "preparing" | "ready" | "completed";
    createdAt: string;
+   completedAt: string | null;
    total: number;
    items: {
      name: string;

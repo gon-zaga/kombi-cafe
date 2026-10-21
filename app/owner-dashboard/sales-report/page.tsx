@@ -180,8 +180,8 @@ export default function SalesReport() {
     const exportSales = () => {
       const columns = [
         { header: "Order Ref", value: (o: OrderSummary) => o.orderReference, width: 12 },
-        { header: "Time", value: (o: OrderSummary) => new Date(o.createdAt).toLocaleString("en-PH"), width: 20 },
-        { header: "Date", value: (o: OrderSummary) => o.createdAt.slice(0, 10), width: 15 },
+        { header: "Time", value: (o: OrderSummary) => new Date(o.completedAt || o.createdAt).toLocaleString("en-PH"), width: 20 },
+        { header: "Date", value: (o: OrderSummary) => (o.completedAt || o.createdAt).slice(0, 10), width: 15 },
         { header: "Status", value: (o: OrderSummary) => o.status, width: 12 },
         { header: "Item Count", value: (o: OrderSummary) => (o.items || []).length, width: 12 },
         {
@@ -382,13 +382,13 @@ export default function SalesReport() {
                           <div className="flex items-start justify-between">
                             <div className="flex-1 min-w-0">
                               <p className="font-medium text-gray-900">Order #{order.orderReference}</p>
-                              <p className="text-sm text-gray-500">
-                                {new Date(order.createdAt).toLocaleString('en-PH', { 
-                                  hour: 'numeric', 
-                                  minute: '2-digit',
-                                  hour12: true 
-                                })} • {order.items.length} item{(order.items.length !== 1) ? 's' : ''}
-                              </p>
+<p className="text-sm text-gray-500">
+                                 {new Date(order.completedAt || order.createdAt).toLocaleString('en-PH', { 
+                                   hour: 'numeric', 
+                                   minute: '2-digit',
+                                   hour12: true 
+                                 })} • {order.items.length} item{(order.items.length !== 1) ? 's' : ''}
+                               </p>
                               {order.items.map((item, index) => (
                                 <div key={`${order.id}-item-${index}`} className="mt-1 text-sm text-gray-700 pl-2">
                                   • {item.quantity}x {item.name}{item.size ? ` (${item.size})` : ''}
