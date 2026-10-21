@@ -51,7 +51,7 @@ async function deductRecipeStock(
   menuItemId: number,
   sizeId: number,
   quantity: number
-): Promise<{ ingredientId: number; name: string; stockQty: number; threshold: number }[]> {
+): Promise<{ id: number; name: string; stockQty: number; threshold: number; type: 'ingredient' }[]> {
   // Lock the affected ingredient rows first (FOR UPDATE can't be combined with GROUP BY)
   await client.query(
     `SELECT i.id FROM ingredients i
@@ -91,7 +91,7 @@ async function deductRecipeStock(
     throw new Error("Not enough stock");
   }
 
-  const lowStockAlerts: { ingredientId: number; name: string; stockQty: number; threshold: number }[] = [];
+  const lowStockAlerts: { id: number; name: string; stockQty: number; threshold: number; type: 'ingredient' }[] = [];
 
   for (const row of rowsResult.rows) {
     const currentStock = Number(row.stock_qty);
@@ -106,15 +106,63 @@ async function deductRecipeStock(
 
     if (currentStock > threshold && newStock <= threshold) {
       lowStockAlerts.push({
-        ingredientId: row.id,
+        id: row.id,
         name: row.name,
         stockQty: newStock,
         threshold,
+        type: 'ingredient',
       });
     }
   }
 
   return lowStockAlerts;
+}
+
+/* Removes stock for one add-on. Throws when stock is insufficient.
+   Returns low-stock alert if the add-on crossed its threshold. */
+async function deductAddonStock(
+  client: PoolClient,
+  addOnId: number,
+  quantity: number
+): Promise<{ id: number; name: string; stockQty: number; threshold: number; type: 'addon' }[]> {
+  // Lock the add-on row
+  await client.query(`SELECT id FROM add_ons WHERE id = $1 FOR UPDATE`, [addOnId]);
+
+  const result = await client.query(
+    `SELECT id, name, stock_qty, restock_threshold FROM add_ons WHERE id = $1`,
+    [addOnId]
+  );
+
+  if (result.rows.length === 0) {
+    throw new Error(`Add-on ${addOnId} not found`);
+  }
+
+  const row = result.rows[0];
+  const currentStock = Number(row.stock_qty);
+  const needed = quantity;
+  const threshold = Number(row.restock_threshold);
+
+  if (currentStock < needed) {
+    throw new Error(`Not enough stock: add-on ${row.name}`);
+  }
+
+  const newStock = currentStock - needed;
+  await client.query(
+    `UPDATE add_ons SET stock_qty = stock_qty - $1 WHERE id = $2`,
+    [needed, addOnId]
+  );
+
+  const alerts: { id: number; name: string; stockQty: number; threshold: number; type: 'addon' }[] = [];
+  if (currentStock > threshold && newStock <= threshold) {
+    alerts.push({
+      id: row.id,
+      name: row.name,
+      stockQty: newStock,
+      threshold,
+      type: 'addon',
+    });
+  }
+  return alerts;
 }
 
 /* Today in Manila as "YYYY-MM-DD". */
@@ -448,7 +496,7 @@ if (!isOpen) {
 
       const orderId = orderResult.rows[0].id;
       let runningTotal = 0;
-      const allLowStockAlerts: { ingredientId: number; name: string; stockQty: number; threshold: number }[] = [];
+      const allLowStockAlerts: { id: number; name: string; stockQty: number; threshold: number; type: 'ingredient' | 'addon' }[] = [];
 
       /* Step 3 + 4: price each item and add-on server-side. */
       for (const item of body.items) {
@@ -506,7 +554,7 @@ if (!isOpen) {
 
         for (const addOnId of item.addOnIds) {
           const addOnPriceResult = await client.query(
-            `SELECT price FROM add_ons WHERE id = $1;`,
+            `SELECT price, is_available, name FROM add_ons WHERE id = $1;`,
             [addOnId]
           );
 
@@ -514,8 +562,16 @@ if (!isOpen) {
             throw new Error(`No add-on found for id ${addOnId}`);
           }
 
+          if (addOnPriceResult.rows[0].is_available !== true) {
+            throw new Error(`Unavailable add-on: ${addOnPriceResult.rows[0].name}`);
+          }
+
           const addOnPrice = Number(addOnPriceResult.rows[0].price);
           runningTotal += addOnPrice * item.quantity;
+
+          /* Deduct add-on stock */
+          const addonAlerts = await deductAddonStock(client, addOnId, item.quantity);
+          allLowStockAlerts.push(...addonAlerts);
 
           await client.query(
             `
