@@ -32,7 +32,12 @@ export type MenuItem = {
     oz: number | null;
     temperature: string | null;
     price: number;
-  }[]
+  }[];
+  // Type discriminator: 'menu_item' for regular items, 'addon' for add-ons
+  type: 'menu_item' | 'addon';
+  // Add-on specific fields (only populated when type === 'addon')
+  stockQty?: number;
+  restockThreshold?: number;
 }
 
 // One add-on attached to an order line, as it was charged:
