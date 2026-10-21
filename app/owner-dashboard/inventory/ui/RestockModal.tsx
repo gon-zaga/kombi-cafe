@@ -115,7 +115,7 @@ function RestockModal({ ingredient, onClose, onRestocked }: RestockModalProps) {
               htmlFor="restock-amount"
               className="block text-sm font-medium text-gray-700 mb-1"
             >
-              Amount to add ({ingredient.unit})
+              Amount to add ({ingredient.unit}) <span className="text-red-600" aria-hidden="true">*</span>
             </label>
             <input
               id="restock-amount"

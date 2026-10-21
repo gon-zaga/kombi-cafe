@@ -61,6 +61,8 @@ export async function GET(request: Request) {
     [all, includeUnavailable]
   );
 
+  console.log('GET /api/menu:', { all, includeUnavailable, rows: menuResult.rows.length });
+
   // Fetch add-ons
   const addonResult = await pool.query(
     `
@@ -80,6 +82,8 @@ export async function GET(request: Request) {
     `,
     [all, includeUnavailable]
   );
+
+  console.log('GET /api/menu addons:', { all, includeUnavailable, rows: addonResult.rows.length });
 
   const menuRows: MenuRow[] = menuResult.rows;
   const addonRows = addonResult.rows;

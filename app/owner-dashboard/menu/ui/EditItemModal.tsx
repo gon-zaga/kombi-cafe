@@ -152,7 +152,7 @@ function EditItemModal({ isOpen, onClose, item, onUpdated }: EditItemModalProps)
       }));
 
     if (isAddon) {
-      if (!name || sizes.length === 0) {
+      if (!name || !prices[0]) {
         showError("Please fill in the item name and price.");
         return;
       }
@@ -226,7 +226,7 @@ function EditItemModal({ isOpen, onClose, item, onUpdated }: EditItemModalProps)
         <form onSubmit={handleSubmit} className="space-y-4">
 
           <div>
-            <label className="block text-sm font-semibold text-gray-900 mb-1">Edit Name</label>
+            <label className="block text-sm font-semibold text-gray-900 mb-1">Edit Name <span className="text-red-600" aria-hidden="true">*</span></label>
             <input
               type="text"
               value={name}
@@ -237,7 +237,7 @@ function EditItemModal({ isOpen, onClose, item, onUpdated }: EditItemModalProps)
           </div>
 
           <div>
-            <label className="block text-sm font-semibold text-gray-900 mb-1">Edit Category</label>
+            <label className="block text-sm font-semibold text-gray-900 mb-1">Edit Category <span className="text-red-600" aria-hidden="true">*</span></label>
             <select
               value={categoryId}
               onChange={(e) => setCategoryId(e.target.value)}
@@ -254,18 +254,18 @@ function EditItemModal({ isOpen, onClose, item, onUpdated }: EditItemModalProps)
           {/* File picker + pasted path. Whichever is used, the value is a
               string stored in menu_items.image_url. - Hidden for add-ons */}
           {!isAddon && (
-            <ImagePicker
-              label="Item Image"
-              value={imageUrl}
-              onChange={setImageUrl}
-              itemName={name}
-            />
+            <>
+              <label className="block text-sm font-semibold text-gray-900 mb-1">
+                Item Image <span className="text-red-600" aria-hidden="true">*</span>
+              </label>
+              <ImagePicker value={imageUrl} onChange={setImageUrl} itemName={name} />
+            </>
           )}
 
           {/* Sizes & Prices - only show for non-addon items */}
           {!isAddon && (
             <div>
-              <label className="block text-sm font-semibold text-gray-900 mb-2">Sizes & Prices</label>
+              <label className="block text-sm font-semibold text-gray-900 mb-2">Sizes & Prices <span className="text-red-600" aria-hidden="true">*</span></label>
               <div className="space-y-2">
                 {sizeOptions.map((s) => {
                   const isRegular = s.oz === null && s.temperature === null;
@@ -314,7 +314,7 @@ function EditItemModal({ isOpen, onClose, item, onUpdated }: EditItemModalProps)
           {/* Add-on Price - only show for addon items */}
           {isAddon && (
             <div>
-              <label className="block text-sm font-semibold text-gray-900 mb-2">Price</label>
+              <label className="block text-sm font-semibold text-gray-900 mb-2">Price <span className="text-red-600" aria-hidden="true">*</span></label>
               <input
                 type="number"
                 min="0"

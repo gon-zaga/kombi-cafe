@@ -117,7 +117,7 @@ export default function EditStaffModal({ staff, isOpen, onClose, onUpdated }: Ed
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Username</label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Username <span className="text-red-600" aria-hidden="true">*</span></label>
             <input
               type="text"
               value={username}
@@ -140,7 +140,7 @@ export default function EditStaffModal({ staff, isOpen, onClose, onUpdated }: Ed
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Role</label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Role <span className="text-red-600" aria-hidden="true">*</span></label>
             <select
               value={role}
               onChange={(e) => setRole(e.target.value as "barista" | "admin")}

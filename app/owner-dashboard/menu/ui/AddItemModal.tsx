@@ -363,7 +363,7 @@ function AddItemModal({ isOpen, onClose, onCreated }: AddItemModalProps) {
           {/* Item Name */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
-              Item Name
+              Item Name <span className="text-red-600" aria-hidden="true">*</span>
             </label>
 
             <input
@@ -386,7 +386,7 @@ function AddItemModal({ isOpen, onClose, onCreated }: AddItemModalProps) {
           {/* Category */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
-              Category
+              Category <span className="text-red-600" aria-hidden="true">*</span>
             </label>
 
             <select
@@ -424,18 +424,23 @@ function AddItemModal({ isOpen, onClose, onCreated }: AddItemModalProps) {
           </div>
 
 
-          {/* File picker + pasted path. Whichever is used, the value is a
+{/* File picker + pasted path. Whichever is used, the value is a
               string stored in menu_items.image_url. - Hidden for add-ons */}
-          {!isAddon && (
-            <ImagePicker label="Image" value={imageUrl} onChange={setImageUrl} itemName={name} />
-          )}
+            {!isAddon && (
+              <>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Image <span className="text-red-600" aria-hidden="true">*</span>
+                </label>
+                <ImagePicker value={imageUrl} onChange={setImageUrl} itemName={name} />
+              </>
+            )}
 
 
           {/* Sizes and Prices - only show for non-addon items */}
           {!isAddon && (
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                Available Sizes & Prices
+                Available Sizes & Prices <span className="text-red-600" aria-hidden="true">*</span>
               </label>
 
               <div className="space-y-2">
@@ -491,7 +496,7 @@ function AddItemModal({ isOpen, onClose, onCreated }: AddItemModalProps) {
           {isAddon && (
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                Price
+                Price <span className="text-red-600" aria-hidden="true">*</span>
               </label>
               <input
                 type="number"
@@ -544,7 +549,7 @@ function AddItemModal({ isOpen, onClose, onCreated }: AddItemModalProps) {
           {!isAddon && (
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                Ingredients
+                Ingredients <span className="text-red-600" aria-hidden="true">*</span>
               </label>
               <div className="space-y-2">
                 {recipeRows.length === 0 ? (

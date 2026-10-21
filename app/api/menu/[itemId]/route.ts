@@ -144,6 +144,7 @@ export async function GET(
       return NextResponse.json({ error: "Item not found" }, { status: 404 });
     }
 
+    console.log('GET /api/menu/[itemId]:', { id, isAvailable: item.isAvailable });
     return NextResponse.json(item);
   } catch (error) {
     console.error("Failed to fetch item:", error);
@@ -223,6 +224,7 @@ export async function PATCH(
       }
     } else {
       // Update menu item (existing logic)
+      console.log('PATCH menu item:', { id, name, categoryId, imageUrl, isAvailable });
       await client.query(
         `UPDATE menu_items
          SET name = COALESCE($1, name),

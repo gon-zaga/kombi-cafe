@@ -137,7 +137,7 @@ function EditIngredientForm({
               htmlFor="edit-name"
               className="block text-sm font-medium text-gray-700 mb-1"
             >
-              Ingredient Name
+              Ingredient Name <span className="text-red-600" aria-hidden="true">*</span>
             </label>
             <input
               id="edit-name"
@@ -155,7 +155,7 @@ function EditIngredientForm({
               htmlFor="edit-unit"
               className="block text-sm font-medium text-gray-700 mb-1"
             >
-              Unit
+              Unit <span className="text-red-600" aria-hidden="true">*</span>
             </label>
             <select
               id="edit-unit"
@@ -178,7 +178,7 @@ function EditIngredientForm({
               htmlFor="edit-threshold"
               className="block text-sm font-medium text-gray-700 mb-1"
             >
-              Restock Threshold
+              Restock Threshold <span className="text-red-600" aria-hidden="true">*</span>
             </label>
             <input
               id="edit-threshold"

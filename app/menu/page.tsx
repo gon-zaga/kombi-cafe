@@ -48,7 +48,7 @@ export default function Home() {
     }
   }, []);
 
-  usePolling(fetchMenu, 5000);
+  usePolling(fetchMenu, 2000);
 
   // Search is category-independent: a match in any section counts, so the bar
   // is the only thing that changes the displayed grid
