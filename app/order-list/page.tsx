@@ -119,7 +119,7 @@ function OrdersLists() {
 
       {
         orders.length > 0 && (
-          <PlaceOrderButton grandtotal={grandtotal} />
+          <PlaceOrderButton grandtotal={grandtotal} orders={orders} addOns={addOns} />
         )
       }
 
