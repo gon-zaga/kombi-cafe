@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import OwnerHeader from "../ui/OwnerHeader";
 import DateFilterBar from "@/app/ui/DateFilterBar";
 import { exportTimestamp } from "@/app/lib/utils";
@@ -8,6 +8,7 @@ import { downloadXlsx } from "@/app/lib/xlsx";
 import type { CustomRange, DateFilter } from "@/app/lib/dateFilter";
 import { buildOrdersQuery, describeRange, rangeSlug } from "@/app/lib/dateFilter";
 import type { OrderSummary } from "@/app/lib/types";
+import { usePolling } from "@/app/lib/usePolling";
 
 // --- Helper Components ---
 
@@ -90,49 +91,41 @@ export default function SalesReport() {
   const [isLoading, setIsLoading] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
 
-   const ordersQuery = useMemo(() => {
-     const baseQuery = buildOrdersQuery(dateFilter, customRange);
-     if (baseQuery === null) {
-       // For custom range with no dates selected, don't fetch anything
-       return null;
-     }
-     // Always filter for completed orders only
-     const separator = baseQuery.includes('?') ? '&' : '?';
-     return `${baseQuery}${separator}status=completed`;
-   }, [dateFilter, customRange]);
+const ordersQuery = useMemo(() => {
+      const baseQuery = buildOrdersQuery(dateFilter, customRange);
+      if (baseQuery === null) {
+        // For custom range with no dates selected, don't fetch anything
+        return null;
+      }
+      // Always filter for completed orders only
+      const separator = baseQuery.includes('?') ? '&' : '?';
+      return `${baseQuery}${separator}status=completed`;
+    }, [dateFilter, customRange]);
 
-   useEffect(() => {
-     if (!ordersQuery) return;
+    const fetchOrders = useCallback(async () => {
+      if (!ordersQuery) return;
 
-     let isMounted = true;
+      setIsLoading(true);
+      setLoadError("");
 
-     Promise.resolve().then(() => {
-       if (isMounted) {
-         setIsLoading(true);
-       }
-     });
+      try {
+        const response = await fetch(`/api/orders${ordersQuery}`);
+        if (!response.ok) throw new Error(`Request failed (${response.status})`);
+        const data = await response.json();
+        if (Array.isArray(data)) setOrders(data);
+      } catch (error) {
+        console.error("Failed to fetch orders:", error);
+        setLoadError("Could not load orders for this range. Please try again.");
+      } finally {
+        setIsLoading(false);
+      }
+    }, [ordersQuery]);
 
-     fetch(`/api/orders${ordersQuery}`)
-       .then((r) => {
-         if (!r.ok) throw new Error(`Request failed (${r.status})`);
-         return r.json();
-       })
-       .then((data) => {
-         if (!isMounted) return;
-         if (Array.isArray(data)) setOrders(data);
-       })
-       .catch((error) => {
-         console.error("Failed to fetch orders:", error);
-         if (isMounted) setLoadError("Could not load orders for this range. Please try again.");
-       })
-       .finally(() => {
-         if (isMounted) setIsLoading(false);
-       });
+    useEffect(() => {
+      fetchOrders();
+    }, [fetchOrders]);
 
-     return () => {
-       isMounted = false;
-     };
-   }, [ordersQuery]);
+    usePolling(fetchOrders, 2000, !!ordersQuery);
 
   const handleSelectFilter = (f: DateFilter) => {
     setLoadError("");
