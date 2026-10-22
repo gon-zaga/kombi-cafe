@@ -14,6 +14,7 @@ import { useTableStore } from "@/store/TableStore";
 import PaymentMethodSelector, {
    type PaymentMethod,
  } from "./PaymentMethodSelector";
+import ConfirmModal from "@/app/ui/ConfirmModal";
 
 function PlaceOrderButton({ grandtotal }: { grandtotal: number }) {
    const router = useRouter();
@@ -23,12 +24,11 @@ function PlaceOrderButton({ grandtotal }: { grandtotal: number }) {
 
    const [isSubmitting, setIsSubmitting] = useState(false);
    const [error, setError] = useState("");
-   // The reference field is only meaningful for GCash, but it is kept
-   // uncontrolled here so the parent can clear it if the method changes
    const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("counter");
    const [gcashReference, setGcashReference] = useState("");
    const [gcashError, setGcashError] = useState("");
    const [gcashPhoto, setGcashPhoto] = useState<string | null>(null);
+   const [showConfirm, setShowConfirm] = useState(false);
 
    // Clear GCash fields when switching payment method
    useEffect(() => {
@@ -39,7 +39,7 @@ function PlaceOrderButton({ grandtotal }: { grandtotal: number }) {
      }
    }, [paymentMethod]);
 
-     const handlePlaceOrder = async () => {
+   const handlePlaceOrder = async () => {
      setIsSubmitting(true);
      setError("");
      setGcashError("");
@@ -103,7 +103,20 @@ function PlaceOrderButton({ grandtotal }: { grandtotal: number }) {
     }
   };
 
-  return (
+  const handleConfirmClick = () => {
+    setShowConfirm(true);
+  };
+
+  const handleConfirmSubmit = () => {
+    setShowConfirm(false);
+    handlePlaceOrder();
+  };
+
+  const handleConfirmCancel = () => {
+    setShowConfirm(false);
+  };
+
+return (
     <div className="px-4">
       {error && (
         <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-2 rounded-lg text-sm mb-2">
@@ -129,12 +142,24 @@ function PlaceOrderButton({ grandtotal }: { grandtotal: number }) {
        />
 
       <button
-        onClick={handlePlaceOrder}
+        onClick={handleConfirmClick}
         disabled={isSubmitting}
         className="w-full mt-3 bg-amber-800 text-white text-lg font-semibold py-4 rounded-2xl active:opacity-80 disabled:opacity-50"
       >
         {isSubmitting ? "Placing Order..." : `Place Order · ₱${grandtotal.toFixed(2)}`}
       </button>
+
+      <ConfirmModal
+        isOpen={showConfirm}
+        title="Confirm Order"
+        message={`Place order for Table ${selectedTable}? Total: ₱${grandtotal.toFixed(2)}`}
+        confirmLabel="Confirm"
+        cancelLabel="Cancel"
+        tone="primary"
+        delayMs={2000}
+        onConfirm={handleConfirmSubmit}
+        onCancel={handleConfirmCancel}
+      />
     </div>
   );
 }
