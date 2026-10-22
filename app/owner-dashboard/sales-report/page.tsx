@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import OwnerHeader from "../ui/OwnerHeader";
 import DateFilterBar from "@/app/ui/DateFilterBar";
 import { exportTimestamp } from "@/app/lib/utils";
@@ -88,7 +88,8 @@ export default function SalesReport() {
   const [customRange, setCustomRange] = useState<CustomRange | null>(null);
   const [orders, setOrders] = useState<OrderSummary[]>([]);
   const [loadError, setLoadError] = useState("");
-  const [isLoading, setIsLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+  const isInitialLoadRef = useRef(true);
   const [menuOpen, setMenuOpen] = useState(false);
 
 const ordersQuery = useMemo(() => {
@@ -105,7 +106,9 @@ const ordersQuery = useMemo(() => {
     const fetchOrders = useCallback(async () => {
       if (!ordersQuery) return;
 
-      setIsLoading(true);
+      if (isInitialLoadRef.current) {
+        setIsLoading(true);
+      }
       setLoadError("");
 
       try {
@@ -113,15 +116,21 @@ const ordersQuery = useMemo(() => {
         if (!response.ok) throw new Error(`Request failed (${response.status})`);
         const data = await response.json();
         if (Array.isArray(data)) setOrders(data);
+        if (isInitialLoadRef.current) {
+          isInitialLoadRef.current = false;
+          setIsLoading(false);
+        }
       } catch (error) {
         console.error("Failed to fetch orders:", error);
         setLoadError("Could not load orders for this range. Please try again.");
-      } finally {
-        setIsLoading(false);
+        if (isInitialLoadRef.current) {
+          setIsLoading(false);
+        }
       }
     }, [ordersQuery]);
 
     useEffect(() => {
+      isInitialLoadRef.current = true;
       fetchOrders();
     }, [fetchOrders]);
 
