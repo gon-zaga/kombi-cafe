@@ -100,7 +100,7 @@ export default function ImagePicker({
 
           <p className="text-xs text-gray-500 mt-1">
             Pick a file, or paste a path/URL. Uploaded photos are resized to
-            300px max. Extreme aspect ratios (over 3:1) are rejected.
+            400px max. Extreme aspect ratios (over 3:1) are rejected.
           </p>
 
           {/* The name the image is known by, derived from the drink name.

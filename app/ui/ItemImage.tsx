@@ -17,7 +17,8 @@ interface ItemImageProps {
   src: string | null;
   alt: string;
 
-  // next/image requires explicit dimensions unless fill is used
+  // next/image requires explicit dimensions unless fill is used.
+  // When omitted, component uses fluid sizing (fill container, aspect-ratio from parent).
   width?: number;
   height?: number;
   className?: string;
@@ -27,12 +28,13 @@ interface ItemImageProps {
 export default function ItemImage({
   src,
   alt,
-  width = 110,
-  height = 110,
+  width,
+  height,
   className,
   loading = "lazy",
 }: ItemImageProps) {
   const source = src ?? "/drinks/no-drink-image.svg";
+  const isFluid = width === undefined || height === undefined;
 
   if (isDataUrl(source)) {
     return (
@@ -44,11 +46,24 @@ export default function ItemImage({
         loading={loading}
         className={className}
         style={{
-          width: `${width}px`,
-          height: `${height}px`,
+          ...(isFluid ? {} : { width: `${width}px`, height: `${height}px` }),
           objectFit: 'cover',
           objectPosition: 'center',
         } as React.CSSProperties}
+      />
+    );
+  }
+
+  if (isFluid) {
+    return (
+      <Image
+        src={source}
+        alt={alt}
+        fill
+        loading={loading}
+        className={className}
+        sizes="100vw"
+        style={{ objectFit: 'cover', objectPosition: 'center' } as React.CSSProperties}
       />
     );
   }

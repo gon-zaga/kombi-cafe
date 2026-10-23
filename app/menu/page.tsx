@@ -44,7 +44,11 @@ export default function Home() {
       const response = await fetch('/api/menu?unavailable=true', { cache: 'no-store' });
       if (!response.ok) throw new Error(`Request failed (${response.status})`);
       const data = await response.json();
-      if (Array.isArray(data)) setMenuItems(data);
+      if (Array.isArray(data)) {
+        // Filter out add-ons (type === 'addon') - they should only appear as customization options
+        const menuOnly = data.filter((item: MenuItemType) => item.type !== 'addon');
+        setMenuItems(menuOnly);
+      }
     } catch (error) {
       console.error("Failed to fetch menu:", error);
     } finally {

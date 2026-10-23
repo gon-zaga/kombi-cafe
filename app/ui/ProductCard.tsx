@@ -50,14 +50,12 @@ function ProductCard({
 
   const body = (
     <>
-      <div className="flex justify-center items-center bg-white rounded-xl p-2 relative overflow-hidden w-28 h-28 shrink-0">
+      <div className="flex justify-center items-center bg-white rounded-xl p-2 relative overflow-hidden w-full max-w-[200px] aspect-[5/7] shrink-0">
         <ItemImage
           src={imageSrc}
           alt={itemName}
-          width={110}
-          height={110}
           loading="eager"
-          className={isNotPurchasable ? "opacity-40 grayscale" : ""}
+          className={isNotPurchasable ? "opacity-40 grayscale w-full h-full object-cover" : "w-full h-full object-cover"}
         />
         
         {/* Unavailable overlay */}
