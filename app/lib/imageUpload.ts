@@ -6,11 +6,11 @@
 // that as JSON would bloat the request and the row it lands in. Downscaling to
 // 600px WebP first brings a typical drink photo to ~40 KB.
 
-// Longest edge of the stored image. Menu cards render at 110-140px, so 600px
+// Longest edge of the stored image. Menu cards render at 110px, so 400px
 // still covers a high-DPI screen with room to spare.
-const MAX_DIMENSION = 600;
+const MAX_DIMENSION = 400;
 
-const QUALITY = 0.8;
+const QUALITY = 0.7;
 
 // Rejects absurd inputs before decoding. 10 MB is well past any real photo a
 // café owner would pick, and decoding a huge file can hang the tab.

@@ -8,9 +8,9 @@
 //   - a path under /public ("/drinks/kaff-latte.png")
 
 // Ceiling on an inline upload. image_url is a TEXT column, so without this a
-// client could push an arbitrarily large row. A 600px WebP is ~40-80 KB of
+// client could push an arbitrarily large row. A 400px WebP at 0.7 quality is ~30-50 KB of
 // base64, so this only fires on something unexpected.
-export const MAX_DATA_URL_CHARS = 1_500_000;
+export const MAX_DATA_URL_CHARS = 500_000;
 
 // Returns an error message for an unusable value, or null when it is fine.
 // undefined/null/"" mean "no image supplied", which every caller handles itself
