@@ -16,6 +16,7 @@ interface OrderState {
   orders: OrderItem[],
   addToOrder: (order: OrderItem) => void;
   removeOrder: (order: OrderItem) => void;
+  updateOrder: (originalKey: string, order: OrderItem) => void;
   clearOrder: () => void;
 }
 
@@ -55,7 +56,44 @@ export const useOrderStore = create<OrderState>()(
         return { orders: deleteOrder }
       }),
 
-      clearOrder: () => set(() => ({ orders: [] }))
+      clearOrder: () => set(() => ({ orders: [] })),
+
+      updateOrder: (originalKey, order) => set((state) => {
+        // originalKey format: "itemId-sizeId-addOnIdsCommaSeparated"
+        const [originalItemIdStr, originalSizeIdStr, originalAddOnsStr] = originalKey.split('-', 3);
+        const originalItemId = Number(originalItemIdStr);
+        const originalSizeId = Number(originalSizeIdStr);
+        const originalAddOns = originalAddOnsStr 
+          ? originalAddOnsStr.split(',').map(Number).filter(n => !isNaN(n))
+          : [];
+
+        // Find and remove the original order
+        const filteredOrders = state.orders.filter(
+          (o) =>
+            o.itemId !== originalItemId ||
+            o.selectedSize.sizeId !== originalSizeId ||
+            JSON.stringify(o.selectedAddOn) !== JSON.stringify(originalAddOns)
+        );
+
+        // Check if the updated order matches an existing different order (merge quantities)
+        const existing = filteredOrders.find(
+          (i) =>
+            i.itemId === order.itemId &&
+            i.selectedSize.sizeId === order.selectedSize.sizeId &&
+            JSON.stringify(i.selectedAddOn) === JSON.stringify(order.selectedAddOn)
+        );
+
+        if (existing) {
+          return {
+            orders: filteredOrders.map((i) =>
+              i === existing ? { ...i, quantity: i.quantity + order.quantity } : i
+            )
+          }
+        }
+
+        // Add the updated order
+        return { orders: [...filteredOrders, order] };
+      }),
     }),
     {
       name: 'order-store',

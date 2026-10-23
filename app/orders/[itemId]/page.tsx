@@ -2,6 +2,7 @@
 
 // Customer order page: loads one menu item + add-ons, then lets the user pick size/add-ons and add to cart
 import React, { useCallback, useEffect, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import ItemHeader from "./_ui/ItemHeader";
 import ItemInfo from "./_ui/ItemInfo";
 import SizeSelector from "./_ui/SizeSelector";
@@ -35,11 +36,23 @@ type IngredientStock = {
 
 export default function OrderPage({ params }: { params: Promise<{ itemId: number }> }) {
   const { itemId } = React.use(params);
+  const searchParams = useSearchParams();
+
+  // Detect edit mode from URL params
+  const editSizeId = searchParams.get('sizeId');
+  const editAddOns = searchParams.get('addOns');
+  const editQty = searchParams.get('qty');
+  const isEditing = editSizeId !== null && editAddOns !== null && editQty !== null;
+
+  // Build original order key for updateOrder
+  const originalOrderKey = isEditing
+    ? `${itemId}-${editSizeId}-${editAddOns}`
+    : null;
 
   const [item, setItem] = useState<MenuItem | null>(null);
   const [addOns, setAddOns] = useState<{ addOnsId: number; name: string; price: number; imgUrl: string }[]>([]);
-  const [selectedAddOn, setSelectedAddOn] = useState<number[]>([]);
-  const [quantity, setQuantity] = useState(1);
+  const [selectedAddOn, setSelectedAddOn] = useState<number[]>(isEditing ? editAddOns.split(',').map(Number) : []);
+  const [quantity, setQuantity] = useState(isEditing ? Number(editQty) : 1);
   const [selectedSize, setSelectedSize] = useState<Size | null>(null);
   const [loading, setLoading] = useState(true);
   const [tableModalOpen, setTableModalOpen] = useState(false);
@@ -78,7 +91,13 @@ useEffect(() => {
 
           if (foundItem) {
             setItem(foundItem);
-            setSelectedSize(foundItem.sizes[0] ?? null);
+            // In edit mode, pre-select the size from URL params
+            if (isEditing && editSizeId) {
+              const size = foundItem.sizes.find(s => s.sizeId === Number(editSizeId));
+              setSelectedSize(size ?? foundItem.sizes[0] ?? null);
+            } else {
+              setSelectedSize(foundItem.sizes[0] ?? null);
+            }
           } else {
             setItem(null);
             setSelectedSize(null);
@@ -291,20 +310,22 @@ useEffect(() => {
         />
       </div>
 
-       <div className="fixed bottom-0 left-0 right-0 bg-cream">
-         <AddToOrderButton
-           itemId={Number(itemId)}
-           itemName={item.itemName}
-           itemImg={item.itemImg ?? '/drinks/no-drink-image.svg'}
-           selectedSize={selectedSize}
-           selectedAddOn={selectedAddOn}
-           quantity={quantity}
-           totalPrice={totalPrice}
-           addOnsTotal={addOnsTotal}
-           basePrice={basePrice}
-           disabled={maxOrderableQuantity === 0}
-         />
-       </div>
+<div className="fixed bottom-0 left-0 right-0 bg-cream">
+          <AddToOrderButton
+            itemId={Number(itemId)}
+            itemName={item.itemName}
+            itemImg={item.itemImg ?? '/drinks/no-drink-image.svg'}
+            selectedSize={selectedSize}
+            selectedAddOn={selectedAddOn}
+            quantity={quantity}
+            totalPrice={totalPrice}
+            addOnsTotal={addOnsTotal}
+            basePrice={basePrice}
+            disabled={maxOrderableQuantity === 0}
+            isEditing={isEditing}
+            originalOrderKey={originalOrderKey}
+          />
+        </div>
     </section>
   );
 }
