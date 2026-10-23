@@ -200,6 +200,9 @@ export default function BestSellers({ menuItems }: { menuItems: MenuItem[] }) {
         style={{
           cursor: isDragging ? 'grabbing' : 'grab',
           touchAction: 'none',
+          overflow: 'hidden',
+          maxWidth: '1400px',
+          margin: '0 auto',
         } as React.CSSProperties}
         onPointerDown={handlePointerDown}
         onPointerMove={handlePointerMove}
