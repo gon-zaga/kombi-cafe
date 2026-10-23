@@ -469,32 +469,34 @@ if (!isOpen) {
       const dailyNumber = dailyNumberResult.rows[0].last_number;
 
        /* Step 2: insert the order with a placeholder total of 0. */
-       const orderResult = await client.query(
-         `
-         INSERT INTO orders (
-           daily_number,
-           order_date,
-           total,
-           status,
-           table_number,
-           payment_method,
-           gcash_reference,
-           gcash_photo
-         )
-         VALUES (
-           $1,
-           (NOW() AT TIME ZONE 'Asia/Manila')::date,
-           0,
-           'pending',
-           $2,
-           $3,
-           $4,
-           $5
-         )
-         RETURNING id;
-         `,
-         [dailyNumber, body.table_number, paymentMethod, gcashReference, body.gcash_photo]
-       );
+        const orderResult = await client.query(
+          `
+          INSERT INTO orders (
+            daily_number,
+            order_date,
+            total,
+            status,
+            table_number,
+            payment_method,
+            gcash_reference,
+            gcash_photo,
+            created_at
+          )
+          VALUES (
+            $1,
+            (NOW() AT TIME ZONE 'Asia/Manila')::date,
+            0,
+            'pending',
+            $2,
+            $3,
+            $4,
+            $5,
+            NOW() AT TIME ZONE 'UTC'
+          )
+          RETURNING id;
+          `,
+          [dailyNumber, body.table_number, paymentMethod, gcashReference, body.gcash_photo]
+        );
 
       const orderId = orderResult.rows[0].id;
       let runningTotal = 0;
