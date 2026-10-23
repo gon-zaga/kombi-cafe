@@ -7,7 +7,7 @@ function MenuItem({ active, menuItems }: { active: string, menuItems: MenuItemTy
   );
 
   return (
-    <div className="px-3 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-3 gap-6 max-w-5xl mx-auto">
+    <div className="px-2 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-3 gap-8 max-w-5xl mx-auto">
       {active === "All"
         ? menuItems.map((item) => <ProductCard item={item} key={item.uniqueKey} />)
         : filtered.map((item) => <ProductCard item={item} key={item.uniqueKey} />)}
