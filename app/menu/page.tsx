@@ -105,7 +105,7 @@ export default function Home() {
         <hr className='mb-3' />
 
         {/* Skeleton grid */}
-        <div className="px-5 grid grid-cols-2 gap-4">
+        <div className="px-3 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-3 gap-6 max-w-5xl mx-auto">
           {Array.from({ length: SKELETON_COUNT }).map((_, i) => (
             <ProductCardSkeleton key={i} />
           ))}
@@ -231,13 +231,13 @@ export default function Home() {
 
       <hr className='mb-3' />
 
-      {/* MenuItem renders the category-filtered grid; the search
+{/* MenuItem renders the category-filtered grid; the search
           results mirror its grid shape, so toggling search never relayouts */}
-      {!searching ? (
-        <MenuItem active={active} menuItems={menuItems} />
-      ) : (
-        <div className="px-5 grid grid-cols-2 gap-4">
-          {searchedItems.length > 0 ? (
+       {!searching ? (
+         <MenuItem active={active} menuItems={menuItems} />
+       ) : (
+         <div className="px-3 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-3 gap-6 max-w-5xl mx-auto">
+           {searchedItems.length > 0 ? (
             searchedItems.map((item) => (
               <ProductCard key={item.uniqueKey} item={item} />
             ))
