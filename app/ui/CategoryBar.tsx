@@ -17,33 +17,30 @@ function CategoryBar({active,   setActive}: {active: string, setActive: (categor
     "Snacks"
   ];
 
-  return(
-    <>
-      <section className="text-dark-brown">
-        <hr className="border-dark-brown"/>
+  return (
+    <div>
+      <section className="text-dark-brown sticky top-0 z-20 bg-cream/95 backdrop-blur-sm border-b border-dark-brown/20">
         <div className="w-full flex items-center">
-          <button onClick={() => router.push('/order-queue')}>
-            <section className="flex flex-col justify-center items-center p-1 gap-0.5 shrink-0">
-            <span className="text-xs">Queue Display</span>
-           </section>
+          <button onClick={() => router.push('/order-queue')} className="shrink-0 flex flex-col justify-center items-center p-1 gap-0.5">
+            <span className="text-xs font-roboto-condensed tracking-wide text-dark-brown/70 hover:text-dark-brown transition-colors">
+              Queue Display
+            </span>
           </button>
-          {/*VERTICAL DIVIDER*/}
-          <div className="h-10 flex border-l border-dark-brown mx-2.5 shrink-0"></div>
-          <section className="flex overflow-x-auto scrollbar-hide">
-            <ul className="flex flex-row gap-3"> 
+          {/* VERTICAL DIVIDER */}
+          <div className="h-10 flex border-l border-dark-brown/30 mx-2.5 shrink-0"></div>
+          <section className="flex-1 overflow-x-auto scrollbar-hide snap-x snap-mandatory" role="navigation" aria-label="Menu categories">
+            <ul className="flex flex-row gap-2 px-2 pb-2 snap-nones"> 
               {categories.map((category) => (
-                // Show each category in list item
                 <li key={category}>
                   <button
                     onClick={() => setActive(category)}
-                    className={`whitespace-nowrap pb-1 border-b-2 transition-all
-                      // If that category is selected make it bolder 
+                    className={`whitespace-nowrap px-3 py-1.5 rounded-lg transition-all duration-200 snap-center
                       ${active === category
-                        ? "border-dark-brown font-bold"
-                        : "border-transparent"
+                        ? "bg-dark-brown text-cream font-bold shadow-[0_2px_8px_rgba(61,43,31,0.3)]"
+                        : "text-dark-brown/70 hover:text-dark-brown hover:bg-amber-100/50"
                       }`}
+                    aria-current={active === category ? "page" : undefined}
                   >
-                    {/*The Categories*/}
                     {category}
                   </button>
                 </li>
@@ -51,9 +48,8 @@ function CategoryBar({active,   setActive}: {active: string, setActive: (categor
             </ul>
           </section>
         </div>
-        <hr className="border-dark-brown"/>
       </section>
-  </>
+    </div>
   );
 }
 

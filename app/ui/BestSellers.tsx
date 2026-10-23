@@ -1,16 +1,33 @@
 'use client';
 
-// Best-sellers shelf for the customer menu: shows the most-ordered drinks from
-// the last 30 days, ranked client-side from /api/orders so it needs no new
-// endpoint. Each card points at its item page and carries a BEST ribbon plus
-// the sold count, so a customer can tap straight to it.
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import ProductCard from "@/app/ui/ProductCard";
 import type { MenuItem, OrderSummary } from "@/app/lib/types";
 
+interface CarouselItem {
+  item: MenuItem;
+  soldCount: number;
+}
+
 export default function BestSellers({ menuItems }: { menuItems: MenuItem[] }) {
-  // name -> quantity sold across completed orders in the selected range
   const [soldByName, setSoldByName] = useState<Record<string, number>>({});
+  const [isDragging, setIsDragging] = useState(false);
+  const trackRef = useRef<HTMLDivElement>(null);
+  const animRef = useRef({
+    animationId: 0,
+    lastTime: 0,
+    baseElapsed: 0,
+    dragOffset: 0,
+    momentumVelocity: 0,
+    isDragging: false,
+    lastDragX: 0,
+    lastDragTime: 0,
+  });
+
+  const CARD_WIDTH = 160;
+  const GAP = 12;
+  const SLIDE_UNIT = CARD_WIDTH + GAP;
+  const ANIMATION_DURATION = 25000;
 
   useEffect(() => {
     let cancelled = false;
@@ -39,39 +56,187 @@ export default function BestSellers({ menuItems }: { menuItems: MenuItem[] }) {
     };
   }, []);
 
-  // Top 3 drink names by quantity sold, mapped back to real (available) menu
-  // items. Items are matched by name: menu_items.name is not unique, but it is
-  // the only key the orders response carries (see PROJECT_CONTEXT note), which
-  // is fine for a ranking.
-  const top = useMemo(() => {
+  const carouselItems = useMemo((): CarouselItem[] => {
     return Object.entries(soldByName)
       .sort((a, b) => b[1] - a[1])
-      .slice(0, 3)
-      .map(([name]) =>
-        menuItems.find((m) => m.isAvailable && m.itemName === name)
-      )
-      .filter((m): m is MenuItem => m !== undefined);
+      .slice(0, 5)
+      .map(([name, count]) => {
+        const item = menuItems.find((m) => m.isAvailable && m.itemName === name);
+        return item ? { item, soldCount: count } : null;
+      })
+      .filter((c): c is CarouselItem => c != null);
   }, [soldByName, menuItems]);
 
-  if (top.length === 0) return null;
+  const totalItems = carouselItems.length * 2;
+  const trackWidth = SLIDE_UNIT * totalItems;
+  const animationDistance = SLIDE_UNIT * carouselItems.length;
+
+  const DRAG_SENSITIVITY = 1.0;
+  const MOMENTUM_DECAY = 0.95;
+  const MOMENTUM_THRESHOLD = 0.5;
+
+  const applyTransform = (translateX: number) => {
+    const track = trackRef.current;
+    if (track) {
+      track.style.transform = `translateX(${translateX}px)`;
+    }
+  };
+
+  const getAutoScrollTranslateX = (elapsed: number) => {
+    const progress = (elapsed % ANIMATION_DURATION) / ANIMATION_DURATION;
+    return -progress * animationDistance;
+  };
+
+  useEffect(() => {
+    const track = trackRef.current;
+    if (!track) return;
+
+    const ref = animRef.current;
+    ref.lastTime = performance.now();
+
+    const animate = (currentTime: number) => {
+      const deltaTime = currentTime - ref.lastTime;
+      ref.lastTime = currentTime;
+
+      let translateX = 0;
+
+      if (ref.isDragging) {
+        const autoTranslateX = getAutoScrollTranslateX(ref.baseElapsed);
+        translateX = autoTranslateX + ref.dragOffset;
+      } else if (Math.abs(ref.momentumVelocity) > MOMENTUM_THRESHOLD) {
+        ref.baseElapsed += ref.momentumVelocity;
+        ref.momentumVelocity *= MOMENTUM_DECAY;
+        translateX = getAutoScrollTranslateX(ref.baseElapsed);
+      } else {
+        ref.baseElapsed += deltaTime;
+        translateX = getAutoScrollTranslateX(ref.baseElapsed);
+      }
+
+      applyTransform(translateX);
+      ref.animationId = requestAnimationFrame(animate);
+    };
+
+    ref.animationId = requestAnimationFrame(animate);
+    return () => cancelAnimationFrame(ref.animationId);
+  }, [animationDistance, carouselItems.length]);
+
+  const handlePointerDown = (e: React.PointerEvent) => {
+    const ref = animRef.current;
+    ref.isDragging = true;
+    ref.lastDragX = e.clientX;
+    ref.lastDragTime = performance.now();
+    ref.dragOffset = 0;
+    ref.momentumVelocity = 0;
+    setIsDragging(true);
+    (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
+    e.preventDefault();
+  };
+
+  const handlePointerMove = (e: React.PointerEvent) => {
+    const ref = animRef.current;
+    if (!ref.isDragging) return;
+
+    const currentTime = performance.now();
+    const deltaX = (e.clientX - ref.lastDragX) * DRAG_SENSITIVITY;
+    const deltaTime = currentTime - ref.lastDragTime;
+
+    ref.dragOffset += deltaX;
+
+    if (deltaTime > 0) {
+      const velocity = deltaX / deltaTime;
+      ref.momentumVelocity = velocity;
+    }
+
+    ref.lastDragX = e.clientX;
+    ref.lastDragTime = currentTime;
+  };
+
+  const handlePointerUp = (e: React.PointerEvent) => {
+    const ref = animRef.current;
+    if (!ref.isDragging) return;
+
+    const currentTranslateX = getAutoScrollTranslateX(ref.baseElapsed);
+    const newTranslateX = currentTranslateX + ref.dragOffset;
+    const progress = -newTranslateX / animationDistance;
+    ref.baseElapsed = ((progress % 1) + 1) % 1 * ANIMATION_DURATION;
+    ref.dragOffset = 0;
+
+    ref.isDragging = false;
+    setIsDragging(false);
+    (e.currentTarget as HTMLElement).releasePointerCapture(e.pointerId);
+  };
+
+  const handlePointerLeave = (e: React.PointerEvent) => {
+    const ref = animRef.current;
+    if (!ref.isDragging) return;
+
+    const currentTranslateX = getAutoScrollTranslateX(ref.baseElapsed);
+    const newTranslateX = currentTranslateX + ref.dragOffset;
+    const progress = -newTranslateX / animationDistance;
+    ref.baseElapsed = ((progress % 1) + 1) % 1 * ANIMATION_DURATION;
+    ref.dragOffset = 0;
+
+    ref.isDragging = false;
+    setIsDragging(false);
+  };
+
+  const duplicatedItems = [...carouselItems, ...carouselItems];
+
+  if (carouselItems.length === 0) return null;
 
   return (
     <section className="px-4 mb-6">
-      <h3 className="font-roboto-condensed text-sm tracking-[0.2em] text-dark-brown/60 mb-3">
-        BEST SELLERS
-      </h3>
+      <div className="flex items-center justify-between mb-3">
+        <h3 className="font-roboto-condensed text-sm tracking-[0.2em] text-dark-brown/60">
+          BEST SELLERS
+        </h3>
+        <span className="text-xs text-dark-brown/50 font-roboto-condensed tracking-wide">
+          Updated monthly
+        </span>
+      </div>
 
-      <div className="flex gap-3 overflow-x-auto pb-1">
-        {top.map((item) => (
-          <div key={item.uniqueKey} className="min-w-[130px] flex flex-col">
-            <ProductCard
-              item={item}
-              tag="best"
-              sublabel={`${soldByName[item.itemName] ?? 0} sold`}
-              className="flex-1"
-            />
-          </div>
-        ))}
+      <div
+        className="relative"
+        style={{
+          cursor: isDragging ? 'grabbing' : 'grab',
+          touchAction: 'none',
+        } as React.CSSProperties}
+        onPointerDown={handlePointerDown}
+        onPointerMove={handlePointerMove}
+        onPointerUp={handlePointerUp}
+        onPointerLeave={handlePointerLeave}
+        onPointerCancel={handlePointerLeave}
+        role="region"
+        aria-label="Best sellers carousel"
+        aria-roledescription="carousel"
+      >
+        <div
+          ref={trackRef}
+          className="flex"
+          style={{
+            width: `${trackWidth}px`,
+            gap: `${GAP}px`,
+          } as React.CSSProperties}
+        >
+          {duplicatedItems.map((carouselItem, index) => (
+            <div
+              key={index}
+              className="flex-shrink-0"
+              style={{ width: `${CARD_WIDTH}px` } as React.CSSProperties}
+            >
+              <ProductCard
+                item={carouselItem.item}
+                tag="best"
+                sublabel={`${carouselItem.soldCount} sold`}
+                className="h-full"
+              />
+            </div>
+          ))}
+        </div>
+
+        {/* Gradient fade edges */}
+        <div className="absolute left-0 top-0 bottom-0 w-12 bg-gradient-to-r from-cream via-cream/50 to-transparent pointer-events-none" aria-hidden="true" />
+        <div className="absolute right-0 top-0 bottom-0 w-12 bg-gradient-to-l from-cream via-cream/50 to-transparent pointer-events-none" aria-hidden="true" />
       </div>
     </section>
   );

@@ -13,11 +13,15 @@ import BestSellers from '@/app/ui/BestSellers';
 import CategoryBar from '@/app/ui/CategoryBar';
 import MenuItem from '@/app/ui/MenuItem';
 import ProductCard from '@/app/ui/ProductCard';
+import ProductCardSkeleton from '@/app/ui/ProductCardSkeleton';
+import SearchAutocomplete from '@/app/ui/SearchAutocomplete';
 import ViewOrderBar from '@/app/ui/ViewOrderBar';
 import ChangeTableModal from '@/app/ui/ChangeTableModal';
 import { useTableStore } from '@/store/TableStore';
 import type { MenuItem as MenuItemType } from "@/app/lib/types";
 import { usePolling } from '@/app/lib/usePolling';
+
+const SKELETON_COUNT = 8;
 
 export default function Home() {
   const [active, setActive] = useState("All");
@@ -60,13 +64,50 @@ export default function Home() {
 
   if (loading || selectedTable === null) {
     return (
-      <div className="min-h-screen bg-cream flex flex-col items-center justify-center p-8">
-        <div className="relative w-20 h-20 mb-6">
-          <div className="absolute inset-0 border-4 border-amber-200 rounded-full animate-spin" />
-          <div className="absolute inset-0 border-4 border-amber-600 rounded-full border-t-transparent animate-spin" />
-          <div className="absolute inset-2 border-4 border-amber-100 rounded-full border-b-transparent animate-spin reverse" style={{ animationDuration: '1.5s' }} />
+      <div className="min-h-screen bg-cream relative overflow-hidden pb-24">
+        {/* Paint smudge background */}
+        <div className="absolute inset-0 pointer-events-none overflow-hidden" aria-hidden="true">
+          <div className="absolute top-2/3 left-1/4 w-[400px] h-[400px] rounded-full bg-[#8B4513]/15 blur-[60px] -translate-x-1/2 -translate-y-1/2" />
+          <div className="absolute top-2/3 right-1/4 w-[380px] h-[380px] rounded-full bg-[#D2691E]/18 blur-[60px] -translate-x-1/2 -translate-y-1/2" />
+          <div className="absolute bottom-1/3 left-1/3 w-[350px] h-[350px] rounded-full bg-[#CD853F]/15 blur-[50px] -translate-x-1/2 -translate-y-1/2" />
+          <div className="absolute bottom-1/4 right-1/3 w-[320px] h-[320px] rounded-full bg-[#DEB887]/18 blur-[50px] -translate-x-1/2 -translate-y-1/2" />
         </div>
-        <p className="text-dark-brown font-roboto-slab text-xl font-medium">Loading menu...</p>
+
+        <Header />
+
+        {/* Table indicator bar */}
+        <div className="bg-amber-100 border-b border-amber-300 px-4 py-2 flex items-center justify-between">
+          <span className="text-sm font-roboto-condensed tracking-wide text-amber-900">
+            TABLE {selectedTable ?? '—'}
+          </span>
+        </div>
+
+        <h2 className='font-roboto-slab text-2xl text-center mb-1 flex items-center justify-center'>
+          MENU
+        </h2>
+
+        <div className="px-4 mb-3">
+          <SearchAutocomplete
+            menuItems={[]}
+            onSearch={() => {}}
+            placeholder="Loading..."
+          />
+        </div>
+
+        <BestSellers menuItems={[]} />
+
+        <CategoryBar active={active} setActive={setActive} />
+
+        <hr className='mb-3' />
+
+        {/* Skeleton grid */}
+        <div className="px-5 grid grid-cols-2 gap-4">
+          {Array.from({ length: SKELETON_COUNT }).map((_, i) => (
+            <ProductCardSkeleton key={i} />
+          ))}
+        </div>
+
+        <ViewOrderBar />
       </div>
     );
   }
@@ -124,6 +165,12 @@ export default function Home() {
     </>
   ) : null;
 
+  // Prepare search suggestions data
+  const searchSuggestionsData = menuItems.map(item => ({
+    itemName: item.itemName,
+    category: item.category,
+  }));
+
   return (
     <div className='bg-cream min-h-screen relative overflow-hidden pb-24'>
       {/* Paint smudge background - strictly behind MenuItem grid */}
@@ -157,16 +204,13 @@ export default function Home() {
       </h2>
 
       <div className="px-4 mb-3">
-        <input
-          type="text"
+        <SearchAutocomplete
+          menuItems={searchSuggestionsData}
+          onSearch={setSearch}
           placeholder="Search drinks..."
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          className="w-full bg-white border border-dark-brown/30 rounded-xl px-3 py-2 font-roboto-mono text-dark-brown focus:outline-none focus:ring-2 focus:ring-amber-800/30 placeholder:text-dark-brown/50"
-          aria-label="Search drinks"
         />
         {searching && searchedItems.length === 0 && (
-          <p className="text-sm text-dark-brown/60 mt-2">No drinks found.</p>
+          <p className="text-sm text-dark-brown/60 mt-2 text-center">No drinks found.</p>
         )}
       </div>
 
@@ -189,12 +233,20 @@ export default function Home() {
         <MenuItem active={active} menuItems={menuItems} />
       ) : (
         <div className="px-5 grid grid-cols-2 gap-4">
-          {searchedItems.map((item) => (
-            <ProductCard
-              key={item.uniqueKey}
-              item={item}
-            />
-          ))}
+          {searchedItems.length > 0 ? (
+            searchedItems.map((item) => (
+              <ProductCard key={item.uniqueKey} item={item} />
+            ))
+          ) : (
+            <div className="col-span-2 flex flex-col items-center justify-center py-12 text-dark-brown/50">
+              <svg className="w-16 h-16 mb-4 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                <circle cx="11" cy="11" r="8" strokeWidth="1.5" />
+                <path d="M21 21l-4.35-4.35" strokeWidth="1.5" />
+              </svg>
+              <p className="text-lg font-roboto-slab">No drinks found</p>
+              <p className="text-sm mt-1">Try a different search term</p>
+            </div>
+          )}
         </div>
       )}
 
