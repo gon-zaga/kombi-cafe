@@ -50,7 +50,7 @@ function ProductCard({
 
   const body = (
     <>
-      <div className="flex justify-center items-center bg-white rounded-xl p-2 relative overflow-hidden">
+      <div className="flex justify-center items-center bg-white rounded-xl p-2 relative overflow-hidden w-28 h-28 shrink-0">
         <ItemImage
           src={imageSrc}
           alt={itemName}

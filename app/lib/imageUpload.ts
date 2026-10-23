@@ -6,9 +6,9 @@
 // that as JSON would bloat the request and the row it lands in. Downscaling to
 // 600px WebP first brings a typical drink photo to ~40 KB.
 
-// Longest edge of the stored image. Menu cards render at 110px, so 400px
+// Longest edge of the stored image. Menu cards render at 110px, so 300px
 // still covers a high-DPI screen with room to spare.
-const MAX_DIMENSION = 400;
+const MAX_DIMENSION = 300;
 
 const QUALITY = 0.7;
 
@@ -93,6 +93,13 @@ export async function fileToDataUrl(file: File): Promise<string> {
   }
 
   const source = await loadImageSource(file);
+
+  // Reject extreme aspect ratios (too tall or too wide) that would break layouts.
+  // 3:1 ratio ceiling means a 3000×1000 or 1000×3000 image is rejected.
+  const aspectRatio = Math.max(source.width, source.height) / Math.min(source.width, source.height);
+  if (aspectRatio > 3) {
+    throw new Error("Image aspect ratio is too extreme. Please use a more square-ish photo (max 3:1 ratio).");
+  }
 
   // Only shrink, never enlarge: upscaling a small image wastes bytes and looks
   // worse. scale is capped at 1 for that reason.

@@ -43,6 +43,12 @@ export default function ItemImage({
         height={height}
         loading={loading}
         className={className}
+        style={{
+          width: `${width}px`,
+          height: `${height}px`,
+          objectFit: 'cover',
+          objectPosition: 'center',
+        } as React.CSSProperties}
       />
     );
   }
