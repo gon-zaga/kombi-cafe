@@ -121,6 +121,9 @@ export default function BestSellers({ menuItems }: { menuItems: MenuItem[] }) {
   }, [animationDistance, carouselItems.length]);
 
   const handlePointerDown = (e: React.PointerEvent) => {
+    // Let clickable cards (Links) handle their own navigation
+    if ((e.target as HTMLElement).closest('a')) return;
+
     const ref = animRef.current;
     ref.isDragging = true;
     ref.lastDragX = e.clientX;
