@@ -76,4 +76,6 @@ export type OrderSummary = {
    gcashReference?: string | null;
    // Photo of the GCash transaction for verification purposes.
    gcashPhoto?: string | null;
+   // Order type: 'dine_in' or 'takeout'
+   orderType?: "dine_in" | "takeout" | null;
  }

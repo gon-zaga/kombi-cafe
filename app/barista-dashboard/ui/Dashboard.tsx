@@ -252,9 +252,14 @@ export default function BaristaPage() {
                     <p className="font-mono text-sm font-medium text-gray-900">
                       {order.orderReference}
                     </p>
-                    {order.tableNumber != null && (
+                    {order.tableNumber != null && order.orderType !== 'takeout' && (
                       <span className="text-xs font-medium bg-gray-100 text-gray-700 border border-gray-200 rounded-full px-2.5 py-0.5">
                         Table {order.tableNumber}
+                      </span>
+                    )}
+                    {order.orderType === 'takeout' && (
+                      <span className="text-xs font-medium bg-emerald-50 text-emerald-800 border border-emerald-200 rounded-full px-2.5 py-0.5">
+                        Takeout
                       </span>
                     )}
                     {order.paymentMethod === "gcash" && (

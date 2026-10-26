@@ -9,21 +9,16 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { useOrderStore } from "@/store/OrderListStore";
+import { useOrderStore, type OrderItem as StoreOrderItem } from "@/store/OrderListStore";
 import { useTableStore } from "@/store/TableStore";
+import { useOrderTypeStore } from "@/store/OrderTypeStore";
 import PaymentMethodSelector, {
    type PaymentMethod,
  } from "./PaymentMethodSelector";
 import OrderConfirmModal from "@/app/ui/OrderConfirmModal";
 import type { AddOn } from "@/app/api/add-ons/route";
 
-interface OrderItem {
-  itemId: string;
-  itemName: string;
-  selectedSize: { sizeId: string; sizeName: string; price: number };
-  quantity: number;
-  selectedAddOn: string[];
-}
+type OrderItem = StoreOrderItem;
 
 function PlaceOrderButton({
   grandtotal,
@@ -37,6 +32,7 @@ function PlaceOrderButton({
   const router = useRouter();
   const clearOrder = useOrderStore((state) => state.clearOrder);
   const selectedTable = useTableStore((state) => state.selectedTable);
+  const orderType = useOrderTypeStore((state) => state.orderType);
 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState("");
@@ -45,6 +41,9 @@ function PlaceOrderButton({
   const [gcashError, setGcashError] = useState("");
   const [gcashPhoto, setGcashPhoto] = useState<string | null>(null);
   const [showConfirm, setShowConfirm] = useState(false);
+
+  // For takeout, table_number should be 0
+  const tableNumber = orderType === 'takeout' ? 0 : selectedTable;
 
   // Clear GCash fields when switching payment method
   useEffect(() => {
@@ -60,7 +59,8 @@ function PlaceOrderButton({
     setError("");
     setGcashError("");
 
-    if (selectedTable === null) {
+    // For dine-in, table is required; for takeout, table_number is 0
+    if (orderType === 'dine_in' && selectedTable === null) {
       setError("Please select a table first.");
       setIsSubmitting(false);
       return;
@@ -88,7 +88,8 @@ function PlaceOrderButton({
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          table_number: selectedTable,
+          table_number: tableNumber,
+          order_type: orderType,
           items: orders.map((o) => ({
             itemId: o.itemId,
             sizeId: o.selectedSize.sizeId,
@@ -107,9 +108,9 @@ function PlaceOrderButton({
        throw new Error(data.error || "Failed to place order");
      }
 
-     router.push(
-       `/order-confirmation?ref=${data.orderReference}&total=${data.total}&table=${data.table_number}&id=${data.order_id}&method=${data.payment_method}${data.gcash_reference ? `&gref=${encodeURIComponent(data.gcash_reference)}` : ""}`
-     );
+router.push(
+        `/order-confirmation?ref=${data.orderReference}&total=${data.total}&table=${data.table_number}&id=${data.order_id}&method=${data.payment_method}&type=${data.order_type}${data.gcash_reference ? `&gref=${encodeURIComponent(data.gcash_reference)}` : ""}`
+      );
      clearOrder();
    } catch (err) {
      setError(
@@ -141,7 +142,7 @@ function PlaceOrderButton({
 
     return {
       itemName: order.itemName,
-      sizeName: size.sizeName,
+      sizeName: size.size,
       sizePrice: size.price,
       quantity: order.quantity,
       addOns: itemAddOns,
@@ -156,7 +157,11 @@ return (
         </div>
       )}
 
-      {selectedTable !== null && (
+      {orderType === 'takeout' ? (
+        <div className="bg-emerald-50 border border-emerald-200 text-emerald-800 px-4 py-2 rounded-lg text-sm mb-2">
+          Takeout Order
+        </div>
+      ) : selectedTable !== null && (
         <div className="bg-amber-50 border border-amber-200 text-amber-800 px-4 py-2 rounded-lg text-sm mb-2">
           Ordering from Table {selectedTable}
         </div>
@@ -183,7 +188,8 @@ return (
 
       <OrderConfirmModal
         isOpen={showConfirm}
-        tableNumber={selectedTable}
+        tableNumber={selectedTable ?? 0}
+        orderType={orderType}
         items={receiptItems}
         paymentMethod={paymentMethod}
         grandTotal={grandtotal}

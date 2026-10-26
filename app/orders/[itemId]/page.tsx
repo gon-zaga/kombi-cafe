@@ -11,6 +11,7 @@ import AddToOrderButton from "./_ui/AddToOrderButton";
 import QuantitySelector from "./_ui/QuantitySelector";
 import ChangeTableModal from "../../ui/ChangeTableModal";
 import { useTableStore } from "@/store/TableStore";
+import { useOrderTypeStore } from "@/store/OrderTypeStore";
 import { MenuItem } from "@/app/lib/types";
 import type { Size } from "./_ui/SizeSelector";
 import { usePolling } from "@/app/lib/usePolling";
@@ -57,17 +58,18 @@ export default function OrderPage({ params }: { params: Promise<{ itemId: number
   const [loading, setLoading] = useState(true);
   const [tableModalOpen, setTableModalOpen] = useState(false);
   const selectedTable = useTableStore(state => state.selectedTable);
+  const orderType = useOrderTypeStore(state => state.orderType);
   
   // Stock-based maximum orderable quantity (considers restock thresholds)
   const [maxOrderableQuantity, setMaxOrderableQuantity] = useState(99);
   const [stockLoading, setStockLoading] = useState(false);
 
-  // Ordering requires a table; bounce back to the grid if none is set
+  // Ordering requires a table for dine-in; bounce back to the grid if none is set
   useEffect(() => {
-    if (selectedTable === null) {
+    if (orderType === 'dine_in' && selectedTable === null) {
       window.location.href = '/table-select';
     }
-  }, [selectedTable]);
+  }, [selectedTable, orderType]);
 
   // Calculate total price (base + add-ons) * quantity
   const addOnsTotal = addOns
@@ -238,17 +240,19 @@ useEffect(() => {
         />
 
         {/* Table indicator bar */}
-        {selectedTable !== null && (
+        {(selectedTable !== null || orderType === 'takeout') && (
           <div className="bg-amber-100 border-b border-amber-300 px-4 py-2 flex items-center justify-between">
             <span className="text-sm font-roboto-condensed tracking-wide text-amber-900">
-              TABLE {selectedTable}
+              {orderType === 'takeout' ? 'Takeout' : `TABLE ${selectedTable}`}
             </span>
-            <button
-              onClick={() => setTableModalOpen(true)}
-              className="text-xs text-amber-900 hover:underline cursor-pointer"
-            >
-              Change table
-            </button>
+            {orderType !== 'takeout' && (
+              <button
+                onClick={() => setTableModalOpen(true)}
+                className="text-xs text-amber-900 hover:underline cursor-pointer"
+              >
+                Change table
+              </button>
+            )}
           </div>
         )}
 

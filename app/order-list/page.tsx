@@ -11,12 +11,14 @@ import ChangeTableModal from '../ui/ChangeTableModal';
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useTableStore } from '@/store/TableStore';
+import { useOrderTypeStore } from '@/store/OrderTypeStore';
 import type { AddOn } from "@/app/api/add-ons/route";
 
 function OrdersLists() {
   const [addOns, setAddOns] = useState<AddOn[]>([]);
   const { orders, removeOrder } = useOrderStore();
   const { selectedTable } = useTableStore();
+  const orderType = useOrderTypeStore(state => state.orderType);
   const [tableModalOpen, setTableModalOpen] = useState(false);
   const router = useRouter();
   // Cart grand total including add-ons, matching the server's calculation
@@ -43,12 +45,12 @@ function OrdersLists() {
     return () => unsub();
   }, []);
 
-  // Redirect to table selection if no table is selected
+  // Redirect to table selection if no table is selected (only for dine-in)
   useEffect(() => {
-    if (hydrated && selectedTable === null) {
+    if (hydrated && orderType === 'dine_in' && selectedTable === null) {
       router.push('/table-select');
     }
-  }, [hydrated, selectedTable, router]);
+  }, [hydrated, selectedTable, orderType, router]);
 
   // Fetches the current list of available add-ons from the database,
   // so OrderCard can show real add-on names instead of mock data
@@ -82,17 +84,19 @@ function OrdersLists() {
       <Header />
 
       {/* Table indicator */}
-      {selectedTable !== null && (
+      {(selectedTable !== null || orderType === 'takeout') && (
         <div className="bg-amber-100 border-b border-amber-300 px-4 py-2 flex items-center justify-between">
           <span className="text-sm font-roboto-condensed tracking-wide text-amber-900">
-            TABLE {selectedTable}
+            {orderType === 'takeout' ? 'Takeout' : `TABLE ${selectedTable}`}
           </span>
-          <button
-            onClick={() => setTableModalOpen(true)}
-            className="text-xs text-amber-900 hover:underline cursor-pointer"
-          >
-            Change table
-          </button>
+          {orderType !== 'takeout' && (
+            <button
+              onClick={() => setTableModalOpen(true)}
+              className="text-xs text-amber-900 hover:underline cursor-pointer"
+            >
+              Change table
+            </button>
+          )}
         </div>
       )}
 

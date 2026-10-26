@@ -2,7 +2,9 @@
 
 // Table picker: the customer taps the table they sit at, then goes to the menu
 import { useRouter } from 'next/navigation';
+import { useEffect } from 'react';
 import { useTableStore } from '@/store/TableStore';
+import { useOrderTypeStore } from '@/store/OrderTypeStore';
 import Header from '@/app/ui/Header';
 
 const TOTAL_TABLES = 7;
@@ -10,11 +12,24 @@ const TOTAL_TABLES = 7;
 export default function TableSelect() {
   const router = useRouter();
   const { setTable } = useTableStore();
+  const { orderType } = useOrderTypeStore();
+
+  useEffect(() => {
+    // If takeout was selected, skip table selection and go straight to menu
+    if (orderType === 'takeout') {
+      router.push('/menu');
+    }
+  }, [orderType, router]);
 
   const handleSelect = (tableNumber: number) => {
     setTable(tableNumber);
     router.push('/menu');
   };
+
+  // Don't render anything if redirecting (takeout)
+  if (orderType === 'takeout') {
+    return null;
+  }
 
   return (
     <div className="min-h-screen bg-cream flex flex-col">

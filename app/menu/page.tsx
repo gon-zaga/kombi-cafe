@@ -18,6 +18,7 @@ import SearchAutocomplete from '@/app/ui/SearchAutocomplete';
 import ViewOrderBar from '@/app/ui/ViewOrderBar';
 import ChangeTableModal from '@/app/ui/ChangeTableModal';
 import { useTableStore } from '@/store/TableStore';
+import { useOrderTypeStore } from '@/store/OrderTypeStore';
 import type { MenuItem as MenuItemType } from "@/app/lib/types";
 import { usePolling } from '@/app/lib/usePolling';
 
@@ -31,13 +32,14 @@ export default function Home() {
   const [tableModalOpen, setTableModalOpen] = useState(false);
   const router = useRouter();
   const selectedTable = useTableStore(state => state.selectedTable);
+  const orderType = useOrderTypeStore(state => state.orderType);
 
-  // Redirect to table selection if no table is chosen
+  // Redirect to table selection if no table is chosen (only for dine-in)
   useEffect(() => {
-    if (selectedTable === null) {
+    if (orderType === 'dine_in' && selectedTable === null) {
       router.push('/table-select');
     }
-  }, [selectedTable, router]);
+  }, [selectedTable, orderType, router]);
 
   const fetchMenu = useCallback(async () => {
     try {
@@ -66,7 +68,7 @@ export default function Home() {
       )
     : [];
 
-  if (loading || selectedTable === null) {
+  if (loading || (orderType === 'dine_in' && selectedTable === null)) {
     return (
       <div className="min-h-screen bg-cream relative overflow-hidden pb-24">
         {/* Paint smudge background */}
@@ -82,7 +84,7 @@ export default function Home() {
         {/* Table indicator bar */}
         <div className="bg-amber-100 border-b border-amber-300 px-4 py-2 flex items-center justify-between">
           <span className="text-sm font-roboto-condensed tracking-wide text-amber-900">
-            TABLE {selectedTable ?? '—'}
+            {orderType === 'takeout' ? 'Takeout' : `TABLE ${selectedTable ?? '—'}`}
           </span>
         </div>
 
@@ -188,14 +190,16 @@ export default function Home() {
       {/* Table indicator bar */}
       <div className="bg-amber-100 border-b border-amber-300 px-4 py-2 flex items-center justify-between">
         <span className="text-sm font-roboto-condensed tracking-wide text-amber-900">
-          TABLE {selectedTable}
+          {orderType === 'takeout' ? 'Takeout' : `TABLE ${selectedTable}`}
         </span>
-        <button
-          onClick={() => setTableModalOpen(true)}
-          className="text-xs text-amber-900 hover:underline cursor-pointer"
-        >
-          Change table
-        </button>
+        {orderType !== 'takeout' && (
+          <button
+            onClick={() => setTableModalOpen(true)}
+            className="text-xs text-amber-900 hover:underline cursor-pointer"
+          >
+            Change table
+          </button>
+        )}
       </div>
 
       <ChangeTableModal

@@ -1,17 +1,13 @@
 'use client'
 
 // Order confirmation: shows the reference number, the payment
-// method the customer chose, and the order total. The receipt
-// breakdown and the cash change calculator live on the barista
-// dashboard, where staff count back money at the counter.
+// method the customer chose, and the order total.
 import { useSearchParams, useRouter } from "next/navigation";
-import { Suspense, useEffect, useState, useRef } from "react";
+import { Suspense, useEffect, useState } from "react";
 import Image from "next/image";
 import ChangeTableModal from "../ui/ChangeTableModal";
 import { useTableStore } from "@/store/TableStore";
 import type { OrderSummary } from "@/app/lib/types";
-import html2canvas from "html2canvas";
-import Receipt from "./_ui/Receipt";
 
 // Resolves the payment method shown on the confirmation screen. The order
 // record is the source of truth; the URL value is only a fallback so the
@@ -35,6 +31,7 @@ function ConfirmOrder() {
   const ref = confirmParam.get('ref');
   const total = confirmParam.get('total');
   const table = confirmParam.get('table');
+  const orderType = confirmParam.get('type');
   const orderId = confirmParam.get('id');
   // The payment method and GCash reference ride along on the URL so the
   // confirmation screen can show them even if the order record read
@@ -43,43 +40,7 @@ function ConfirmOrder() {
   const gref = confirmParam.get('gref');
   const [order, setOrder] = useState<OrderSummary | null>(null);
   const [tableModalOpen, setTableModalOpen] = useState(false);
-  const [isDownloading, setIsDownloading] = useState(false);
-  const receiptContainerRef = useRef<HTMLDivElement>(null);
   const { clearTable } = useTableStore();
-
-  const handleDownloadReceipt = async () => {
-    if (!order || !ref || isDownloading || !receiptContainerRef.current) return;
-
-    setIsDownloading(true);
-
-    try {
-      const receiptElement = receiptContainerRef.current.querySelector('#receipt-content') as HTMLElement;
-      
-      if (!receiptElement) {
-        throw new Error('Receipt element not found in container');
-      }
-
-      const canvas = await html2canvas(receiptElement, {
-        scale: 2,
-        useCORS: true,
-        logging: true,
-        backgroundColor: '#ffffff',
-      });
-
-      // Download
-      const link = document.createElement('a');
-      const date = new Date().toISOString().split('T')[0];
-      link.download = `receipt-${ref}-${date}.png`;
-      link.href = canvas.toDataURL('image/png');
-      link.click();
-    } catch (error) {
-      console.error('Failed to generate receipt:', error);
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-      alert(`Failed to generate receipt: ${errorMessage}. Please try again.`);
-    } finally {
-      setIsDownloading(false);
-    }
-  };
 
   // The receipt is read back from the order record (the same
   // rows the barista board and the reports read), so the
@@ -106,10 +67,10 @@ function ConfirmOrder() {
   }, [orderId]);
 
   const handleNewOrder = () => {
-    // A new order starts at a fresh table so the next customer isn't
-    // silently left at the previous table
+    // A new order starts fresh so the next customer isn't
+    // silently left at the previous table or order type
     clearTable();
-    router.push('/table-select');
+    router.push('/order-type');
   };
 
   return (
@@ -160,11 +121,25 @@ function ConfirmOrder() {
           );
         })()}
 
-        {table && (
-          <div className="mt-2 bg-amber-50 border border-amber-200 text-amber-800 px-4 py-2 rounded-lg text-sm">
-            Table {table}
-          </div>
-        )}
+        {(() => {
+          // Determine if takeout from order record or URL param
+          const isTakeout = order?.orderType === 'takeout' || orderType === 'takeout';
+          if (isTakeout) {
+            return (
+              <div className="mt-2 bg-emerald-50 border border-emerald-200 text-emerald-800 px-4 py-2 rounded-lg text-sm">
+                Takeout
+              </div>
+            );
+          }
+          if (table) {
+            return (
+              <div className="mt-2 bg-amber-50 border border-amber-200 text-amber-800 px-4 py-2 rounded-lg text-sm">
+                Table {table}
+              </div>
+            );
+          }
+          return null;
+        })()}
 
         <hr className="w-full border-dark-brown/20 my-2" />
 
@@ -176,16 +151,6 @@ function ConfirmOrder() {
           <span className="text-lg font-medium">
             Total: ₱{Number(total).toFixed(2)}
           </span>
-        )}
-
-        {order && ref && (
-          <button
-            onClick={handleDownloadReceipt}
-            disabled={isDownloading}
-            className="w-full mt-3 border-2 border-amber-800 text-amber-800 text-sm font-semibold py-3 rounded-2xl active:opacity-80 disabled:opacity-50 transition-colors"
-          >
-            {isDownloading ? 'Generating...' : 'Download Receipt'}
-          </button>
         )}
 
         <button
@@ -200,22 +165,6 @@ function ConfirmOrder() {
           onClose={() => setTableModalOpen(false)}
         />
       </div>
-
-      {/* Hidden receipt container for html2canvas capture */}
-      {order && ref && (
-        <div
-          ref={receiptContainerRef}
-          style={{
-            position: 'absolute',
-            left: '-9999px',
-            top: '0',
-            pointerEvents: 'none',
-          }}
-          aria-hidden="true"
-        >
-          <Receipt order={order} ref={ref} />
-        </div>
-      )}
     </section>
   );  
 }

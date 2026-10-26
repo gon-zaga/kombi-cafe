@@ -23,6 +23,8 @@ interface PlaceOrderPayload {
    payment_method?: 'counter' | 'gcash';
    gcash_reference?: string | null;
    gcash_photo?: string | null;
+   /* Order type: 'dine_in' or 'takeout' */
+   order_type?: 'dine_in' | 'takeout';
  }
 
 /* Which recipe rows apply to a given item + size, and how much each costs.
@@ -294,6 +296,7 @@ SELECT
           o.daily_number,
           o.status,
           o.table_number,
+          o.order_type,
           (o.created_at AT TIME ZONE 'UTC') AS created_at,
           (o.completed_at AT TIME ZONE 'UTC') AS completed_at,
           o.total,
@@ -357,6 +360,7 @@ const orders: OrderSummary[] = result.rows.map((row) => ({
         orderReference: String(row.daily_number).padStart(4, "0"),
         status: row.status,
         tableNumber: row.table_number,
+        orderType: row.order_type,
         createdAt: new Date(row.created_at).toISOString(),
         completedAt: row.completed_at ? new Date(row.completed_at).toISOString() : null,
         total: Number(row.total),
@@ -407,16 +411,23 @@ if (!isOpen) {
   try {
     const body: PlaceOrderPayload = await request.json();
 
-    /* The café has 7 tables, so a valid table number is a whole number in that range. */
-    if (
-      !Number.isInteger(body.table_number) ||
-      body.table_number < 1 ||
-      body.table_number > 7
-    ) {
-      return NextResponse.json(
-        { error: "A table number between 1 and 7 is required" },
-        { status: 400 }
-      );
+    const orderType = body.order_type === 'takeout' ? 'takeout' : 'dine_in';
+
+    /* The café has 7 tables, so a valid table number is a whole number in that range.
+       For takeout, table_number should be 0. */
+    const tableNumber = orderType === 'takeout' ? 0 : body.table_number;
+    
+    if (orderType === 'dine_in') {
+      if (
+        !Number.isInteger(body.table_number) ||
+        body.table_number < 1 ||
+        body.table_number > 7
+      ) {
+        return NextResponse.json(
+          { error: "A table number between 1 and 7 is required for dine-in orders" },
+          { status: 400 }
+        );
+      }
     }
 
     /* Validate items before processing or deducting any stock. */
@@ -468,7 +479,7 @@ if (!isOpen) {
 
       const dailyNumber = dailyNumberResult.rows[0].last_number;
 
-       /* Step 2: insert the order with a placeholder total of 0. */
+/* Step 2: insert the order with a placeholder total of 0. */
         const orderResult = await client.query(
           `
           INSERT INTO orders (
@@ -477,6 +488,7 @@ if (!isOpen) {
             total,
             status,
             table_number,
+            order_type,
             payment_method,
             gcash_reference,
             gcash_photo,
@@ -491,11 +503,12 @@ if (!isOpen) {
             $3,
             $4,
             $5,
+            $6,
             NOW() AT TIME ZONE 'UTC'
           )
           RETURNING id;
           `,
-          [dailyNumber, body.table_number, paymentMethod, gcashReference, body.gcash_photo]
+          [dailyNumber, tableNumber, orderType, paymentMethod, gcashReference, body.gcash_photo]
         );
 
       const orderId = orderResult.rows[0].id;
@@ -602,13 +615,14 @@ if (!isOpen) {
 
       const orderReference = String(dailyNumber).padStart(4, '0');
 
-       /* Return the database ID and the human-readable daily order number. */
+/* Return the database ID and the human-readable daily order number. */
        return NextResponse.json(
          {
            message: "Order placed successfully",
            order_id: orderId,
            orderReference,
-           table_number: body.table_number,
+           table_number: tableNumber,
+           order_type: orderType,
            status: 'pending',
            total: runningTotal,
            payment_method: paymentMethod,

@@ -5,6 +5,7 @@ import OwnerHeader from "../ui/OwnerHeader";
 import DateFilterBar from "@/app/ui/DateFilterBar";
 import { exportTimestamp } from "@/app/lib/utils";
 import { downloadXlsx } from "@/app/lib/xlsx";
+import { downloadPdf } from "@/app/lib/pdf";
 import type { CustomRange, DateFilter } from "@/app/lib/dateFilter";
 import { buildOrdersQuery, describeRange, rangeSlug } from "@/app/lib/dateFilter";
 import type { OrderSummary } from "@/app/lib/types";
@@ -179,7 +180,7 @@ const ordersQuery = useMemo(() => {
   const stamp = exportTimestamp();
   const slug = rangeSlug(dateFilter, customRange);
 
-    const exportSales = () => {
+const exportSales = () => {
       const columns = [
         { header: "Order Ref", value: (o: OrderSummary) => o.orderReference, width: 12 },
         { header: "Time", value: (o: OrderSummary) => new Date(o.completedAt || o.createdAt).toLocaleString("en-PH"), width: 20 },
@@ -209,8 +210,39 @@ const ordersQuery = useMemo(() => {
       }
     };
 
+    const exportPdf = () => {
+      const columns = [
+        { header: "Order Ref", value: (o: OrderSummary) => o.orderReference, width: 30 },
+        { header: "Time", value: (o: OrderSummary) => new Date(o.completedAt || o.createdAt).toLocaleString("en-PH"), width: 45 },
+        { header: "Date", value: (o: OrderSummary) => (o.completedAt || o.createdAt).slice(0, 10), width: 25 },
+        { header: "Status", value: (o: OrderSummary) => o.status, width: 25 },
+        { header: "Items", value: (o: OrderSummary) => (o.items || []).length, width: 15 },
+        {
+          header: "Add-ons Total",
+          value: (o: OrderSummary) =>
+            (o.items || [])
+              .reduce(
+                (sum, item) =>
+                  sum + (item.addOns || []).reduce((s, a) => s + a.price * a.quantity, 0),
+                0
+              )
+              .toFixed(2),
+          width: 30,
+        },
+        { header: "Total", value: (o: OrderSummary) => o.total.toFixed(2), width: 25 },
+      ];
+      try {
+        downloadPdf(`sales-report-${slug}-${stamp}.pdf`, orders, columns);
+        setMenuOpen(false);
+      } catch (error) {
+        console.error("Export failed:", error);
+        setLoadError("Export failed: " + (error instanceof Error ? error.message : String(error)));
+      }
+    };
+
   const exportOptions = [
-    { label: "Sales & orders", hint: "One row per order with add-on breakdown", action: exportSales },
+    { label: "Sales & orders (Excel)", hint: "One row per order with add-on breakdown", action: exportSales },
+    { label: "Sales & orders (PDF)", hint: "Printable report with same data", action: exportPdf },
   ];
 
   return (
@@ -258,7 +290,7 @@ const ordersQuery = useMemo(() => {
               <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v2a2 2 0 002 2h12a2 2 0 002-2v-2M7 10l5 5m0 0l5-5m-5 5V4" />
               </svg>
-               Export Excel
+               Export
             </button>
 
             {menuOpen && (

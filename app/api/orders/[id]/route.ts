@@ -68,6 +68,7 @@ export async function GET(
           o.daily_number,
           o.status,
           o.table_number,
+          o.order_type,
           -- created_at is stored as UTC without a zone; tag it so JS reads the right moment
           (o.created_at AT TIME ZONE 'UTC') AS created_at,
           o.total,
@@ -126,18 +127,19 @@ export async function GET(
  
      const row = result.rows[0];
  
-     return NextResponse.json({
-       id: row.id,
-       orderReference: String(row.daily_number).padStart(4, "0"),
-       status: row.status,
-       tableNumber: row.table_number,
-       createdAt: new Date(row.created_at).toISOString(),
-       total: Number(row.total),
-       paymentMethod: row.payment_method,
-       gcashReference: row.gcash_reference,
-       gcashPhoto: row.gcash_photo,
-       items: row.items,
-     });
+return NextResponse.json({
+        id: row.id,
+        orderReference: String(row.daily_number).padStart(4, "0"),
+        status: row.status,
+        tableNumber: row.table_number,
+        orderType: row.order_type,
+        createdAt: new Date(row.created_at).toISOString(),
+        total: Number(row.total),
+        paymentMethod: row.payment_method,
+        gcashReference: row.gcash_reference,
+        gcashPhoto: row.gcash_photo,
+        items: row.items,
+      });
   } catch (error) {
     console.error("Failed to fetch order:", error);
     return NextResponse.json(

@@ -84,9 +84,9 @@ export default function OrderQueue() {
                   <span className="font-roboto-mono text-3xl sm:text-4xl text-dark-brown">
                     #{order.orderReference}
                   </span>
-                  <span className="font-roboto-mono text-xs text-dark-brown/60 mt-0.5">
-                    Table {order.tableNumber ?? '-'} · #{order.id}
-                  </span>
+<span className="font-roboto-mono text-xs text-dark-brown/60 mt-0.5">
+                      {order.orderType === 'takeout' ? 'Takeout' : `Table ${order.tableNumber ?? '-'}`} · #{order.id}
+                    </span>
                 </div>
               ))
             )}
@@ -113,9 +113,9 @@ export default function OrderQueue() {
                   <span className="font-roboto-mono text-3xl sm:text-4xl text-green-700">
                     #{order.orderReference}
                   </span>
-                  <span className="font-roboto-mono text-xs text-green-700/60 mt-0.5">
-                    Table {order.tableNumber ?? '-'} · #{order.id}
-                  </span>
+<span className="font-roboto-mono text-xs text-green-700/60 mt-0.5">
+                      {order.orderType === 'takeout' ? 'Takeout' : `Table ${order.tableNumber ?? '-'}`} · #{order.id}
+                    </span>
                 </div>
               ))
             )}

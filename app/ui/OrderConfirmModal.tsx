@@ -13,6 +13,7 @@ interface OrderItem {
 interface OrderConfirmModalProps {
   isOpen: boolean;
   tableNumber: number;
+  orderType: "dine_in" | "takeout" | null;
   items: OrderItem[];
   paymentMethod: "counter" | "gcash";
   grandTotal: number;
@@ -24,6 +25,7 @@ interface OrderConfirmModalProps {
 export default function OrderConfirmModal({
   isOpen,
   tableNumber,
+  orderType,
   items,
   paymentMethod,
   grandTotal,
@@ -120,8 +122,12 @@ export default function OrderConfirmModal({
         </div>
 
         <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 mb-4 text-center">
-          <p className="text-xs text-amber-700 font-roboto-condensed tracking-wider mb-0.5">TABLE NUMBER</p>
-          <p className="text-3xl font-bold text-amber-900 font-roboto-slab">{tableNumber}</p>
+          <p className="text-xs text-amber-700 font-roboto-condensed tracking-wider mb-0.5">
+            {orderType === 'takeout' ? 'ORDER TYPE' : 'TABLE NUMBER'}
+          </p>
+          <p className="text-3xl font-bold text-amber-900 font-roboto-slab">
+            {orderType === 'takeout' ? 'Takeout' : tableNumber}
+          </p>
         </div>
 
         <div className="space-y-3 mb-4 max-h-64 overflow-y-auto pr-1">

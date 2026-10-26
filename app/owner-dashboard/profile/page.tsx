@@ -27,7 +27,7 @@ export default function StaffManagement() {
       const res = await fetch("/api/staff");
       const data = await res.json();
       if (res.ok) {
-        setStaff(data);
+        setStaff(data.filter((staff) => staff.role === "barista"));
       } else {
         setError(data.error || "Failed to load staff");
       }

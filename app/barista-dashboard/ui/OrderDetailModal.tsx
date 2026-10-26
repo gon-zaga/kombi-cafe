@@ -126,12 +126,16 @@ if (!order) return null;
               <p className="text-4xl font-mono font-bold text-white tracking-wide">
                 {order.orderReference}
               </p>
-             <div className="flex flex-wrap gap-2 mt-2">
-                 {order.tableNumber != null && (
-                   <span className="text-xs font-semibold bg-white/15 text-white rounded-full px-2.5 py-0.5">
-                     Table {order.tableNumber}
-                   </span>
-                 )}
+<div className="flex flex-wrap gap-2 mt-2">
+                  {order.orderType === 'takeout' ? (
+                    <span className="text-xs font-semibold bg-white/15 text-white rounded-full px-2.5 py-0.5">
+                      Takeout
+                    </span>
+                  ) : order.tableNumber != null && (
+                    <span className="text-xs font-semibold bg-white/15 text-white rounded-full px-2.5 py-0.5">
+                      Table {order.tableNumber}
+                    </span>
+                  )}
                  {order.paymentMethod === "gcash" ? (
                    <>
                      <span className="text-xs font-semibold bg-white/15 text-white rounded-full px-2.5 py-0.5">

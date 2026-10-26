@@ -25,7 +25,7 @@ export default function OrderNowButton({
       if (!res.ok) throw new Error(`Request failed (${res.status})`);
       const status: StoreStatus = await res.json();
 
-      if (status.isOpen) router.push("/table-select");
+      if (status.isOpen) router.push("/order-type");
       else setClosedStatus(status);
     } catch (error) {
       console.error("Failed to check store status:", error);
