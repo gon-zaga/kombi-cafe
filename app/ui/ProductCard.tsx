@@ -50,7 +50,7 @@ function ProductCard({
 
   const body = (
     <>
-      <div className="flex justify-center items-center bg-white rounded-xl p-2 relative overflow-hidden w-full max-w-[200px] aspect-[5/7] shrink-0">
+      <div className="flex justify-center items-center bg-white rounded-xl p-2 relative overflow-hidden w-full aspect-square shrink-0">
         <ItemImage
           src={imageSrc}
           alt={itemName}
@@ -77,14 +77,14 @@ function ProductCard({
         )}
       </div>
 
-      <div className="flex flex-col items-start gap-1 w-full">
+      <div className="flex flex-col items-start gap-1.5 w-full">
         {/* Size/Price chips */}
         {item.sizes && item.sizes.length > 0 && (
-          <div className="flex flex-wrap gap-1.5 w-full" role="list" aria-label="Available sizes">
+          <div className="flex flex-wrap gap-2 w-full" role="list" aria-label="Available sizes">
             {item.sizes.map((sizeOption) => (
               <span
                 key={sizeOption.sizeId}
-                className={`inline-flex items-center px-2.5 py-1 text-xs font-medium rounded-full border transition-all duration-150 ${
+                className={`inline-flex items-center px-3 py-1.5 text-sm font-medium rounded-full border transition-all duration-150 min-h-[44px] ${
                   isNotPurchasable
                     ? "border-dark-brown/20 bg-dark-brown/5 text-dark-brown/40 line-through"
                     : "border-[#D6C09A] bg-[#E8D9B8] text-[#4B3325] hover:bg-[#D6C09A] hover:text-[#3D2B1F]"
@@ -99,7 +99,7 @@ function ProductCard({
 
         {/* Product name */}
         <span
-          className={`font-medium text-sm w-full truncate ${
+          className={`font-medium text-base w-full truncate ${
             isNotPurchasable ? "opacity-60" : ""
           }`}
         >
@@ -107,7 +107,7 @@ function ProductCard({
         </span>
 
         {/* Category */}
-        <span className="text-xs opacity-75 font-roboto-condensed tracking-wide">
+        <span className="text-sm opacity-75 font-roboto-condensed tracking-wide">
           {categoryLabel}
         </span>
 
@@ -115,14 +115,14 @@ function ProductCard({
         {(Array.isArray(item.ingredients) && item.ingredients.length > 0) ? (
           <div className="mt-2 w-full border-t border-[#D8C7A5] pt-2">
             <div className="flex items-center justify-between mb-1.5">
-              <p className="text-[10px] font-bold uppercase tracking-wider text-[#6B4F3A]">
+              <p className="text-xs font-bold uppercase tracking-wider text-[#6B4F3A]">
                 Ingredients
               </p>
               {hasMoreIngredients && (
                 <button
                   type="button"
                   onClick={() => setShowAllIngredients(!showAllIngredients)}
-                  className="text-[10px] font-medium text-[#8B4513] hover:text-[#6B4F3A] transition-colors px-1"
+                  className="text-sm font-medium text-[#8B4513] hover:text-[#6B4F3A] transition-colors px-2 py-1 min-h-[44px] min-w-[44px] flex items-center"
                   aria-expanded={showAllIngredients}
                   aria-controls="ingredients-list"
                 >
@@ -133,21 +133,21 @@ function ProductCard({
 
             <div 
               id="ingredients-list"
-              className="flex flex-wrap gap-1.5"
+              className="flex flex-wrap gap-2"
               role="list"
               aria-label="Ingredients"
             >
               {visibleIngredients.map((ing, index) => (
                 <span
                   key={`${ing}-${index}`}
-                  className="inline-flex items-center rounded-full border border-[#D6C09A] bg-[#E8D9B8] px-2.5 py-1 text-[11px] font-medium text-[#4B3325] shadow-sm"
+                  className="inline-flex items-center rounded-full border border-[#D6C09A] bg-[#E8D9B8] px-3 py-1.5 text-sm font-medium text-[#4B3325] shadow-sm min-h-[44px]"
                   role="listitem"
                 >
                   {ing}
                 </span>
               ))}
               {hasMoreIngredients && !showAllIngredients && (
-                <span className="inline-flex items-center rounded-full border border-[#D6C09A]/50 bg-transparent px-2.5 py-1 text-[11px] font-medium text-[#6B4F3A]/60">
+                <span className="inline-flex items-center rounded-full border border-[#D6C09A]/50 bg-transparent px-3 py-1.5 text-sm font-medium text-[#6B4F3A]/60 min-h-[44px]">
                   +{item.ingredients.length - 3} more
                 </span>
               )}
@@ -155,11 +155,11 @@ function ProductCard({
           </div>
         ) : (
           <div className="mt-2 w-full border-t border-[#D8C7A5] pt-2">
-            <p className="text-[10px] font-bold uppercase tracking-wider text-[#6B4F3A] mb-1.5">
+            <p className="text-xs font-bold uppercase tracking-wider text-[#6B4F3A] mb-1.5">
               Ingredients
             </p>
 
-            <span className="inline-flex rounded-full border border-[#D6C09A] bg-[#E8D9B8] px-2.5 py-1 text-[11px] italic text-[#6B4F3A]">
+            <span className="inline-flex rounded-full border border-[#D6C09A] bg-[#E8D9B8] px-3 py-1.5 text-sm italic text-[#6B4F3A] min-h-[44px]">
               None listed
             </span>
           </div>
@@ -178,7 +178,7 @@ function ProductCard({
 
   return (
     <div
-      className={`relative bg-[#F4EBD0] rounded-2xl drop-shadow-lg flex flex-col p-3 gap-2 text-dark-brown ${
+      className={`relative bg-[#F4EBD0] rounded-2xl drop-shadow-lg flex flex-col p-4 gap-2.5 text-dark-brown ${
         isNotPurchasable ? "opacity-70" : ""
       } ${className ?? ""}`}
       style={cardStyle}
@@ -191,27 +191,27 @@ function ProductCard({
     >
       {/* NEW badge */}
       {tag === "new" && (
-        <span className="absolute top-1.5 left-1.5 z-10 bg-green-800 text-white text-[9px] font-bold uppercase tracking-wide rounded-full px-1.5 py-0.5">
+        <span className="absolute top-2 left-2 z-10 bg-green-800 text-white text-xs font-bold uppercase tracking-wide rounded-full px-2 py-1">
           NEW
         </span>
       )}
 
       {/* BEST badge */}
       {tag === "best" && (
-        <span className="absolute top-1.5 left-1.5 z-10 bg-amber-800 text-white text-[9px] font-bold uppercase tracking-wide rounded-full px-1.5 py-0.5">
+        <span className="absolute top-2 left-2 z-10 bg-amber-800 text-white text-xs font-bold uppercase tracking-wide rounded-full px-2 py-1">
           BEST
         </span>
       )}
 
       {/* Available items are clickable */}
       {isNotPurchasable ? (
-        <div className="flex flex-col gap-2 cursor-not-allowed">
+        <div className="flex flex-col gap-2.5 cursor-not-allowed">
           {body}
         </div>
       ) : (
         <Link
           href={`/orders/${item.itemId}`}
-          className="flex flex-col gap-2"
+          className="flex flex-col gap-2.5"
           onMouseDown={handleMouseDown}
           onMouseUp={handleMouseUp}
           onMouseLeave={handleMouseLeave}
@@ -225,7 +225,7 @@ function ProductCard({
 
       {/* Optional sublabel */}
       {sublabel && (
-        <span className="text-xs text-dark-brown/60 px-1">
+        <span className="text-sm text-dark-brown/60 px-1">
           {sublabel}
         </span>
       )}

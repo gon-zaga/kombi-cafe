@@ -23,9 +23,9 @@ interface CarouselProps {
 interface AnimationState {
   animationId: number;
   lastTime: number;
-  baseElapsed: number; // auto-scroll elapsed time
-  dragOffset: number; // current drag offset in pixels
-  momentumVelocity: number; // px/ms for momentum
+  baseElapsed: number;
+  dragOffset: number;
+  momentumVelocity: number;
   isDragging: boolean;
   lastDragX: number;
   lastDragTime: number;
@@ -34,12 +34,12 @@ interface AnimationState {
 export default function Carousel({ 
   slides, 
   className = '', 
-  slideWidth = 400,
   gap = 24,
   animationDuration = 20000
 }: CarouselProps) {
   const [isDragging, setIsDragging] = useState(false);
   const trackRef = useRef<HTMLDivElement>(null);
+  const carouselRef = useRef<HTMLDivElement>(null);
   const animRef = useRef<AnimationState>({
     animationId: 0,
     lastTime: performance.now(),
@@ -51,12 +51,18 @@ export default function Carousel({
     lastDragTime: 0,
   });
 
+  // Responsive slide width: 90% of viewport on mobile, up to 400px on desktop
+  const slideWidth = Math.min(
+    typeof window !== 'undefined' ? window.innerWidth * 0.9 : 400,
+    400
+  );
+
   const totalSlides = slides.length * 2;
   const trackWidth = (slideWidth + gap) * totalSlides;
   const animationDistance = (slideWidth + gap) * slides.length;
   const slideUnit = slideWidth + gap;
 
-  const DRAG_SENSITIVITY = 1.0; // 1:1 direct drag
+  const DRAG_SENSITIVITY = 1.0;
   const MOMENTUM_DECAY = 0.95;
   const MOMENTUM_THRESHOLD = 0.5;
 
@@ -86,16 +92,13 @@ export default function Carousel({
       let translateX = 0;
 
       if (ref.isDragging) {
-        // During drag: use base auto-scroll position + drag offset
         const autoTranslateX = getAutoScrollTranslateX(ref.baseElapsed);
         translateX = autoTranslateX + ref.dragOffset;
       } else if (Math.abs(ref.momentumVelocity) > MOMENTUM_THRESHOLD) {
-        // Momentum phase: apply decaying velocity
         ref.baseElapsed += ref.momentumVelocity;
         ref.momentumVelocity *= MOMENTUM_DECAY;
         translateX = getAutoScrollTranslateX(ref.baseElapsed);
       } else {
-        // Normal auto-scroll
         ref.baseElapsed += deltaTime;
         translateX = getAutoScrollTranslateX(ref.baseElapsed);
       }
@@ -128,10 +131,8 @@ export default function Carousel({
     const deltaX = (e.clientX - ref.lastDragX) * DRAG_SENSITIVITY;
     const deltaTime = currentTime - ref.lastDragTime;
     
-    // Update drag offset for direct manipulation
     ref.dragOffset += deltaX;
     
-    // Calculate velocity for momentum (px/ms)
     if (deltaTime > 0) {
       const velocity = deltaX / deltaTime;
       ref.momentumVelocity = velocity;
@@ -145,11 +146,9 @@ export default function Carousel({
     const ref = animRef.current;
     if (!ref.isDragging) return;
     
-    // Apply drag offset to base elapsed so auto-scroll continues from new position
     const currentTranslateX = getAutoScrollTranslateX(ref.baseElapsed);
     const newTranslateX = currentTranslateX + ref.dragOffset;
     
-    // Convert back to elapsed time
     const progress = -newTranslateX / animationDistance;
     ref.baseElapsed = (progress % 1 + 1) % 1 * animationDuration;
     ref.dragOffset = 0;
@@ -163,7 +162,6 @@ export default function Carousel({
     const ref = animRef.current;
     if (!ref.isDragging) return;
     
-    // Same as pointer up - commit drag offset and start momentum
     const currentTranslateX = getAutoScrollTranslateX(ref.baseElapsed);
     const newTranslateX = currentTranslateX + ref.dragOffset;
     const progress = -newTranslateX / animationDistance;
@@ -174,14 +172,30 @@ export default function Carousel({
     setIsDragging(false);
   };
 
+  // Update slide dimensions on resize
+  useEffect(() => {
+    const handleResize = () => {
+      // Trigger re-render by updating a state if needed
+      // The slideWidth is calculated during render
+    };
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
   const duplicatedSlides = [...slides, ...slides];
+  // Responsive height: maintain 16:9 aspect ratio on mobile, fixed 384px on larger screens
+  const carouselHeight = typeof window !== 'undefined' && window.innerWidth < 640 
+    ? slideWidth * 0.96 // ~16:9 ratio
+    : 384;
 
   return (
     <div
+      ref={carouselRef}
       className={`${styles.carousel} ${className}`}
       style={{ 
         cursor: isDragging ? 'grabbing' : 'grab',
-        touchAction: 'none'
+        touchAction: 'none',
+        height: `${carouselHeight}px`
       } as React.CSSProperties}
       onPointerDown={handlePointerDown}
       onPointerMove={handlePointerMove}
@@ -207,8 +221,8 @@ export default function Carousel({
               <Image
                 src={slide.src}
                 alt={slide.alt}
-                width={slideWidth}
-                height={384}
+                width={Math.round(slideWidth)}
+                height={Math.round(carouselHeight)}
                 className={styles.image}
                 sizes={`${slideWidth}px`}
               />

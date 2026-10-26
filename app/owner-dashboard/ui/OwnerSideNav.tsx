@@ -2,6 +2,16 @@
 
 import Image from "next/image"
 import Link from "next/link"
+import {
+  LayoutDashboard,
+  Menu,
+  Package,
+  BarChart3,
+  Settings,
+  User,
+  Users
+} from "lucide-react"
+
 interface OwnerSideNavProps {
   isOpen: boolean, 
   onClose: () => void
@@ -52,13 +62,34 @@ function OwnerSideNav({isOpen, onClose}: OwnerSideNavProps) {
         {/* Content (empty for now) */}
         <div className="flex flex-col p-6">
           {/* Put your nav links here later */}
-          <Link href="/owner-dashboard/" className="px-4 py-2 hover:bg-[#E8D9B5]" >Dashboard</Link>
-          <Link href="/owner-dashboard/menu" className="px-4 py-2 hover:bg-[#E8D9B5]" >Menu Management</Link>
-          <Link href="/owner-dashboard/inventory" className="px-4 py-2 hover:bg-[#E8D9B5]" >Inventory</Link>
-          <Link href="/owner-dashboard/sales-report" className="px-4 py-2 hover:bg-[#E8D9B5]" >Sales Report</Link>
-          <Link href="/owner-dashboard/settings" className="px-4 py-2 hover:bg-[#E8D9B5]" >Settings</Link>
-          <Link href="/owner-dashboard/my-profile" className="px-4 py-2 hover:bg-[#E8D9B5]" >My Profile</Link>
-          <Link href="/owner-dashboard/profile" className="px-4 py-2 hover:bg-[#E8D9B5]" >Worker Profile</Link>
+          <Link href="/owner-dashboard/" className="flex items-center gap-2 px-4 py-2 hover:bg-[#E8D9B5]" >
+            <LayoutDashboard className="w-5 h-5" aria-hidden="true" />
+            Dashboard
+          </Link>
+          <Link href="/owner-dashboard/menu" className="flex items-center gap-2 px-4 py-2 hover:bg-[#E8D9B5]" >
+            <Menu className="w-5 h-5" aria-hidden="true" />
+            Menu Management
+          </Link>
+          <Link href="/owner-dashboard/inventory" className="flex items-center gap-2 px-4 py-2 hover:bg-[#E8D9B5]" >
+            <Package className="w-5 h-5" aria-hidden="true" />
+            Inventory
+          </Link>
+          <Link href="/owner-dashboard/sales-report" className="flex items-center gap-2 px-4 py-2 hover:bg-[#E8D9B5]" >
+            <BarChart3 className="w-5 h-5" aria-hidden="true" />
+            Sales Report
+          </Link>
+          <Link href="/owner-dashboard/settings" className="flex items-center gap-2 px-4 py-2 hover:bg-[#E8D9B5]" >
+            <Settings className="w-5 h-5" aria-hidden="true" />
+            Settings
+          </Link>
+          <Link href="/owner-dashboard/my-profile" className="flex items-center gap-2 px-4 py-2 hover:bg-[#E8D9B5]" >
+            <User className="w-5 h-5" aria-hidden="true" />
+            My Profile
+          </Link>
+          <Link href="/owner-dashboard/profile" className="flex items-center gap-2 px-4 py-2 hover:bg-[#E8D9B5]" >
+            <Users className="w-5 h-5" aria-hidden="true" />
+            Worker Profile
+          </Link>
           
         </div>
 

@@ -230,9 +230,9 @@ useEffect(() => {
     );
   }
 
-  return (
-    <section className="min-h-screen bg-cream text-dark-brown">
-      <div className="pb-24">
+return (
+    <section className="min-h-screen bg-cream text-dark-brown pb-safe">
+      <div className="pb-28 sm:pb-32">
         <ItemHeader
           itemImg={item.itemImg ?? '/drinks/no-drink-image.svg'}
           itemName={item.itemName}
@@ -248,7 +248,7 @@ useEffect(() => {
             {orderType !== 'takeout' && (
               <button
                 onClick={() => setTableModalOpen(true)}
-                className="text-xs text-amber-900 hover:underline cursor-pointer"
+                className="text-sm text-amber-900 hover:underline cursor-pointer min-h-[44px] min-w-[44px] flex items-center"
               >
                 Change table
               </button>
@@ -270,66 +270,66 @@ useEffect(() => {
         {/* Warning only. The item is still orderable: the order API refuses an
             order on a genuine shortage, so this is a heads-up, not a block. */}
         {item.isLowStock && (
-          <div className="mx-5 mt-3 bg-orange-50 border border-orange-200 text-orange-800 text-sm rounded-lg px-3 py-2">
+          <div className="mx-4 mt-3 bg-orange-50 border border-orange-200 text-orange-800 text-sm rounded-lg px-3 py-2">
             Low stock &mdash; some ingredients for this item are running low.
           </div>
         )}
-         <SizeSelector
-           sizes={item.sizes}
-           selectedSize={selectedSize}
-           onSelect={setSelectedSize}
-         />
-          <QuantitySelector
-            quantity={quantity}
-            onChange={setQuantity}
-            max={maxOrderableQuantity}
-          />
-          {stockLoading ? (
-            <p className="text-xs text-dark-brown/50 text-center">
-              Checking stock availability...
-            </p>
-          ) : maxOrderableQuantity === 0 ? (
-            <p className="text-xs text-red-600 text-center font-medium">
-              Not enough stock available (below restock threshold)
-            </p>
-          ) : maxOrderableQuantity < 99 ? (
-            <p className="text-xs text-dark-brown/50 text-center">
-              Maximum available: {maxOrderableQuantity}{maxOrderableQuantity === 1 ? ' item' : ' items'}
-              {item.isLowStock && (
-                <> (ingredients below restock threshold)</>
-              )}
-            </p>
-          ) : (
-            <p className="text-xs text-dark-brown/50 text-center">
-              Use ± buttons or type directly
-              {item.isLowStock && (
-                <> * (ingredients below restock threshold)</>
-              )}
-            </p>
-          )}
-         <AddOns
+        <SizeSelector
+          sizes={item.sizes}
+          selectedSize={selectedSize}
+          onSelect={setSelectedSize}
+        />
+        <QuantitySelector
+          quantity={quantity}
+          onChange={setQuantity}
+          max={maxOrderableQuantity}
+        />
+        {stockLoading ? (
+          <p className="text-sm text-dark-brown/50 text-center py-2">
+            Checking stock availability...
+          </p>
+        ) : maxOrderableQuantity === 0 ? (
+          <p className="text-sm text-red-600 text-center font-medium py-2">
+            Not enough stock available (below restock threshold)
+          </p>
+        ) : maxOrderableQuantity < 99 ? (
+          <p className="text-sm text-dark-brown/50 text-center py-2">
+            Maximum available: {maxOrderableQuantity}{maxOrderableQuantity === 1 ? ' item' : ' items'}
+            {item.isLowStock && (
+              <> (ingredients below restock threshold)</>
+            )}
+          </p>
+        ) : (
+          <p className="text-sm text-dark-brown/50 text-center py-2">
+            Use ± buttons or type directly
+            {item.isLowStock && (
+              <> * (ingredients below restock threshold)</>
+            )}
+          </p>
+        )}
+        <AddOns
           selectedAddOn={selectedAddOn}
           setSelectedAddOn={setSelectedAddOn}
           addOns={addOns}
         />
       </div>
 
-<div className="fixed bottom-0 left-0 right-0 bg-cream">
-          <AddToOrderButton
-            itemId={Number(itemId)}
-            itemName={item.itemName}
-            itemImg={item.itemImg ?? '/drinks/no-drink-image.svg'}
-            selectedSize={selectedSize}
-            selectedAddOn={selectedAddOn}
-            quantity={quantity}
-            totalPrice={totalPrice}
-            addOnsTotal={addOnsTotal}
-            basePrice={basePrice}
-            disabled={maxOrderableQuantity === 0}
-            isEditing={isEditing}
-            originalOrderKey={originalOrderKey}
-          />
-        </div>
+      <div className="fixed bottom-0 left-0 right-0 bg-cream border-t border-dark-brown/10 px-4 py-3 sm:py-4 safe-bottom">
+        <AddToOrderButton
+          itemId={Number(itemId)}
+          itemName={item.itemName}
+          itemImg={item.itemImg ?? '/drinks/no-drink-image.svg'}
+          selectedSize={selectedSize}
+          selectedAddOn={selectedAddOn}
+          quantity={quantity}
+          totalPrice={totalPrice}
+          addOnsTotal={addOnsTotal}
+          basePrice={basePrice}
+          disabled={maxOrderableQuantity === 0}
+          isEditing={isEditing}
+          originalOrderKey={originalOrderKey}
+        />
+      </div>
     </section>
   );
 }

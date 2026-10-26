@@ -2,6 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
+import { LogIn, ClipboardList } from "lucide-react";
 
 interface SideNavProps {
   isOpen: boolean;
@@ -25,7 +26,7 @@ export default function SideNav({ isOpen, onClose, showQueueLink = false }: Side
       {/* Drawer */}
       <aside
         className={`
-          fixed top-0 left-0 z-50 h-full w-80
+          fixed top-0 left-0 z-50 h-full w-full max-w-[320px]
           bg-card-cream shadow-2xl
           flex flex-col
           transition-transform duration-300 ease-in-out
@@ -53,9 +54,15 @@ export default function SideNav({ isOpen, onClose, showQueueLink = false }: Side
         {/* Content (empty for now) */}
         <div className="flex flex-col p-6">
           {/* Put your nav links here later */}
-          <Link href="/login?showLogin=true" className="px-4 py-2 hover:bg-[#E8D9B5]" >Login</Link>
+          <Link href="/login?showLogin=true" className="flex items-center gap-2 px-4 py-2 hover:bg-[#E8D9B5]" >
+            <LogIn className="w-5 h-5" aria-hidden="true" />
+            Login
+          </Link>
           {showQueueLink && (
-            <Link href="/order-queue" className="px-4 py-2 hover:bg-[#E8D9B5]" >Order Queue</Link>
+            <Link href="/order-queue" className="flex items-center gap-2 px-4 py-2 hover:bg-[#E8D9B5]" >
+              <ClipboardList className="w-5 h-5" aria-hidden="true" />
+              Order Queue
+            </Link>
           )}
         </div>
 

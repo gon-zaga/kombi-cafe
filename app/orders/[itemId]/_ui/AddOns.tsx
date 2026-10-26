@@ -21,7 +21,7 @@ function AddOns({ selectedAddOn, setSelectedAddOn, addOns }: selectedAddOnProp) 
   };
 
   return (
-    <div className="flex flex-col p-3 rounded-xl text-dark-brown w-full">
+    <div className="mx-4 mt-4 flex flex-col p-4 rounded-xl text-dark-brown w-full">
       <div className="flex flex-col w-full gap-3">
         {visibleAddons.map((addon) => {
           const isSelected = selectedAddOn.includes(addon.addOnsId);
@@ -30,7 +30,7 @@ function AddOns({ selectedAddOn, setSelectedAddOn, addOns }: selectedAddOnProp) 
               key={addon.addOnsId}
               type="button"
               onClick={() => toggleAddOn(addon.addOnsId)}
-              className={`flex items-center justify-between px-5 py-5 rounded-xl border-2 transition-all duration-200 ${
+              className={`flex items-center justify-between px-4 py-4 rounded-xl border-2 transition-all duration-200 min-h-[56px] ${
                 isSelected
                   ? "bg-dark-brown text-white border-dark-brown shadow-lg"
                   : "bg-white border-gray-200 hover:border-amber-300 hover:bg-amber-50"
@@ -40,21 +40,21 @@ function AddOns({ selectedAddOn, setSelectedAddOn, addOns }: selectedAddOnProp) 
               <div className="flex items-center gap-4 flex-1 min-w-0">
                 {/* Checkbox indicator */}
                 <div
-                  className={`flex-shrink-0 w-7 h-7 rounded-lg border-2 flex items-center justify-center transition-all ${
+                  className={`flex-shrink-0 w-8 h-8 rounded-lg border-2 flex items-center justify-center transition-all min-w-[44px] min-h-[44px] ${
                     isSelected
                       ? "bg-amber-500 border-amber-500 text-white"
                       : "border-gray-300 text-transparent"
                   }`}
                 >
                   {isSelected && (
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
                     </svg>
                   )}
                 </div>
 
                 {/* Name */}
-                <span className="text-lg font-medium truncate">{addon.name}</span>
+                <span className="text-base font-medium truncate">{addon.name}</span>
               </div>
 
               {/* Price column - right aligned */}
@@ -75,7 +75,7 @@ function AddOns({ selectedAddOn, setSelectedAddOn, addOns }: selectedAddOnProp) 
         {addOns.length > sliceLimit && (
           <button
             onClick={() => setShowAll(!showAll)}
-            className="mt-2 w-full py-3 text-base text-amber-700 font-semibold border-2 border-amber-300 rounded-xl hover:bg-amber-50 transition-colors"
+            className="mt-2 w-full py-3 text-base text-amber-700 font-semibold border-2 border-amber-300 rounded-xl hover:bg-amber-50 transition-colors min-h-[44px]"
           >
             {showAll ? "Show Less" : "Show All"}
           </button>

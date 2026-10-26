@@ -7,7 +7,7 @@ import StoreClosedModal from "./StoreClosedModal";
 import type { StoreStatus } from "@/app/lib/storeHours";
 
 export default function OrderNowButton({
-  className = "bg-dark-brown text-white px-8 py-4 rounded-2xl text-lg font-semibold",
+  className = "bg-dark-brown text-white px-6 py-3 rounded-xl text-base font-semibold shadow-md hover:opacity-90 transition-opacity min-h-[48px] min-w-[120px]",
   children = "Order Now",
 }: {
   className?: string;

@@ -58,15 +58,15 @@ export default function QuantitySelector({ quantity, onChange, max = 99 }: Quant
   };
 
   return (
-    <div className="flex justify-center mb-6">
-      <section className="flex flex-col items-center gap-3 w-4/5 shrink-0 bg-[#F4EBD0] rounded-2xl shadow-lg p-4">
+    <div className="mx-4 mt-4">
+      <section className="flex flex-col items-center gap-3 w-full bg-[#F4EBD0] rounded-2xl shadow-lg p-4">
         <label className="text-sm font-medium text-dark-brown/70">Quantity</label>
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-3 w-full justify-center">
           <button
             type="button"
             onClick={decrement}
             disabled={quantity <= 1}
-            className="w-12 h-12 rounded-xl bg-dark-brown text-white text-xl font-medium hover:bg-dark-brown/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
+            className="w-14 h-14 rounded-xl bg-dark-brown text-white text-2xl font-medium hover:bg-dark-brown/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center min-w-[44px] min-h-[44px]"
             aria-label="Decrease quantity"
           >
             −
@@ -78,7 +78,7 @@ export default function QuantitySelector({ quantity, onChange, max = 99 }: Quant
             onChange={handleInputChange}
             onBlur={handleBlur}
             onKeyDown={handleKeyDown}
-            className="w-20 h-12 text-center text-2xl font-bold text-dark-brown bg-white rounded-xl border border-dark-brown/20 focus:outline-none focus:ring-2 focus:ring-amber-800/30"
+            className="w-24 h-14 text-center text-2xl font-bold text-dark-brown bg-white rounded-xl border border-dark-brown/20 focus:outline-none focus:ring-2 focus:ring-amber-800/30 min-h-[44px]"
             inputMode="numeric"
             aria-label="Quantity"
           />
@@ -86,13 +86,13 @@ export default function QuantitySelector({ quantity, onChange, max = 99 }: Quant
             type="button"
             onClick={increment}
             disabled={quantity >= max}
-            className="w-12 h-12 rounded-xl bg-dark-brown text-white text-xl font-medium hover:bg-dark-brown/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
+            className="w-14 h-14 rounded-xl bg-dark-brown text-white text-2xl font-medium hover:bg-dark-brown/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center min-w-[44px] min-h-[44px]"
             aria-label="Increase quantity"
           >
             +
           </button>
         </div>
-        <p className="text-xs text-dark-brown/50 text-center">Use ± buttons or type directly</p>
+        <p className="text-sm text-dark-brown/50 text-center">Use ± buttons or type directly</p>
       </section>
     </div>
   );

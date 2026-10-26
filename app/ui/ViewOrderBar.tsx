@@ -23,14 +23,14 @@ function ViewOrderBar() {
   };
 
   return (
-    <div className="fixed bottom-0 left-0 right-0 flex justify-center pb-4 pointer-events-none">
+    <div className="fixed bottom-0 left-0 right-0 flex justify-center pb-4 safe-bottom pointer-events-none">
       <button
-        className="pointer-events-auto text-white p-2 w-3xs flex flex-row justify-center border rounded-2xl bg-dark-brown"
+        className="pointer-events-auto text-white px-6 py-3 rounded-2xl bg-dark-brown font-medium text-sm min-h-[48px] min-w-[140px] flex items-center justify-center gap-2 shadow-lg"
         onClick={handleClick}
       >
-        VIEW ORDER
-        <div className="h-auto flex border-l border-white mx-2.5 shrink-0"></div>
-        {totalOrders}
+        <span>VIEW ORDER</span>
+        <div className="h-6 w-px bg-white/30"></div>
+        <span className="font-bold">{totalOrders}</span>
       </button>
     </div>
   );

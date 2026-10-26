@@ -14,21 +14,21 @@ type SizeSelectorProps = {
 
 export default function SizeSelector({ sizes, selectedSize, onSelect }: SizeSelectorProps) {
   return (
-    <div className="flex justify-center mb-10">
-      <section className="flex flex-col h-auto p-4 w-4/5 shrink-0 bg-[#F4EBD0] rounded-2xl shadow-lg cursor-pointer">
+    <div className="mx-4 mt-4">
+      <section className="flex flex-col h-auto p-4 w-full bg-[#F4EBD0] rounded-2xl shadow-lg cursor-pointer">
         {sizes.map((s) => (
           <div
             key={s.sizeId}
             onClick={() => onSelect(s)}
-            className={`flex flex-col px-3 py-3 rounded-lg
+            className={`flex flex-col px-4 py-3 rounded-lg
               ${selectedSize.size === s.size ? "text-white bg-dark-brown" : "text-dark-brown"}`}
           >
             <div className="flex items-center justify-between">
-              <span className="font-medium">{s.size}</span>
-              <span>₱{s.price}</span>
+              <span className="font-medium text-base">{s.size}</span>
+              <span className="font-medium text-base">₱{s.price}</span>
             </div>
             {s.oz && s.temperature && (
-              <span className="text-xs opacity-70 mt-1">
+              <span className="text-sm opacity-70 mt-1">
                 {s.oz}oz · {s.temperature === "hot" ? "Hot" : "Cold"}
               </span>
             )}
@@ -38,7 +38,7 @@ export default function SizeSelector({ sizes, selectedSize, onSelect }: SizeSele
               value={s.size}
               checked={selectedSize.size === s.size}
               onChange={() => onSelect(s)}
-              className="mt-2 self-start"
+              className="mt-2 self-start w-5 h-5 accent-dark-brown"
             />
           </div>
         ))}

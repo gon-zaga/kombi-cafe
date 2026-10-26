@@ -70,7 +70,7 @@ export default function Home() {
 
   if (loading || (orderType === 'dine_in' && selectedTable === null)) {
     return (
-      <div className="min-h-screen bg-cream relative overflow-hidden pb-24">
+      <div className="min-h-screen bg-cream relative overflow-hidden pb-28">
         {/* Paint smudge background */}
         <div className="absolute inset-0 pointer-events-none overflow-hidden" aria-hidden="true">
           <div className="absolute top-2/3 left-1/4 w-[400px] h-[400px] rounded-full bg-[#8B4513]/15 blur-[60px] -translate-x-1/2 -translate-y-1/2" />
@@ -178,7 +178,7 @@ export default function Home() {
   }));
 
   return (
-    <div className='bg-cream min-h-screen relative overflow-hidden pb-24'>
+    <div className='bg-cream min-h-screen relative overflow-hidden pb-28'>
       {/* Paint smudge background - strictly behind MenuItem grid */}
       <div className="absolute inset-0 pointer-events-none overflow-hidden" aria-hidden="true">
         {baseSmudges}
@@ -195,7 +195,7 @@ export default function Home() {
         {orderType !== 'takeout' && (
           <button
             onClick={() => setTableModalOpen(true)}
-            className="text-xs text-amber-900 hover:underline cursor-pointer"
+            className="text-sm text-amber-900 hover:underline cursor-pointer min-h-[44px] min-w-[44px] flex items-center"
           >
             Change table
           </button>

@@ -19,4 +19,18 @@
   .scrollbar-hide::-webkit-scrollbar {
     display: none;
   }
+  
+  /* Safe area utilities for mobile devices */
+  .pb-safe {
+    padding-bottom: env(safe-area-inset-bottom, 0);
+  }
+  .safe-bottom {
+    padding-bottom: env(safe-area-inset-bottom, 0);
+  }
+  .pt-safe {
+    padding-top: env(safe-area-inset-top, 0);
+  }
+  .safe-top {
+    padding-top: env(safe-area-inset-top, 0);
+  }
 }

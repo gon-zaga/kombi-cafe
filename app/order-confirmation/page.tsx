@@ -74,9 +74,9 @@ function ConfirmOrder() {
   };
 
   return (
-    <section className="bg-cream flex min-h-screen items-center justify-center">
+    <section className="bg-cream flex min-h-screen items-center justify-center px-4 py-8">
       {/* Confirm Card */}
-      <div className="flex flex-col items-center justify-center w-4/5 gap-2">
+      <div className="flex flex-col items-center justify-center w-full max-w-md gap-4">
         <Image
           src="/check-circle.svg"
           alt="check-icon"
@@ -84,14 +84,14 @@ function ConfirmOrder() {
           height={48}
         />
         <span className="font-mono text-sm tracking-widest text-dark-brown">ORDER PLACED</span>
-        <span className="text-2xl font-semibold">You&apos; re all set!</span>
+        <span className="text-xl sm:text-2xl font-semibold text-center">You&apos;re all set!</span>
         <p className="text-sm text-gray-600 text-center mt-1">
           Please verify your reference number at the counter to prepare your order
         </p>
 
         <div className="mt-3 bg-dark-brown text-white py-4 px-8 rounded-2xl text-center w-full">
           <span className="text-sm tracking-widest font-mono">REFERENCE NUMBER</span>
-          <p className="text-3xl font-bold font-mono mt-1">{ref}</p>
+          <p className="text-2xl sm:text-3xl font-bold font-mono mt-1">{ref}</p>
         </div>
 
         {/* How the customer intends to pay. The staff handles the actual
@@ -155,7 +155,7 @@ function ConfirmOrder() {
 
         <button
           onClick={handleNewOrder}
-          className="w-full mt-2 bg-amber-800 text-white text-lg font-semibold py-4 rounded-2xl active:opacity-80"
+          className="w-full mt-2 bg-amber-800 text-white text-lg font-semibold py-4 rounded-2xl active:opacity-80 min-h-[56px]"
         >
           New Order
         </button>

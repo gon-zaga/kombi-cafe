@@ -80,7 +80,7 @@ function OrdersLists() {
   if (!hydrated) return null;
 
   return (
-    <div className='min-h-screen'>
+    <div className='min-h-screen pb-28'>
       <Header />
 
       {/* Table indicator */}
@@ -92,7 +92,7 @@ function OrdersLists() {
           {orderType !== 'takeout' && (
             <button
               onClick={() => setTableModalOpen(true)}
-              className="text-xs text-amber-900 hover:underline cursor-pointer"
+              className="text-sm text-amber-900 hover:underline cursor-pointer min-h-[44px] min-w-[44px] flex items-center"
             >
               Change table
             </button>
