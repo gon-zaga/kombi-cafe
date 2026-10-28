@@ -3,7 +3,7 @@
 export default function ProductCardSkeleton() {
   return (
     <div className="bg-[#F4EBD0] rounded-2xl drop-shadow-lg flex flex-col p-3 gap-2 text-dark-brown animate-pulse">
-      <div className="flex justify-center items-center bg-white/50 rounded-xl p-2 w-[204px] h-[264px] shrink-0">
+      <div className="flex justify-center items-center bg-white/50 rounded-xl p-2 w-full aspect-[5/7] shrink-0">
         <div className="w-full h-full rounded-lg bg-dark-brown/10" />
       </div>
 

@@ -50,7 +50,7 @@ function ProductCard({
 
   const body = (
     <>
-      <div className="flex justify-center items-center bg-white rounded-xl p-2 relative overflow-hidden w-[204px] h-[264px] shrink-0">
+      <div className="flex justify-center items-center bg-white rounded-xl p-2 relative overflow-hidden w-full aspect-[5/7] shrink-0">
         <ItemImage
           src={imageSrc}
           alt={itemName}
@@ -178,7 +178,7 @@ function ProductCard({
 
   return (
     <div
-      className={`relative bg-[#F4EBD0] rounded-2xl drop-shadow-lg flex flex-col p-4 gap-2.5 text-dark-brown min-w-[220px] ${
+      className={`relative bg-[#F4EBD0] rounded-2xl drop-shadow-lg flex flex-col p-4 gap-2.5 text-dark-brown ${
         isNotPurchasable ? "opacity-70" : ""
       } ${className ?? ""}`}
       style={cardStyle}
