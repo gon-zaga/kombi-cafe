@@ -237,7 +237,7 @@ export default function BestSellers({ menuItems }: { menuItems: MenuItem[] }) {
                 item={carouselItem.item}
                 tag="best"
                 sublabel={`${carouselItem.soldCount} sold`}
-                className="h-full"
+                className="h-full min-w-0"
               />
             </div>
           ))}
