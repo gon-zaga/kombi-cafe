@@ -84,7 +84,7 @@ function ProductCard({
             {item.sizes.map((sizeOption) => (
               <span
                 key={sizeOption.sizeId}
-                className={`inline-flex items-center px-3 py-1 text-sm font-medium rounded-full border transition-all duration-150 min-h-[36px] ${
+                className={`inline-flex items-center px-2 py-1 text-xs font-medium rounded-full border transition-all duration-150 min-h-[36px] ${
                   isNotPurchasable
                     ? "border-dark-brown/20 bg-dark-brown/5 text-dark-brown/40 line-through"
                     : "border-[#D6C09A] bg-[#E8D9B8] text-[#4B3325] hover:bg-[#D6C09A] hover:text-[#3D2B1F]"
