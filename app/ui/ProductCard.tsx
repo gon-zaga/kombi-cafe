@@ -91,7 +91,7 @@ function ProductCard({
                 }`}
                 role="listitem"
               >
-                {sizeOption.size}: ₱{Number(sizeOption.price).toFixed(2)}
+                {sizeOption.size}
               </span>
             ))}
           </div>
