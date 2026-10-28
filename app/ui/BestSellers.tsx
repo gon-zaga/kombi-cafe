@@ -25,9 +25,9 @@ export default function BestSellers({ menuItems }: { menuItems: MenuItem[] }) {
   });
 
   // Responsive card width: ~45% of viewport on mobile (2 cards visible), up to 160px on desktop
-  const CARD_WIDTH = typeof window !== 'undefined' 
-    ? Math.min(window.innerWidth * 0.45, 160)
-    : 160;
+const CARD_WIDTH = typeof window !== 'undefined'
+    ? Math.min(window.innerWidth * 0.5, 200)
+    : 200;
   const GAP = 12;
   const SLIDE_UNIT = CARD_WIDTH + GAP;
   const ANIMATION_DURATION = 25000;
