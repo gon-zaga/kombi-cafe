@@ -77,14 +77,14 @@ function ProductCard({
         )}
       </div>
 
-      <div className="flex flex-col items-start gap-1.5 w-full">
+      <div className="flex flex-col items-start gap-1 w-full">
         {/* Size/Price chips */}
         {item.sizes && item.sizes.length > 0 && (
           <div className="flex flex-wrap gap-2 w-full" role="list" aria-label="Available sizes">
             {item.sizes.map((sizeOption) => (
               <span
                 key={sizeOption.sizeId}
-                className={`inline-flex items-center px-3 py-1.5 text-sm font-medium rounded-full border transition-all duration-150 min-h-[44px] ${
+                className={`inline-flex items-center px-3 py-1 text-sm font-medium rounded-full border transition-all duration-150 min-h-[36px] ${
                   isNotPurchasable
                     ? "border-dark-brown/20 bg-dark-brown/5 text-dark-brown/40 line-through"
                     : "border-[#D6C09A] bg-[#E8D9B8] text-[#4B3325] hover:bg-[#D6C09A] hover:text-[#3D2B1F]"
@@ -122,7 +122,7 @@ function ProductCard({
                 <button
                   type="button"
                   onClick={() => setShowAllIngredients(!showAllIngredients)}
-                  className="text-sm font-medium text-[#8B4513] hover:text-[#6B4F3A] transition-colors px-2 py-1 min-h-[44px] min-w-[44px] flex items-center"
+                  className="text-sm font-medium text-[#8B4513] hover:text-[#6B4F3A] transition-colors px-2 py-1 min-h-[36px] min-w-[36px] flex items-center"
                   aria-expanded={showAllIngredients}
                   aria-controls="ingredients-list"
                 >
@@ -140,14 +140,14 @@ function ProductCard({
               {visibleIngredients.map((ing, index) => (
                 <span
                   key={`${ing}-${index}`}
-                  className="inline-flex items-center rounded-full border border-[#D6C09A] bg-[#E8D9B8] px-3 py-1.5 text-sm font-medium text-[#4B3325] shadow-sm min-h-[44px]"
+                  className="inline-flex items-center rounded-full border border-[#D6C09A] bg-[#E8D9B8] px-3 py-1 text-sm font-medium text-[#4B3325] shadow-sm min-h-[36px]"
                   role="listitem"
                 >
                   {ing}
                 </span>
               ))}
               {hasMoreIngredients && !showAllIngredients && (
-                <span className="inline-flex items-center rounded-full border border-[#D6C09A]/50 bg-transparent px-3 py-1.5 text-sm font-medium text-[#6B4F3A]/60 min-h-[44px]">
+                <span className="inline-flex items-center rounded-full border border-[#D6C09A]/50 bg-transparent px-3 py-1 text-sm font-medium text-[#6B4F3A]/60 min-h-[36px]">
                   +{item.ingredients.length - 3} more
                 </span>
               )}
@@ -159,7 +159,7 @@ function ProductCard({
               Ingredients
             </p>
 
-            <span className="inline-flex rounded-full border border-[#D6C09A] bg-[#E8D9B8] px-3 py-1.5 text-sm italic text-[#6B4F3A] min-h-[44px]">
+            <span className="inline-flex rounded-full border border-[#D6C09A] bg-[#E8D9B8] px-3 py-1 text-sm italic text-[#6B4F3A] min-h-[36px]">
               None listed
             </span>
           </div>

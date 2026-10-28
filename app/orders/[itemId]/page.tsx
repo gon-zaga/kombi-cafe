@@ -299,14 +299,7 @@ return (
               <> (ingredients below restock threshold)</>
             )}
           </p>
-        ) : (
-          <p className="text-sm text-dark-brown/50 text-center py-2">
-            Use ± buttons or type directly
-            {item.isLowStock && (
-              <> * (ingredients below restock threshold)</>
-            )}
-          </p>
-        )}
+        ) : null}
         <AddOns
           selectedAddOn={selectedAddOn}
           setSelectedAddOn={setSelectedAddOn}
