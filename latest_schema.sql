@@ -22,6 +22,13 @@ CREATE TABLE IF NOT EXISTS staff (
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
+-- Login lockouts (escalating per-username failed-attempt tracking) ---
+CREATE TABLE IF NOT EXISTS login_lockouts (
+  username TEXT PRIMARY KEY,
+  failed_attempts INTEGER NOT NULL DEFAULT 0,
+  locked_until TIMESTAMP,
+  last_failed_at TIMESTAMP
+);
 -- Menu Items ---
 CREATE TABLE IF NOT EXISTS menu_items (
   id SERIAL PRIMARY KEY,
