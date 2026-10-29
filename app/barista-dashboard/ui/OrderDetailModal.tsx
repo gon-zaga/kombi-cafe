@@ -21,9 +21,9 @@ interface OrderDetailModalProps {
 
 function OrderDetailModal({ order, onClose, onUpdateStatus }: OrderDetailModalProps) {
   const [confirmingPreparing, setConfirmingPreparing] = useState(false);
-    const [confirmingReady, setConfirmingReady] = useState(false);
-    const [confirmingCompleted, setConfirmingCompleted] = useState(false);
-    const [deletingOrder, setDeletingOrder] = useState<OrderSummary | null>(null);
+  const [confirmingReady, setConfirmingReady] = useState(false);
+  const [confirmingCompleted, setConfirmingCompleted] = useState(false);
+  const [deletingOrder, setDeletingOrder] = useState<OrderSummary | null>(null);
 
   // Whether the barista has computed the change for this order.
   // 'preparing' is blocked until this is true, so the transaction
@@ -136,12 +136,12 @@ if (!order) return null;
                       Table {order.tableNumber}
                     </span>
                   )}
-                 {order.paymentMethod === "gcash" ? (
-                   <>
-                     <span className="text-xs font-semibold bg-white/15 text-white rounded-full px-2.5 py-0.5">
-                       GCash{order.gcashReference ? ` · Ref ${order.gcashReference}` : ""}
-                     </span>
-                     {order.gcashPhoto && (
+{order.paymentMethod === "gcash" ? (
+                    <>
+                      <span className="text-xs font-semibold bg-white/15 text-white rounded-full px-2.5 py-0.5">
+                        GCash{order.gcashReference ? ` · Ref ${order.gcashReference}` : ""}
+                      </span>
+                      {order.gcashPhoto && (
                        <div className="mt-2">
                          <p className="text-xs font-semibold text-white/80">GCash Photo:</p>
                          <img
@@ -339,7 +339,7 @@ if (!order) return null;
           onCancel={() => setConfirmingReady(false)}
           onConfirm={handleConfirmReady}
         />
-        <ConfirmModal
+<ConfirmModal
           isOpen={confirmingCompleted}
           title="Mark as Completed?"
           message={`Order #${order.orderReference} will be marked as Completed.`}
@@ -349,8 +349,8 @@ if (!order) return null;
           onCancel={() => setConfirmingCompleted(false)}
           onConfirm={handleConfirmCompleted}
         />
-    </div>
-  );
-}
+      </div>
+    );
+  }
 
 export default OrderDetailModal;

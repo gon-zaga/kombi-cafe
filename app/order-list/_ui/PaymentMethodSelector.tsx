@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from "react";
+import QRCodeModal from "./QRCodeModal";
 
 // Payment-method picker: the customer chooses how they intend to pay.
 // Two options only -- Counter (cash at the counter) or GCash. Choosing
@@ -38,6 +39,7 @@ export default function PaymentMethodSelector({
       "border-dark-brown/20 bg-white hover:border-amber-400";
     
     const [photoError, setPhotoError] = useState("");
+    const [showQrModal, setShowQrModal] = useState(false);
 
    return (
      <div className="mt-3">
@@ -75,9 +77,16 @@ export default function PaymentMethodSelector({
          </button>
        </div>
 
-       {value === "gcash" && (
-         <div className="mt-3 space-y-3">
-           <div>
+{value === "gcash" && (
+          <div className="mt-3 space-y-3">
+            <button
+              type="button"
+              onClick={() => setShowQrModal(true)}
+              className="text-sm font-medium text-amber-800 hover:text-amber-600 underline"
+            >
+              View QR Code
+            </button>
+            <div>
              <label
                htmlFor="gcash-reference"
                className="block text-sm font-semibold text-dark-brown mb-1"
@@ -147,8 +156,9 @@ export default function PaymentMethodSelector({
                 </p>
               )}
             </div>
-         </div>
-       )}
-     </div>
-   );
- }
+</div>
+        )}
+        <QRCodeModal isOpen={showQrModal} onClose={() => setShowQrModal(false)} />
+      </div>
+    );
+  }
