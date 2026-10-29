@@ -1,8 +1,7 @@
 'use client'
 
 // Edits an existing ingredient's name, unit and restock threshold.
-// Stock is deliberately NOT editable here: the only way to change stock is
-// Restock, which sends a delta, so a stale screen value can't overwrite real stock.
+// Stock can be reduced via negative stockDelta (similar to Restock but in reverse).
 import { useState } from "react";
 import { useToast } from "@/app/ui/Toast";
 
@@ -67,7 +66,9 @@ function EditIngredientForm({
   const [restockThreshold, setRestockThreshold] = useState(
     String(ingredient.restockThreshold)
   );
+  const [reduceAmount, setReduceAmount] = useState("");
   const [saving, setSaving] = useState(false);
+  const [reducing, setReducing] = useState(false);
   const { success, error: showError } = useToast();
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -109,6 +110,56 @@ function EditIngredientForm({
       );
     } finally {
       setSaving(false);
+    }
+  };
+
+  const parseReduceAmount = (): number | null => {
+    const parsed = Number(reduceAmount);
+
+    if (reduceAmount.trim() === "" || isNaN(parsed) || parsed <= 0) {
+      showError("Enter an amount greater than 0.");
+      return null;
+    }
+
+    if (parsed > ingredient.stockQty) {
+      showError(`Cannot reduce by more than current stock (${ingredient.stockQty} ${ingredient.unit}).`);
+      return null;
+    }
+
+    return parsed;
+  };
+
+  const handleReduce = async (e: React.FormEvent) => {
+    e.preventDefault();
+
+    const amount = parseReduceAmount();
+    if (amount === null) return;
+
+    setReducing(true);
+
+    try {
+      const response = await fetch(`/api/ingredients/${ingredient.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+
+        body: JSON.stringify({ stockDelta: -amount }),
+      });
+
+      if (!response.ok) {
+        const data = await response.json().catch(() => ({}));
+        throw new Error(data.error || "Failed to reduce stock");
+      }
+
+      onUpdated();
+      success("Stock reduced successfully!");
+      setReduceAmount("");
+    } catch (err) {
+      console.error(err);
+      showError(
+        err instanceof Error ? err.message : "Failed to reduce stock"
+      );
+    } finally {
+      setReducing(false);
     }
   };
 
@@ -196,10 +247,33 @@ function EditIngredientForm({
             </p>
           </div>
 
+          <div>
+            <label
+              htmlFor="edit-reduce"
+              className="block text-sm font-medium text-gray-700 mb-1"
+            >
+              Reduce Stock <span className="text-red-600" aria-hidden="true">*</span>
+            </label>
+            <input
+              id="edit-reduce"
+              type="number"
+              required
+              min="0"
+              step="0.01"
+              value={reduceAmount}
+              onChange={(e) => setReduceAmount(e.target.value)}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500"
+              placeholder="e.g. 100"
+            />
+            <p className="text-xs text-gray-500 mt-1">
+              Current stock: {ingredient.stockQty} {ingredient.unit}. This is subtracted from current stock.
+            </p>
+          </div>
+
           <div className="bg-gray-50 rounded-lg p-3 text-sm text-gray-600">
             Current stock:{" "}
             <span className="font-semibold">{ingredient.stockQty}</span>{" "}
-            {ingredient.unit}. Use the Restock button on the card to change it.
+            {ingredient.unit}. Use Restock button on card to add, or Reduce Stock below to subtract.
           </div>
 
           <div className="flex gap-2 pt-2">
@@ -209,6 +283,15 @@ function EditIngredientForm({
               className="flex-1 px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors"
             >
               Cancel
+            </button>
+
+            <button
+              type="button"
+              onClick={handleReduce}
+              disabled={reducing}
+              className="flex-1 px-4 py-2 text-sm font-medium text-white bg-red-600 rounded-lg hover:bg-red-700 transition-colors disabled:opacity-50"
+            >
+              {reducing ? "Reducing..." : "Reduce Stock"}
             </button>
 
             <button
