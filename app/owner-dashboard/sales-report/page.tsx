@@ -279,11 +279,11 @@ const exportSales = () => {
             )}
             <button
               onClick={() => setMenuOpen((open) => !open)}
-              disabled={isLoading}
+              disabled={isLoading || orders.length === 0}
               aria-expanded={menuOpen}
               className={`relative z-30 flex items-center gap-2 text-sm font-semibold px-4 py-2.5 rounded-lg transition-all shadow-sm hover:shadow-md ${
-                isLoading 
-                  ? 'bg-gray-200 text-gray-400 cursor-not-allowed' 
+                isLoading || orders.length === 0
+                  ? 'bg-gray-200 text-gray-400 cursor-not-allowed'
                   : 'bg-amber-700 text-white hover:bg-amber-800'
               }`}
             >
