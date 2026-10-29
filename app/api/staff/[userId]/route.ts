@@ -2,6 +2,32 @@ import { NextResponse } from "next/server";
 import pool from "@/app/lib/db";
 import bcrypt from "bcryptjs";
 
+function validateName(name: string | null): string | null {
+  if (!name) return null;
+  if (/\d/.test(name)) {
+    return "Name cannot contain numbers";
+  }
+  if (!/^[a-zA-Z\s-]+$/.test(name)) {
+    return "Name can only contain letters, spaces, and hyphens";
+  }
+  return null;
+}
+
+function validateAge(birthdate: string | null): string | null {
+  if (!birthdate) return null;
+  const birth = new Date(birthdate);
+  const today = new Date();
+  let age = today.getFullYear() - birth.getFullYear();
+  const monthDiff = today.getMonth() - birth.getMonth();
+  if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birth.getDate())) {
+    age--;
+  }
+  if (age < 18) {
+    return "Staff must be at least 18 years old";
+  }
+  return null;
+}
+
 export async function PATCH(
   request: Request,
   { params }: { params: Promise<{ userId: string }> }
@@ -41,10 +67,18 @@ export async function PATCH(
       values.push(role);
     }
     if (first_name !== undefined) {
+      const firstNameError = validateName(first_name);
+      if (firstNameError) {
+        return NextResponse.json({ error: firstNameError }, { status: 400 });
+      }
       fields.push(`first_name = $${idx++}`);
       values.push(first_name);
     }
     if (last_name !== undefined) {
+      const lastNameError = validateName(last_name);
+      if (lastNameError) {
+        return NextResponse.json({ error: lastNameError }, { status: 400 });
+      }
       fields.push(`last_name = $${idx++}`);
       values.push(last_name);
     }
@@ -53,6 +87,10 @@ export async function PATCH(
       values.push(started_at);
     }
     if (birthdate !== undefined) {
+      const ageError = validateAge(birthdate);
+      if (ageError) {
+        return NextResponse.json({ error: ageError }, { status: 400 });
+      }
       fields.push(`birthdate = $${idx++}`);
       values.push(birthdate);
     }

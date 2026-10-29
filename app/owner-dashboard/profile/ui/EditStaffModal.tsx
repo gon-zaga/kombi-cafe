@@ -20,6 +20,32 @@ interface EditStaffModalProps {
   onUpdated: () => void;
 }
 
+function validateName(name: string): string | null {
+  if (!name) return null;
+  if (/\d/.test(name)) {
+    return "Name cannot contain numbers";
+  }
+  if (!/^[a-zA-Z\s-]+$/.test(name)) {
+    return "Name can only contain letters, spaces, and hyphens";
+  }
+  return null;
+}
+
+function validateAge(birthdate: string): string | null {
+  if (!birthdate) return null;
+  const birth = new Date(birthdate);
+  const today = new Date();
+  let age = today.getFullYear() - birth.getFullYear();
+  const monthDiff = today.getMonth() - birth.getMonth();
+  if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birth.getDate())) {
+    age--;
+  }
+  if (age < 18) {
+    return "Staff must be at least 18 years old";
+  }
+  return null;
+}
+
 export default function EditStaffModal({ staff, isOpen, onClose, onUpdated }: EditStaffModalProps) {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
@@ -58,6 +84,24 @@ export default function EditStaffModal({ staff, isOpen, onClose, onUpdated }: Ed
 
     if (password && (!/[A-Z]/.test(password) || !/[a-z]/.test(password) || !/[0-9]/.test(password) || !/[^A-Za-z0-9]/.test(password))) {
       setError("Password must contain uppercase, lowercase, number, and special character");
+      return;
+    }
+
+    const firstNameError = validateName(firstName);
+    if (firstNameError) {
+      setError(firstNameError);
+      return;
+    }
+
+    const lastNameError = validateName(lastName);
+    if (lastNameError) {
+      setError(lastNameError);
+      return;
+    }
+
+    const ageError = validateAge(birthdate);
+    if (ageError) {
+      setError(ageError);
       return;
     }
 
@@ -156,7 +200,7 @@ export default function EditStaffModal({ staff, isOpen, onClose, onUpdated }: Ed
               <input
                 type="text"
                 value={firstName}
-                onChange={(e) => setFirstName(e.target.value)}
+                onChange={(e) => setFirstName(e.target.value.replace(/[^a-zA-Z\s-]/g, ""))}
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500"
               />
             </div>
@@ -165,7 +209,7 @@ export default function EditStaffModal({ staff, isOpen, onClose, onUpdated }: Ed
               <input
                 type="text"
                 value={lastName}
-                onChange={(e) => setLastName(e.target.value)}
+                onChange={(e) => setLastName(e.target.value.replace(/[^a-zA-Z\s-]/g, ""))}
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500"
               />
             </div>

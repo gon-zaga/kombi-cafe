@@ -9,6 +9,32 @@ interface AddStaffModalProps {
   onAdded: () => void;
 }
 
+function validateName(name: string): string | null {
+  if (!name) return null;
+  if (/\d/.test(name)) {
+    return "Name cannot contain numbers";
+  }
+  if (!/^[a-zA-Z\s-]+$/.test(name)) {
+    return "Name can only contain letters, spaces, and hyphens";
+  }
+  return null;
+}
+
+function validateAge(birthdate: string): string | null {
+  if (!birthdate) return null;
+  const birth = new Date(birthdate);
+  const today = new Date();
+  let age = today.getFullYear() - birth.getFullYear();
+  const monthDiff = today.getMonth() - birth.getMonth();
+  if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birth.getDate())) {
+    age--;
+  }
+  if (age < 18) {
+    return "Staff must be at least 18 years old";
+  }
+  return null;
+}
+
 export default function AddStaffModal({ isOpen, onClose, onAdded }: AddStaffModalProps) {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
@@ -45,6 +71,24 @@ export default function AddStaffModal({ isOpen, onClose, onAdded }: AddStaffModa
 
     if (password.length < 6) {
       showError("Password must be at least 6 characters");
+      return;
+    }
+
+    const firstNameError = validateName(firstName);
+    if (firstNameError) {
+      showError(firstNameError);
+      return;
+    }
+
+    const lastNameError = validateName(lastName);
+    if (lastNameError) {
+      showError(lastNameError);
+      return;
+    }
+
+    const ageError = validateAge(birthdate);
+    if (ageError) {
+      showError(ageError);
       return;
     }
 
@@ -146,7 +190,7 @@ export default function AddStaffModal({ isOpen, onClose, onAdded }: AddStaffModa
               <input
                 type="text"
                 value={firstName}
-                onChange={(e) => setFirstName(e.target.value)}
+                onChange={(e) => setFirstName(e.target.value.replace(/[^a-zA-Z\s-]/g, ""))}
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500"
                 placeholder="John"
               />
@@ -156,7 +200,7 @@ export default function AddStaffModal({ isOpen, onClose, onAdded }: AddStaffModa
               <input
                 type="text"
                 value={lastName}
-                onChange={(e) => setLastName(e.target.value)}
+                onChange={(e) => setLastName(e.target.value.replace(/[^a-zA-Z\s-]/g, ""))}
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500"
                 placeholder="Doe"
               />
@@ -171,6 +215,7 @@ export default function AddStaffModal({ isOpen, onClose, onAdded }: AddStaffModa
                 value={startedAt}
                 onChange={(e) => setStartedAt(e.target.value)}
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500"
+                max={new Date().toISOString().split("T")[0]}
               />
             </div>
             <div>
@@ -180,6 +225,7 @@ export default function AddStaffModal({ isOpen, onClose, onAdded }: AddStaffModa
                 value={birthdate}
                 onChange={(e) => setBirthdate(e.target.value)}
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500"
+                max={new Date(Date.now() - 18 * 365 * 24 * 60 * 60 * 1000).toISOString().split("T")[0]}
               />
             </div>
           </div>

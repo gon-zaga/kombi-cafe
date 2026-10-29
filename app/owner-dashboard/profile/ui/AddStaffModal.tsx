@@ -45,6 +45,17 @@ function sanitizeInput(input: string): string {
   return input.trim().replace(/[<>]/g, "");
 }
 
+function validateName(name: string): string | null {
+  if (!name) return null;
+  if (/\d/.test(name)) {
+    return "Name cannot contain numbers";
+  }
+  if (!/^[a-zA-Z\s-]+$/.test(name)) {
+    return "Name can only contain letters, spaces, and hyphens";
+  }
+  return null;
+}
+
 export default function AddStaffModal({ isOpen, onClose, onAdded }: AddStaffModalProps) {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
@@ -88,6 +99,18 @@ export default function AddStaffModal({ isOpen, onClose, onAdded }: AddStaffModa
     const passwordError = validatePassword(password);
     if (passwordError) {
       setError(passwordError);
+      return;
+    }
+
+    const firstNameError = validateName(cleanFirstName);
+    if (firstNameError) {
+      setError(firstNameError);
+      return;
+    }
+
+    const lastNameError = validateName(cleanLastName);
+    if (lastNameError) {
+      setError(lastNameError);
       return;
     }
 
@@ -210,7 +233,7 @@ export default function AddStaffModal({ isOpen, onClose, onAdded }: AddStaffModa
               <input
                 type="text"
                 value={firstName}
-                onChange={(e) => setFirstName(e.target.value)}
+                onChange={(e) => setFirstName(e.target.value.replace(/[^a-zA-Z\s-]/g, ""))}
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500"
                 placeholder="John"
                 maxLength={100}
@@ -221,7 +244,7 @@ export default function AddStaffModal({ isOpen, onClose, onAdded }: AddStaffModa
               <input
                 type="text"
                 value={lastName}
-                onChange={(e) => setLastName(e.target.value)}
+                onChange={(e) => setLastName(e.target.value.replace(/[^a-zA-Z\s-]/g, ""))}
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500"
                 placeholder="Doe"
                 maxLength={100}
