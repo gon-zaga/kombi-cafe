@@ -5,6 +5,7 @@
 import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { getRelativeTime } from '@/app/lib/utils';
 import { useRouter } from 'next/navigation';
+import { useAuth } from '@/app/lib/auth/AuthContext';
 import OrderDetailModal from './OrderDetailModal';
 import type { OrderSummary } from '@/app/lib/types';
 
@@ -25,6 +26,7 @@ export default function BaristaPage() {
   // which renders as "localhost says" and is banned for new UI.
   const [actionError, setActionError] = useState('');
   const router = useRouter();
+  const { user } = useAuth();
   const [timeString, setTimeString] = useState('');
   const [dateString, setDateString] = useState('');
 
@@ -173,7 +175,14 @@ export default function BaristaPage() {
     <div className="min-h-screen bg-cream">
       <header className="sticky top-0 z-10 bg-dark-brown border-b border-gray-200 px-4 py-3 flex items-center justify-between">
         <div className="flex flex-col">
-          <p className="text-sm text-white font-medium">Barista Dashboard</p>
+          <p className="text-sm text-white font-medium">
+            Barista Dashboard
+            {user && (user.firstName || user.lastName) && (
+              <span className="text-xs text-white/80 font-normal ml-2">
+                - {user.firstName || ''} {user.lastName || ''}
+              </span>
+            )}
+          </p>
           <span className="text-xs text-white">{timeString} - {dateString}</span>
         </div>
         <button

@@ -3,7 +3,7 @@ import pool from "@/app/lib/db";
 import bcrypt from "bcryptjs";
 
 function validateName(name: string | null): string | null {
-  if (!name) return null;
+  if (!name || name.trim() === "") return "Name is required";
   if (/\d/.test(name)) {
     return "Name cannot contain numbers";
   }
@@ -14,7 +14,7 @@ function validateName(name: string | null): string | null {
 }
 
 function validateAge(birthdate: string | null): string | null {
-  if (!birthdate) return null;
+  if (!birthdate || birthdate.trim() === "") return "Birthdate is required";
   const birth = new Date(birthdate);
   const today = new Date();
   let age = today.getFullYear() - birth.getFullYear();
@@ -83,6 +83,9 @@ export async function PATCH(
       values.push(last_name);
     }
     if (started_at !== undefined) {
+      if (!started_at || started_at.trim() === "") {
+        return NextResponse.json({ error: "Start date is required" }, { status: 400 });
+      }
       fields.push(`started_at = $${idx++}`);
       values.push(started_at);
     }

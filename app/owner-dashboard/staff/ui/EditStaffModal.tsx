@@ -22,7 +22,18 @@ interface EditStaffModalProps {
 }
 
 function validateName(name: string): string | null {
-  if (!name) return null;
+  if (!name) return "First name is required";
+  if (/\d/.test(name)) {
+    return "Name cannot contain numbers";
+  }
+  if (!/^[a-zA-Z\s-]+$/.test(name)) {
+    return "Name can only contain letters, spaces, and hyphens";
+  }
+  return null;
+}
+
+function validateLastName(name: string): string | null {
+  if (!name) return "Last name is required";
   if (/\d/.test(name)) {
     return "Name cannot contain numbers";
   }
@@ -33,7 +44,7 @@ function validateName(name: string): string | null {
 }
 
 function validateAge(birthdate: string): string | null {
-  if (!birthdate) return null;
+  if (!birthdate) return "Birthdate is required";
   const birth = new Date(birthdate);
   const today = new Date();
   let age = today.getFullYear() - birth.getFullYear();
@@ -44,6 +55,11 @@ function validateAge(birthdate: string): string | null {
   if (age < 18) {
     return "Staff must be at least 18 years old";
   }
+  return null;
+}
+
+function validateStartDate(startedAt: string): string | null {
+  if (!startedAt) return "Start date is required";
   return null;
 }
 
@@ -88,7 +104,7 @@ export default function EditStaffModal({ staff, isOpen, onClose, onUpdated }: Ed
       return;
     }
 
-    const lastNameError = validateName(lastName);
+    const lastNameError = validateLastName(lastName);
     if (lastNameError) {
       showError(lastNameError);
       return;
@@ -100,16 +116,22 @@ export default function EditStaffModal({ staff, isOpen, onClose, onUpdated }: Ed
       return;
     }
 
+    const startDateError = validateStartDate(startedAt);
+    if (startDateError) {
+      showError(startDateError);
+      return;
+    }
+
     setSubmitting(true);
 
     try {
       const body: Record<string, string | null> = {
         username,
         role,
-        first_name: firstName || null,
-        last_name: lastName || null,
-        started_at: startedAt || null,
-        birthdate: birthdate || null,
+        first_name: firstName,
+        last_name: lastName,
+        started_at: startedAt,
+        birthdate: birthdate,
       };
 
       if (password) {
@@ -197,20 +219,22 @@ export default function EditStaffModal({ staff, isOpen, onClose, onUpdated }: Ed
 
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">First Name</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">First Name <span className="text-red-600" aria-hidden="true">*</span></label>
               <input
                 type="text"
                 value={firstName}
                 onChange={(e) => setFirstName(e.target.value.replace(/[^a-zA-Z\s-]/g, ""))}
+                required
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500"
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Last Name</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Last Name <span className="text-red-600" aria-hidden="true">*</span></label>
               <input
                 type="text"
                 value={lastName}
                 onChange={(e) => setLastName(e.target.value.replace(/[^a-zA-Z\s-]/g, ""))}
+                required
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500"
               />
             </div>
@@ -218,21 +242,23 @@ export default function EditStaffModal({ staff, isOpen, onClose, onUpdated }: Ed
 
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Start Date</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Start Date <span className="text-red-600" aria-hidden="true">*</span></label>
               <input
                 type="date"
                 value={startedAt}
                 onChange={(e) => setStartedAt(e.target.value)}
+                required
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500"
                 max={new Date().toISOString().split("T")[0]}
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Birthdate</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Birthdate <span className="text-red-600" aria-hidden="true">*</span></label>
               <input
                 type="date"
                 value={birthdate}
                 onChange={(e) => setBirthdate(e.target.value)}
+                required
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500"
                 max={new Date(Date.now() - 18 * 365 * 24 * 60 * 60 * 1000).toISOString().split("T")[0]}
               />

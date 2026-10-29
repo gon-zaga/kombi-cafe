@@ -17,7 +17,7 @@ export async function GET() {
 }
 
 function validateName(name: string | null): string | null {
-  if (!name) return null;
+  if (!name || name.trim() === "") return "Name is required";
   if (/\d/.test(name)) {
     return "Name cannot contain numbers";
   }
@@ -28,7 +28,7 @@ function validateName(name: string | null): string | null {
 }
 
 function validateAge(birthdate: string | null): string | null {
-  if (!birthdate) return null;
+  if (!birthdate || birthdate.trim() === "") return "Birthdate is required";
   const birth = new Date(birthdate);
   const today = new Date();
   let age = today.getFullYear() - birth.getFullYear();
@@ -83,13 +83,17 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: ageError }, { status: 400 });
     }
 
+    if (!started_at || started_at.trim() === "") {
+      return NextResponse.json({ error: "Start date is required" }, { status: 400 });
+    }
+
     const passwordHash = await bcrypt.hash(password, 12);
 
     const result = await pool.query(
       `INSERT INTO staff (username, password_hash, role, first_name, last_name, started_at, birthdate)
        VALUES ($1, $2, $3, $4, $5, $6, $7)
        RETURNING user_id, username, role, first_name, last_name, started_at, birthdate, created_at`,
-      [username, passwordHash, role, first_name || null, last_name || null, started_at || null, birthdate || null]
+      [username, passwordHash, role, first_name, last_name, started_at, birthdate]
     );
 
     return NextResponse.json(result.rows[0], { status: 201 });
