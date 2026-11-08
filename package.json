@@ -9,6 +9,7 @@
     "lint": "eslint"
   },
   "dependencies": {
+    "@stackline/xlsx": "^1.0.10",
     "@types/bcryptjs": "^2.4.6",
     "bcryptjs": "^3.0.3",
     "framer-motion": "^14.0.0",
@@ -16,13 +17,12 @@
     "jspdf": "^4.2.1",
     "jspdf-autotable": "^5.0.9",
     "lucide-react": "^1.61.0",
-    "next": "^16.2.4",
+    "next": "^16.4.5",
     "nodemailer": "^10.3.0",
     "pg": "^8.23.0",
-    "react": "19.2.4",
-    "react-dom": "19.2.4",
+    "react": "^19.3.1",
+    "react-dom": "^19.3.1",
     "recharts": "^3.10.1",
-    "xlsx": "^0.18.5",
     "zustand": "^5.0.12"
   },
   "devDependencies": {
@@ -33,7 +33,7 @@
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "eslint": "^9",
-    "eslint-config-next": "16.2.1",
+    "eslint-config-next": "^15.5.29",
     "tailwindcss": "^4",
     "typescript": "^5"
   },
