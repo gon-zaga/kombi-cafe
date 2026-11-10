@@ -2,7 +2,10 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { LogIn, ClipboardList } from "lucide-react";
+import { useState } from "react";
+import { LogIn, ClipboardList, Bug } from "lucide-react";
+import { useAuth } from "@/app/lib/auth/AuthContext";
+import BugReportModal from "./BugReportModal";
 
 interface SideNavProps {
   isOpen: boolean;
@@ -11,6 +14,8 @@ interface SideNavProps {
 }
 
 export default function SideNav({ isOpen, onClose, showQueueLink = false }: SideNavProps) {
+  const { user } = useAuth();
+  const [showBugModal, setShowBugModal] = useState(false);
   return (
     <>
       {/* Backdrop */}
@@ -64,7 +69,20 @@ export default function SideNav({ isOpen, onClose, showQueueLink = false }: Side
               Order Queue
             </Link>
           )}
+          {user && (
+            <button
+              onClick={() => setShowBugModal(true)}
+              className="flex items-center gap-2 px-4 py-2 hover:bg-[#E8D9B5] text-left w-full"
+            >
+              <Bug className="w-5 h-5" aria-hidden="true" />
+              Report Bug
+            </button>
+          )}
         </div>
+
+        {showBugModal && (
+          <BugReportModal isOpen={showBugModal} onClose={() => setShowBugModal(false)} />
+        )}
 
         {/* Footer */}
         <div className="px-6 py-4 border-t border-[#C8A96E]">

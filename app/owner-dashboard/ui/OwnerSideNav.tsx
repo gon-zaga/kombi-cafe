@@ -2,6 +2,7 @@
 
 import Image from "next/image"
 import Link from "next/link"
+import { useState } from "react"
 import {
   LayoutDashboard,
   Menu,
@@ -9,8 +10,11 @@ import {
   BarChart3,
   Settings,
   User,
-  Users
+  Users,
+  Bug
 } from "lucide-react"
+import { useAuth } from "@/app/lib/auth/AuthContext"
+import BugReportModal from "@/app/ui/BugReportModal"
 
 interface OwnerSideNavProps {
   isOpen: boolean, 
@@ -18,6 +22,8 @@ interface OwnerSideNavProps {
 }
 
 function OwnerSideNav({isOpen, onClose}: OwnerSideNavProps) {
+  const { user } = useAuth()
+  const [showBugModal, setShowBugModal] = useState(false)
   return (
     <section>
       
@@ -59,39 +65,51 @@ function OwnerSideNav({isOpen, onClose}: OwnerSideNavProps) {
           </button>
         </div>
 
-        {/* Content (empty for now) */}
-        <div className="flex flex-col p-6">
-          {/* Put your nav links here later */}
-          <Link href="/owner-dashboard/" className="flex items-center gap-2 px-4 py-2 hover:bg-[#E8D9B5]" >
-            <LayoutDashboard className="w-5 h-5" aria-hidden="true" />
-            Dashboard
-          </Link>
-          <Link href="/owner-dashboard/menu" className="flex items-center gap-2 px-4 py-2 hover:bg-[#E8D9B5]" >
-            <Menu className="w-5 h-5" aria-hidden="true" />
-            Menu Management
-          </Link>
-          <Link href="/owner-dashboard/inventory" className="flex items-center gap-2 px-4 py-2 hover:bg-[#E8D9B5]" >
-            <Package className="w-5 h-5" aria-hidden="true" />
-            Inventory
-          </Link>
-          <Link href="/owner-dashboard/sales-report" className="flex items-center gap-2 px-4 py-2 hover:bg-[#E8D9B5]" >
-            <BarChart3 className="w-5 h-5" aria-hidden="true" />
-            Sales Report
-          </Link>
-          <Link href="/owner-dashboard/settings" className="flex items-center gap-2 px-4 py-2 hover:bg-[#E8D9B5]" >
-            <Settings className="w-5 h-5" aria-hidden="true" />
-            Settings
-          </Link>
-          <Link href="/owner-dashboard/my-profile" className="flex items-center gap-2 px-4 py-2 hover:bg-[#E8D9B5]" >
-            <User className="w-5 h-5" aria-hidden="true" />
-            My Profile
-          </Link>
-          <Link href="/owner-dashboard/profile" className="flex items-center gap-2 px-4 py-2 hover:bg-[#E8D9B5]" >
-            <Users className="w-5 h-5" aria-hidden="true" />
-            Worker Profile
-          </Link>
-          
-        </div>
+{/* Content (empty for now) */}
+          <div className="flex flex-col p-6">
+            {/* Put your nav links here later */}
+            <Link href="/owner-dashboard/" className="flex items-center gap-2 px-4 py-2 hover:bg-[#E8D9B5]" >
+              <LayoutDashboard className="w-5 h-5" aria-hidden="true" />
+              Dashboard
+            </Link>
+            <Link href="/owner-dashboard/menu" className="flex items-center gap-2 px-4 py-2 hover:bg-[#E8D9B5]" >
+              <Menu className="w-5 h-5" aria-hidden="true" />
+              Menu Management
+            </Link>
+            <Link href="/owner-dashboard/inventory" className="flex items-center gap-2 px-4 py-2 hover:bg-[#E8D9B5]" >
+              <Package className="w-5 h-5" aria-hidden="true" />
+              Inventory
+            </Link>
+            <Link href="/owner-dashboard/sales-report" className="flex items-center gap-2 px-4 py-2 hover:bg-[#E8D9B5]" >
+              <BarChart3 className="w-5 h-5" aria-hidden="true" />
+              Sales Report
+            </Link>
+            <Link href="/owner-dashboard/settings" className="flex items-center gap-2 px-4 py-2 hover:bg-[#E8D9B5]" >
+              <Settings className="w-5 h-5" aria-hidden="true" />
+              Settings
+            </Link>
+            <Link href="/owner-dashboard/my-profile" className="flex items-center gap-2 px-4 py-2 hover:bg-[#E8D9B5]" >
+              <User className="w-5 h-5" aria-hidden="true" />
+              My Profile
+            </Link>
+            <Link href="/owner-dashboard/profile" className="flex items-center gap-2 px-4 py-2 hover:bg-[#E8D9B5]" >
+              <Users className="w-5 h-5" aria-hidden="true" />
+              Worker Profile
+            </Link>
+            {user && (
+              <button
+                onClick={() => setShowBugModal(true)}
+                className="flex items-center gap-2 px-4 py-2 hover:bg-[#E8D9B5] text-left w-full"
+              >
+                <Bug className="w-5 h-5" aria-hidden="true" />
+                Report Bug
+              </button>
+            )}
+          </div>
+
+          {showBugModal && (
+            <BugReportModal isOpen={showBugModal} onClose={() => setShowBugModal(false)} />
+          )}
 
         {/* Footer */}
         <div className="px-6 py-4 border-t border-[#C8A96E]">
