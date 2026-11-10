@@ -3,7 +3,6 @@ import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import { jwtVerify } from "jose";
 import { createBug } from "@/app/lib/bugzilla";
-import { checkBugReportRateLimit, recordBugReportAttempt, formatLockTime } from "@/app/lib/bugReportRateLimit";
 
 const JWT_SECRET = new TextEncoder().encode(
   process.env.JWT_SECRET || "your-super-secret-jwt-key-change-in-production"
@@ -32,22 +31,6 @@ export async function POST(request: Request) {
     if (!summary?.trim()) {
       return NextResponse.json({ error: "Summary is required" }, { status: 400 });
     }
-
-    // Check rate limit
-    const rateLimit = await checkBugReportRateLimit(userId);
-    if (!rateLimit.allowed) {
-      const retryAfter = rateLimit.remainingTime ? Math.ceil(rateLimit.remainingTime / 1000) : 3600;
-      return NextResponse.json(
-        {
-          error: `Rate limit exceeded. Try again in ${formatLockTime(rateLimit.remainingTime || 3600000)}.`,
-          retryAfter,
-        },
-        { status: 429 }
-      );
-    }
-
-    // Record the attempt
-    await recordBugReportAttempt(userId);
 
     const id = await createBug(summary.trim(), (description ?? "").trim() || "(no details)");
     return NextResponse.json({ id }, { status: 201 });

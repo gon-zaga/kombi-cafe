@@ -1,4 +1,4 @@
-// Files a bug in Bugzilla through its REST API (server-side only; key never reaches the browser)
+// Files a bug in Bugzilla through its REST API using API key as query parameter
 export async function createBug(summary: string, description: string) {
   const url = process.env.BUGZILLA_URL;
   const apiKey = process.env.BUGZILLA_API_KEY;
@@ -9,11 +9,10 @@ export async function createBug(summary: string, description: string) {
     throw new Error("Bugzilla configuration incomplete: missing BUGZILLA_URL, BUGZILLA_API_KEY, BUGZILLA_PRODUCT, or BUGZILLA_COMPONENT");
   }
 
-  const res = await fetch(`${url}/rest/bug`, {
+  const res = await fetch(`${url}/rest/bug?api_key=${encodeURIComponent(apiKey)}`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      "X-BUGZILLA-API-KEY": apiKey,
     },
     body: JSON.stringify({
       product,
