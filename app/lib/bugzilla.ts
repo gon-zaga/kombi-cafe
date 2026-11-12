@@ -22,6 +22,7 @@ export async function createBug(summary: string, description: string) {
       description,
       op_sys: "All",
       platform: "All",
+      priority: "Normal",
     }),
   });
 
